@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super Trading Bot</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050a0e;color:#c0d8f0;font-family:monospace;padding:15px;font-size:13px}
+h1{color:#00aaff;font-size:18px;letter-spacing:3px;padding-bottom:10px;border-bottom:1px solid #1a3a5a;margin-bottom:14px}
+.ts{color:#4a6a8a;font-size:11px;margin-bottom:14px}
+.row{display:grid;gap:10px;margin-bottom:10px}
+.r4{grid-template-columns:repeat(4,1fr)}
+.r2{grid-template-columns:1fr 1fr}
+.r3{grid-template-columns:2fr 1fr}
+.card{background:#0a1520;border:1px solid #1a3a5a;border-radius:8px;padding:12px}
+.lbl{font-size:10px;letter-spacing:2px;color:#4a6a8a;margin-bottom:6px}
+.val{font-size:22px;font-weight:bold}
+.g{color:#00ff88}.r{color:#ff3366}.b{color:#00aaff}.y{color:#ffaa00}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:5px 4px;color:#4a6a8a;font-size:10px;letter-spacing:1px;border-bottom:1px solid #1a3a5a}
+td{padding:5px 4px;border-bottom:1px solid #0d1e2e;font-size:12px}
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:bold;margin:1px}
+.ok{background:#0d3320;color:#00ff88;border:1px solid #00ff8844}
+.fail{background:#3a0d1a;color:#ff3366;border:1px solid #ff336644}
+
+/* Fear & Greed */
+.fg-wrap{display:flex;align-items:center;gap:16px}
+.fg-num{font-size:48px;font-weight:bold;line-height:1;min-width:70px}
+.fg-right{flex:1}
+.fg-label{font-size:13px;letter-spacing:2px;margin-bottom:8px}
+.fg-track{background:#1a3a5a;border-radius:4px;height:8px;position:relative}
+.fg-fill{height:8px;border-radius:4px;transition:width 0.5s}
+.fg-ticks{display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:#4a6a8a}
+
+/* Sentiment bars */
+.sbar-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.sbar-sym{width:44px;color:#00aaff;font-size:11px}
+.sbar-track{flex:1;background:#1a3a5a;height:6px;border-radius:3px}
+.sbar-fill{height:6px;border-radius:3px}
+.sbar-val{width:46px;text-align:right;font-size:11px}
+
+/* Congress */
+.cbar-row{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:11px}
+.cbar-sym{width:44px;color:#00aaff}
+.cbar-sec{width:60px;color:#4a6a8a}
+.cbar-dir{width:36px;font-weight:bold}
+
+/* Skip log */
+.skip-row{padding:5px 0;border-bottom:1px solid #0d1e2e}
+.skip-sym{color:#ffaa00;font-size:12px;font-weight:bold;margin-bottom:3px}
+
+/* Countdown */
+.cd-ring{font-size:36px;color:#00aaff;text-align:center;padding:4px 0}
+.cd-bar{background:#1a3a5a;height:4px;border-radius:2px;margin-top:8px}
+.cd-fill{height:4px;border-radius:2px;background:#00aaff;transition:width 1s linear}
+</style>
+</head>
+<body>
+<h1>⚡ SUPER TRADING BOT v3.0</h1>
+<div class="ts" id="ts">--</div>
+
+<!-- Stats row -->
+<div class="row r4">
+  <div class="card"><div class="lbl">BALANCE</div><div class="val g" id="balance">--</div></div>
+  <div class="card"><div class="lbl">POSITIONEN</div><div class="val b" id="poscount">--</div></div>
+  <div class="card"><div class="lbl">GESAMT P&amp;L</div><div class="val" id="pnl">--</div></div>
+  <div class="card"><div class="lbl">MODE</div><div class="val y" id="mode">--</div></div>
+</div>
+
+<!-- Fear & Greed -->
+<div class="card" style="margin-bottom:10px">
+  <div class="lbl" style="margin-bottom:10px">MARKET FEAR &amp; GREED INDEX</div>
+  <div class="fg-wrap">
+    <div class="fg-num" id="fg-num">--</div>
+    <div class="fg-right">
+      <div class="fg-label" id="fg-label">--</div>
+      <div class="fg-track">
+        <div class="fg-fill" id="fg-fill" style="width:0%"></div>
+      </div>
+      <div class="fg-ticks">
+        <span>0 Extreme Fear</span><span>25</span><span>50 Neutral</span><span>75</span><span>100 Extreme Greed</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Positions + Congress -->
+<div class="row r2">
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">OFFENE POSITIONEN</div>
+    <table>
+      <thead><tr><th>SYMBOL</th><th>SHARES</th><th>ENTRY</th><th>PREIS</th><th>P&amp;L %</th><th>P&amp;L $</th><th>SEKTOR</th></tr></thead>
+      <tbody id="pos-body"></tbody>
+    </table>
+  </div>
+  <div class="card" id="congress-card">
+    <div class="lbl" style="margin-bottom:8px">CONGRESS SIGNALE</div>
+    <div id="congress-body"><span style="color:#4a6a8a;font-size:11px">Keine aktiven Signale</span></div>
+  </div>
+</div>
+
+<!-- Sentiment + Skip log -->
+<div class="row r2">
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">SENTIMENT SIGNALE</div>
+    <div id="sentiment"></div>
+  </div>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:8px">SKIP LOG — INDIKATOR FILTER</div>
+    <div id="skip-log"><span style="color:#4a6a8a;font-size:11px">Noch keine Skips in diesem Zyklus</span></div>
+  </div>
+</div>
+
+<!-- Trade history -->
+<div class="card" style="margin-bottom:10px">
+  <div class="lbl" style="margin-bottom:8px">TRADE HISTORIE</div>
+  <table>
+    <thead><tr><th>SYMBOL</th><th>SEKTOR</th><th>GRUND</th><th>%</th><th>P&amp;L $</th><th>ZEIT</th></tr></thead>
+    <tbody id="trades-body"></tbody>
+  </table>
+</div>
+
+<!-- Controls + Countdown -->
+<div class="row r2">
+  <div class="card" style="text-align:center">
+    <div class="lbl" style="margin-bottom:10px">BOT STEUERUNG</div>
+    <button onclick="botCmd('stop')" style="background:#ff3366;color:#fff;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;margin:4px;font-family:monospace">■ STOP</button>
+    <button onclick="botCmd('start')" style="background:#00ff88;color:#000;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;margin:4px;font-family:monospace">▶ START</button>
+  </div>
+  <div class="card" style="text-align:center">
+    <div class="lbl" style="margin-bottom:6px">AUTO REFRESH</div>
+    <div class="cd-ring" id="cd">30</div>
+    <div class="cd-bar"><div class="cd-fill" id="cd-fill" style="width:100%"></div></div>
+  </div>
+</div>
+
+<script>
+var ETFS={energy:"XLE",oil:"XOP",industry:"XLI",steel:"SLX",defense:"ITA",finance:"XLF",tech:"XLK",gold:"GLD",infra:"PAVE",crypto:"IBIT"};
+var cd=30;
+
+function fgColor(v){
+  if(v<=25)return"#00c851";
+  if(v<=45)return"#8bc34a";
+  if(v<=55)return"#f5a623";
+  if(v<=75)return"#ff7043";
+  return"#d50000";
+}
+
+function badge(label,ok){
+  return'<span class="badge '+(ok?"ok":"fail")+'">'+(ok?"✓":"✗")+" "+label+"</span>";
+}
+
+function load(){
+  fetch("dashboard.json?t="+Date.now())
+  .then(r=>r.json())
+  .then(d=>{
+    document.getElementById("ts").textContent=d.time+" | Trades: "+d.total_trades+" | Wins: "+d.wins;
+    document.getElementById("mode").textContent=d.mode;
+
+    var b=d.balance||0;
+    document.getElementById("balance").textContent="$"+b.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    var pc=Object.keys(d.positions||{}).length;
+    document.getElementById("poscount").textContent=pc+"/15";
+
+    var pnl=d.total_pnl||0;
+    var pe=document.getElementById("pnl");
+    pe.textContent=(pnl>=0?"+$":"-$")+Math.abs(pnl).toLocaleString("de-DE");
+    pe.className="val "+(pnl>=0?"g":"r");
+
+    // Fear & Greed
+    var fg=d.fear_greed||{value:50,label:"Neutral"};
+    var fv=fg.value||50;
+    var fc=fgColor(fv);
+    document.getElementById("fg-num").textContent=fv;
+    document.getElementById("fg-num").style.color=fc;
+    document.getElementById("fg-label").textContent=fg.label||"Neutral";
+    document.getElementById("fg-label").style.color=fc;
+    var ff=document.getElementById("fg-fill");
+    ff.style.width=fv+"%";
+    ff.style.background="linear-gradient(to right,#00c851,#8bc34a,#f5a623,#ff7043,#d50000)";
+
+    // Positions
+    var pb=document.getElementById("pos-body");
+    pb.innerHTML="";
+    Object.entries(d.positions||{}).forEach(function([sym,p]){
+      var c=p.pnl_pct>=0?"#00ff88":"#ff3366";
+      pb.innerHTML+="<tr>"+
+        "<td style='color:#00aaff'>"+sym+"</td>"+
+        "<td>"+p.shares+"</td>"+
+        "<td>$"+p.entry+"</td>"+
+        "<td>$"+p.current_price+"</td>"+
+        "<td style='color:"+c+"'>"+p.pnl_pct+"%</td>"+
+        "<td style='color:"+c+"'>$"+p.pnl_usd+"</td>"+
+        "<td style='color:#4a6a8a'>"+( p.sector||"")+"</td>"+
+        "</tr>";
+    });
+    if(!Object.keys(d.positions||{}).length)
+      pb.innerHTML="<tr><td colspan='7' style='color:#4a6a8a;padding:8px'>Keine offenen Positionen</td></tr>";
+
+    // Congress signals
+    var cong=d.congress||{};
+    var ckeys=Object.keys(cong).filter(k=>Math.abs(cong[k])>0.01);
+    var cb=document.getElementById("congress-body");
+    if(ckeys.length){
+      ckeys.sort((a,b)=>Math.abs(cong[b])-Math.abs(cong[a]));
+      cb.innerHTML="";
+      ckeys.forEach(function(sec){
+        var v=cong[sec];
+        var sym=ETFS[sec]||sec.toUpperCase();
+        var dir=v>0?"▲ BUY":"▼ SELL";
+        var c=v>0?"#00ff88":"#ff3366";
+        cb.innerHTML+="<div class='cbar-row'>"+
+          "<span class='cbar-sym'>"+sym+"</span>"+
+          "<span class='cbar-sec'>"+sec+"</span>"+
+          "<span class='cbar-dir' style='color:"+c+"'>"+dir+"</span>"+
+          "<span style='color:"+c+";margin-left:auto'>"+( v>0?"+":"")+v.toFixed(2)+"</span>"+
+          "</div>";
+      });
+    } else {
+      cb.innerHTML="<span style='color:#4a6a8a;font-size:11px'>Keine aktiven Signale</span>";
+    }
+
+    // Sentiment
+    var sc=d.scores||{};
+    var sorted=Object.entries(sc).filter(x=>Math.abs(x[1])>0.05).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+    var maxV=sorted.length?Math.max(...sorted.map(x=>Math.abs(x[1]))):1;
+    var sh="";
+    sorted.forEach(function([sec,val]){
+      var sym=ETFS[sec]||sec;
+      var pct=Math.min(Math.abs(val)/maxV*100,100);
+      var c=val>=0?"#00ff88":"#ff3366";
+      sh+="<div class='sbar-row'>"+
+        "<span class='sbar-sym'>"+sym+"</span>"+
+        "<div class='sbar-track'><div class='sbar-fill' style='width:"+pct+"%;background:"+c+"'></div></div>"+
+        "<span class='sbar-val' style='color:"+c+"'>"+(val>=0?"+":"")+val.toFixed(2)+"</span>"+
+        "</div>";
+    });
+    document.getElementById("sentiment").innerHTML=sh||"<span style='color:#4a6a8a;font-size:11px'>Keine Signale</span>";
+
+    // Skip log
+    var skips=(d.skips||[]).slice().reverse();
+    var sl=document.getElementById("skip-log");
+    if(skips.length){
+      sl.innerHTML="";
+      skips.forEach(function(s){
+        sl.innerHTML+="<div class='skip-row'>"+
+          "<div class='skip-sym'>"+s.symbol+" <span style='color:#4a6a8a;font-size:10px'>"+s.time+"</span></div>"+
+          "<div>"+
+          badge("RSI "+s.rsi, s.rsi_ok)+
+          badge("MA20", s.ma_ok)+
+          badge("MACD", s.macd_ok)+
+          badge("ST", s.st_ok)+
+          badge("OBV", s.obv_ok)+
+          badge("ICHI", s.ichi_ok)+
+          badge("PSAR", s.psar_ok)+
+          "</div></div>";
+      });
+    } else {
+      sl.innerHTML="<span style='color:#4a6a8a;font-size:11px'>Noch keine Skips in diesem Zyklus</span>";
+    }
+
+    // Trades
+    var tb=document.getElementById("trades-body");
+    tb.innerHTML="";
+    (d.trades||[]).slice().reverse().forEach(function(t){
+      var c=t.profit>=0?"#00ff88":"#ff3366";
+      tb.innerHTML+="<tr>"+
+        "<td style='color:#00aaff'>"+t.symbol+"</td>"+
+        "<td style='color:#4a6a8a'>"+( t.sector||"")+"</td>"+
+        "<td>"+t.reason+"</td>"+
+        "<td style='color:"+c+"'>"+t.pnl_pct+"%</td>"+
+        "<td style='color:"+c+"'>$"+t.profit+"</td>"+
+        "<td style='color:#4a6a8a;font-size:10px'>"+t.time+"</td>"+
+        "</tr>";
+    });
+    if(!(d.trades||[]).length)
+      tb.innerHTML="<tr><td colspan='6' style='color:#4a6a8a;padding:8px'>Keine Trades</td></tr>";
+
+  }).catch(e=>console.log(e));
+}
+
+function botCmd(cmd){
+  var data=JSON.stringify({command:cmd});
+  var f=new File([data],"bot_control.json",{type:"application/json"});
+  alert("Befehl: "+cmd+" gesendet!");
+}
+
+function tick(){
+  cd--;
+  document.getElementById("cd").textContent=cd;
+  document.getElementById("cd-fill").style.width=(cd/30*100)+"%";
+  if(cd<=0){cd=30;load();}
+}
+
+load();
+setInterval(tick,1000);
+</script>
+</body>
+</html>

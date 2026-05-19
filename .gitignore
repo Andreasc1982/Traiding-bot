@@ -1,0 +1,34 @@
+# ── Secrets — NEVER commit ────────────────────────────────────────────────
+# Covers config.py, config.pi, config.pi.save, and any future variants
+config.*
+.env
+
+# ── Runtime state files (restored from exchange / recalculated on start) ──
+super_state.json
+crypto/crypto_state.json
+
+# ── Runtime control files (transient IPC, written by telegram_router) ─────
+bot_control.json
+crypto/crypto_control.json
+
+# ── Live dashboard JSON feeds (updated every 10 min — too noisy) ──────────
+dashboard.json
+crypto/crypto_dashboard.json
+
+# ── Risk-halt flag (created/deleted by risk_agent, transient) ────────────
+agents/risk_halt.json
+
+# ── Log files ────────────────────────────────────────────────────────────
+*.log
+
+# ── Editor backup / temp files ───────────────────────────────────────────
+*.save
+*.py.txt
+*.swp
+*.swo
+*~
+
+# ── Python cache ─────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
