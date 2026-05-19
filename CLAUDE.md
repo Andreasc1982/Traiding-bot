@@ -9,13 +9,18 @@
 ├── dashboard.json            # Live JSON feed for super_bot dashboard
 ├── dashboard_super.html      # Super bot web dashboard
 ├── trades_history.json       # Persistent trade log (super_bot)
-├── bot_control.json          # Write {"command":"stop"} to halt super_bot
-├── start_all.sh              # Launches all 5 screen sessions (called by systemd)
+├── super_state.json          # Persisted balance + daily-loss baseline (survives restarts)
+├── bot_control.json          # Pause/stop control for super_bot (written by telegram_router)
+├── telegram_router.py        # Single Telegram getUpdates poller — routes commands to both bots
+├── start_all.sh              # Launches all 9 screen sessions (called by systemd)
+├── .gitignore                # Excludes config.*, state files, live feeds, logs
 │
 ├── crypto/
 │   ├── crypto_bot.py         # Crypto bot
 │   ├── crypto_dashboard.json # Live JSON feed for crypto dashboard
 │   ├── dashboard_crypto.html # Crypto bot web dashboard
+│   ├── crypto_control.json   # Pause/stop control for crypto_bot (written by telegram_router)
+│   ├── crypto_state.json     # Persisted balance + daily-loss baseline (survives restarts)
 │   └── trades_history.json   # Persistent trade log (crypto_bot)
 │
 └── agents/
@@ -28,7 +33,8 @@
     ├── backtest_results.json  # Full backtest output (machine-readable)
     ├── backtest_report.txt    # Human-readable backtest summary
     ├── optimize_results.json  # Weekly optimization output (machine-readable)
-    └── optimize_log.txt       # Timestamped optimization run log
+    ├── optimize_log.txt       # Timestamped optimization run log
+    └── github_backup.py       # Nightly git commit + push at 02:00 (screen: backup)
 ```
 
 Local copies (Windows, for editing):
@@ -100,7 +106,7 @@ screen -r crypto
 
 ### Systemd autostart (runs on every Pi reboot)
 
-The service `trading-bots.service` starts all six screen sessions automatically after the network is up.
+The service `trading-bots.service` starts all nine screen sessions automatically after the network is up.
 
 ```bash
 # Service control
@@ -122,12 +128,12 @@ sudo systemctl daemon-reload
 | File | Purpose |
 |------|---------|
 | `/etc/systemd/system/trading-bots.service` | Systemd unit (`Type=oneshot`, `RemainAfterExit=yes`) |
-| `/home/trading2025/trading_bot/start_all.sh` | Startup script called by the service — launches all 5 screen sessions |
+| `/home/trading2025/trading_bot/start_all.sh` | Startup script called by the service — launches all 9 screen sessions |
 
 **Service design notes:**
 - `After=network-online.target` — waits for network before starting (Alpaca/Kraken API needs it)
 - `Type=oneshot` + `RemainAfterExit=yes` — script exits after launching screens; service stays `active (exited)`; all bot processes remain alive under systemd's cgroup
-- `ExecStop` — `systemctl stop` sends `screen -X quit` to all four sessions cleanly
+- `ExecStop` — `systemctl stop` sends `screen -X quit` to all eight sessions cleanly
 - The old `@reboot` crontab entries have been removed; systemd is the only autostart mechanism
 
 ---
@@ -148,12 +154,12 @@ scp crypto_bot_new.py trading2025@trading:/home/trading2025/trading_bot/crypto/c
 
 ## Dashboard URLs
 
-| Dashboard      | URL                          | JSON feed                     |
-|----------------|------------------------------|-------------------------------|
-| Super Bot      | `http://<server>:8080/dashboard_super.html`  | `dashboard.json`        |
-| Crypto Bot     | `http://<server>:8080/crypto/dashboard_crypto.html` | `crypto/crypto_dashboard.json` |
+| Dashboard      | URL                                          | JSON feed                       | Screen session     |
+|----------------|----------------------------------------------|---------------------------------|--------------------|
+| Super Bot      | `http://<server>:8080/dashboard_super.html`  | `dashboard.json`                | `dashboard`        |
+| Crypto Bot     | `http://<server>:8081/dashboard_crypto.html` | `crypto/crypto_dashboard.json`  | `dashboard_crypto` |
 
-Both dashboards auto-refresh every 30 seconds via a countdown timer.
+Each dashboard has its own HTTP server. `dashboard` serves the `trading_bot/` root on port 8080; `dashboard_crypto` serves the `trading_bot/crypto/` subdirectory on port 8081. Both auto-refresh every 30 seconds via a countdown timer. Both servers are watched by the monitor agent and restarted automatically on crash.
 
 ---
 
@@ -212,9 +218,20 @@ Trades 10 sector ETFs using NLP sentiment from news/Twitter/SEC/Fed/Congress fee
 | `trailing_stop` | 3.0%    | Pullback from peak to trigger exit |
 | `max_pos`       | 15      | Max concurrent positions       |
 | `pos_size`      | 5%      | Per-trade allocation of balance |
-| `max_day_loss`  | 10%     | Kills bot if daily drawdown exceeded |
+| `max_day_loss`  | 10%     | Pause new trades; process stays alive (no restart loop) |
 | Cycle interval  | 600s    | Full sentiment re-analysis every 10 min |
 | Intra-cycle     | every 120s | Momentum check + stop poll (if WS down) |
+
+### Balance persistence (`super_state.json`)
+
+Alpaca paper-trading `cash` always returns ~$100k (no real orders placed in demo). In demo mode, balance is tracked in-memory and lost on restart. Fix: `_save_state()` writes `super_state.json` after every buy, every sell, and every intra-cycle checkpoint. On startup, `_load_state()` restores the saved balance (demo only) and the day's loss baseline (all modes, date-checked so a restart doesn't carry yesterday's drawdown into today).
+
+**State file**: `super_state.json`
+```json
+{"balance": 97500.0, "day_start_balance": 100000.0, "day_date": "2026-05-19"}
+```
+
+**Daily-loss halt**: when `check_day_loss()` fires, `running` is set to `False`. The main loop handles this without exiting (`if not self.running: sleep(30); continue`) so the monitor agent never sees a crash and never restarts the bot. The bot resumes automatically when `/start` is issued via Telegram.
 
 ### Exchange — Alpaca (stocks, always paper)
 - REST: `https://paper-api.alpaca.markets`
@@ -284,8 +301,21 @@ Trades 11 cryptocurrencies (7 main + 4 meme) using sentiment from crypto RSS, Re
 | `max_pos`       | 6      | Max concurrent positions        |
 | `pos_size`      | 8%     | Main coins per trade            |
 | `meme_size`     | 3%     | Meme coins per trade            |
-| `max_day_loss`  | 10%    | Daily drawdown limit            |
+| `max_day_loss`  | 10%    | Daily drawdown limit — bot sleeps until 00:30, then auto-resumes |
 | Cycle interval  | ~120s  | 4 × 30s checks per full cycle   |
+
+### Balance persistence (`crypto_state.json`)
+
+Solves two problems unique to demo/paper mode:
+
+1. **Balance reset on restart**: Alpaca paper-trading `cash` is always ~$100k (no real orders placed). In demo mode the bot tracks balance in-memory — after a restart this in-memory state is lost. Fix: `_save_state()` writes `crypto_state.json` after every buy, sell, and every 30s cycle. On startup, `_load_state()` restores the saved balance (demo only; live modes read from the exchange API).
+
+2. **Crash/restart loop on daily loss**: Previously `check_day_loss()` set `running=False`, the process exited, and the monitor restarted it within 60s — creating an infinite restart loop on the same depleted balance. Fix: the bot now calls `_sleep_until_tomorrow()` which keeps the process alive (monitor sees no crash) and sleeps in 60s increments until 00:30 next day, still honouring `/stop` commands. On wake-up, `start_balance` resets to the current balance so the new day's loss counter starts fresh.
+
+**State file**: `crypto/crypto_state.json`
+```json
+{"balance": 95000.0, "day_start_balance": 97000.0, "day_date": "2026-05-19"}
+```
 
 ### Exchange — Alpaca (crypto paper)
 - REST: `https://paper-api.alpaca.markets`
@@ -561,7 +591,8 @@ if not self.ws_connected:
   "fear_greed":   {"value": 42, "label": "Fear"},
   "skips":        [{"symbol":"XLF","time":"11:30","rsi":72.1,"rsi_ok":false,"ma_ok":true,"macd_ok":true,"st_ok":true,"obv_ok":true,"psar_ok":true,"ichi_ok":true}],
   "congress":     {"tech": 1.2, "finance": -0.6},
-  "ws_connected": true
+  "ws_connected": true,
+  "earnings":     {"XLK": {"stock": "MSFT", "date": "2026-01-28"}}
 }
 ```
 
@@ -593,7 +624,7 @@ Fires an immediate buy from inside the WebSocket thread — no indicator gate, n
 1. Every trade tick (`T="t"`) carries `s` = trade size. The WS message handler accumulates these into a **rolling 60-second volume window** per symbol.
 2. After ≥ 10 seconds of data, `_ws_spike_check(symbol, price)` runs on every tick.
 3. Accumulated volume is extrapolated to a 60s rate and compared to the **20-bar hourly average per-minute baseline** (`avg_vol_20 / 60`).
-4. If `vol_rate ≥ 3× baseline` (300% spike), a buy fires immediately inside the WS thread.
+4. If `vol_rate ≥ 10× baseline` (1000% spike), a buy fires immediately inside the WS thread.
 5. The window resets to zero on trigger to prevent re-firing on the same spike.
 
 ### Parameters
@@ -603,7 +634,7 @@ Fires an immediate buy from inside the WebSocket thread — no indicator gate, n
 | `spike_size`  | 4%    | Smaller than normal trades (riskier entry)  |
 | `stop_loss`   | 1.5%  | Tight — spike can reverse fast              |
 | `take_profit` | 3.0%  | Quick target — 2:1 risk/reward              |
-| Threshold     | 3.0×  | 300% above 20-bar avg per-minute volume     |
+| Threshold     | 10.0× | 1000% above 20-bar avg per-minute volume    |
 | Min window    | 10s   | Won't fire on <10s of accumulated data      |
 | Window length | 60s   | Rolling window, resets after 60s or trigger |
 
@@ -634,6 +665,45 @@ Spike positions carry `"stop_loss": 1.5`, `"take_profit": 3.0`, `"spike": True` 
 
 ---
 
+## Earnings Calendar (super_bot only)
+
+Prevents buying ETF positions when a major constituent stock has an earnings announcement due within the next 2 days, or was announced yesterday (the day-after gap-risk window).
+
+### Constituent map (`ETF_CONSTITUENTS`)
+
+| ETF  | Top-5 constituents tracked |
+|------|---------------------------|
+| XLE  | XOM, CVX, COP, EOG, SLB |
+| XOP  | DVN, MRO, APA, OXY, FANG |
+| XLI  | GE, RTX, UNP, HON, ETN |
+| SLX  | NUE, STLD, RS, CMC, X |
+| ITA  | LMT, RTX, NOC, GD, BA |
+| XLF  | JPM, BAC, WFC, GS, MS |
+| XLK  | MSFT, AAPL, NVDA, AVGO, META |
+| GLD  | *(gold bullion trust — no constituent earnings)* |
+| PAVE | VMC, MLM, PWR, CARR, JCI |
+| IBIT | *(Bitcoin ETF trust — no constituent earnings)* |
+
+### How it works
+
+1. **`_fetch_earnings()`** — runs at the start of each 10-minute outer cycle. Queries `yfinance.Ticker(stock).calendar` for all unique constituent stocks (~30 stocks). Result is a `dict[stock → date]` cached for the rest of the calendar day. On a new day the cache and alert set both reset. Defensive parsing handles both the dict and legacy DataFrame formats yfinance may return.
+
+2. **`_get_earnings_window(etf_symbol)`** — returns `(blocked, stock, date_str)`. Blocked = True if any constituent has `−1 ≤ (earnings_date − today).days ≤ +2`.
+
+3. **Buy gate in `trade()`** — inserted after the quick position-count check and *before* the expensive `get_indicators()` call. Logs `[SKIP] XLK Earnings MSFT 2026-01-28` and skips to next sector.
+
+4. **`_check_held_earnings()`** — scans open positions at cycle start. If a held ETF enters the earnings window, sends a one-time Telegram alert: `⚠️ EARNINGS: XLK — Konstituent MSFT Earnings 2026-01-28 | Position gehalten (kein Autoverkauf)`. The alert fires once per position per calendar day (`_earnings_alerted` set, reset daily).
+
+5. **Dashboard** — `save_dashboard()` adds an `"earnings"` field: a dict of ETF → `{"stock": "MSFT", "date": "2026-01-28"}` for any ETF currently in a blocked window. Empty dict when no earnings nearby.
+
+### Notes
+
+- **No auto-close** — existing positions are never closed due to earnings. The Telegram alert is informational only; the operator decides whether to close manually.
+- **yfinance dependency** — if `yfinance` is not installed, `_fetch_earnings()` prints a warning and leaves the cache empty (all `_get_earnings_window` calls return `False` — no blocking, no alerts).
+- **Performance** — the fetch runs ~30 sequential HTTP calls to Yahoo Finance. Typically completes in 10–30 seconds on a good connection. Only runs once per day (first cycle after midnight); all subsequent cycles use the in-memory cache instantly.
+
+---
+
 ## Monitor Agent (`agents/monitor_agent.py`)
 
 Runs as its own `monitor` screen session. Checks all three screen sessions every 60 seconds, restarts crashed bots, monitors system health, and sends a daily Telegram performance report.
@@ -656,14 +726,18 @@ screen -r monitor   # attach; Ctrl+A D to detach
 
 ### What it watches
 
-| Screen session | Bot               | Restart command source |
-|----------------|-------------------|------------------------|
-| `trading`      | Super Bot         | Exact CLAUDE.md cmd    |
-| `crypto`       | Crypto Bot        | Exact CLAUDE.md cmd    |
-| `dashboard`    | HTTP server :8080 | `fuser -k 8080/tcp` first (handles orphaned processes) |
-| `risk`         | Risk Agent        | `agents/risk_agent.py` |
+| Screen session     | Service                     | Risk-halt protected | Restart notes |
+|--------------------|-----------------------------|---------------------|---------------|
+| `trading`          | Super Bot                   | ✅ skipped on halt  | Exact CLAUDE.md cmd |
+| `crypto`           | Crypto Bot                  | ✅ skipped on halt  | Exact CLAUDE.md cmd |
+| `dashboard`        | HTTP server :8080           | ❌ always restarts  | `fuser -k 8080/tcp` first |
+| `dashboard_crypto` | Crypto HTTP server :8081    | ❌ always restarts  | `fuser -k 8081/tcp` first |
+| `risk`             | Risk Agent                  | ❌ always restarts  | `agents/risk_agent.py` |
+| `optimize`         | Optimization Agent          | ❌ always restarts  | `agents/optimize_agent.py` |
+| `tgrouter`         | Telegram Router             | ❌ always restarts  | `telegram_router.py` |
+| `backup`           | GitHub Backup Agent         | ❌ always restarts  | `agents/github_backup.py` |
 
-**Risk halt integration**: before restarting any crashed session, `check_bots()` checks whether `agents/risk_halt.json` exists. If it does, `trading` and `crypto` restarts are skipped — the risk agent owns those sessions during a halt. `dashboard`, `monitor`, and `risk` itself are always restarted regardless.
+**Risk halt integration**: before restarting a crashed session, `check_bots()` checks whether `agents/risk_halt.json` exists. Sessions with `trading_only=True` (`trading`, `crypto`) are skipped — the risk agent owns those during a halt. All infrastructure sessions (`dashboard`, `dashboard_crypto`, `risk`, `optimize`, `tgrouter`, `monitor` itself) always restart regardless.
 
 ### Crash + restart flow
 
@@ -695,7 +769,7 @@ Fires once per day at 08:00. Telegram message includes:
 - Super Bot: balance, total P&L, trade count + win rate, open positions with P&L %, F&G value, JSON age
 - Crypto Bot: same fields, spike positions flagged `[SPIKE]`
 - System: CPU%, RAM%, disk% + free space
-- Screen session status for all six sessions (`trading`, `crypto`, `dashboard`, `monitor`, `risk`, `optimize`)
+- Screen session status for all eight sessions (`trading`, `crypto`, `dashboard`, `dashboard_crypto`, `monitor`, `risk`, `optimize`, `tgrouter`)
 
 ### Config keys used
 
@@ -777,34 +851,82 @@ Portfolio values read directly from `dashboard.json` and `crypto/crypto_dashboar
 
 ---
 
-## Telegram Steuerung (Bot-Befehle)
+## Telegram Router (`telegram_router.py`)
 
-Both bots accept commands via Telegram. A `TelegramCommands` daemon thread starts inside `run()` using long polling (`getUpdates`, timeout=30s). Only messages from the configured `TELEGRAM_CHAT_ID` are accepted.
+Single standalone process that is the **only** caller of `getUpdates`. Previously both bots had an independent `TelegramCommands` daemon thread — because Telegram delivers each update to whichever caller wins the race, only one bot ever responded to commands. The router fixes this by centralising all polling and communicating with bots via JSON control files.
+
+### Architecture
+
+```
+Telegram API
+    │  getUpdates (single long-poll, 30s timeout)
+    ▼
+telegram_router.py  (screen: tgrouter)
+    ├─ reads  dashboard.json              → /status, /positions, /risk
+    ├─ reads  crypto/crypto_dashboard.json
+    ├─ reads  agents/risk_log.json
+    ├─ writes bot_control.json            → super_bot reads {"paused": true/false}
+    └─ writes crypto/crypto_control.json  → crypto_bot reads {"paused": true/false}
+
+super_bot.py    → check_control() every cycle  → reads bot_control.json
+crypto_bot.py   → check_control() every cycle  → reads crypto/crypto_control.json
+```
 
 ### Commands
 
-| Command      | Super Bot                             | Crypto Bot                            |
-|-------------|---------------------------------------|---------------------------------------|
-| `/status`   | Balance, P&L, trades, win rate, F&G   | Balance, P&L, trades, win rate, F&G   |
-| `/positions`| All open ETF positions with P&L       | All open crypto positions (incl. spike flag) |
-| `/risk`     | Daily P&L %, drawdown %, peak equity from `risk_log.json` | Same |
-| `/stop`     | Pause new trades (`tg_paused=True`)   | Pause new trades (`tg_paused=True`)   |
-| `/start`    | Resume trading (`tg_paused=False`)    | Resume trading (`tg_paused=False`)    |
-| `/help`     | List all commands                     | List all commands                     |
+| Command        | Action |
+|----------------|--------|
+| `/status`      | Both bots: balance, P&L, trades, win rate, positions count, F&G, WS status, pause state |
+| `/positions`   | All open positions (Super + Crypto combined) with entry→current price and P&L |
+| `/risk`        | Daily P&L %, all-time drawdown %, peak equity, halt status from `risk_log.json` |
+| `/stop`        | Pause new trades on BOTH bots (writes `{"paused":true}` to both control files) |
+| `/start`       | Resume new trades on BOTH bots |
+| `/stop_super`  | Pause Super Bot only |
+| `/start_super` | Resume Super Bot only |
+| `/stop_crypto` | Pause Crypto Bot only |
+| `/start_crypto`| Resume Crypto Bot only |
+| `/help`        | Show command list |
 
-### Implementation notes
+### Control file IPC
 
-- **`tg_paused` flag**: set by `/stop`, cleared by `/start`. Checked at the top of `trade()` — open positions continue to run (stop/take-profit still fires via WS or polling).
-- **Security**: `chat_id` of every incoming message is compared to `TELEGRAM_CHAT_ID`; mismatches are silently dropped.
-- **Thread**: daemon thread named `tg-cmd`, long-polls with `timeout=30`, retries on error after 5s.
-- **crypto_bot config fix**: `crypto_bot.py` runs from `trading_bot/crypto/` but `config.py` lives one level up. Fixed with `sys.path.insert(0, parent_dir)` before the import.
-- **Messages use HTML parse mode**: `&` encoded as `&amp;` in HTML entities.
+`bot_control.json` and `crypto/crypto_control.json` are the IPC mechanism. The router reads the existing file before writing so it preserves any other fields (e.g. `{"command":"stop"}`).
+
+Both bots call `self.check_control()` at the top of each main loop iteration:
+- `"paused": true` → sets `tg_paused = True` — blocks `trade()` entry scanning; stop-loss and take-profit still fire via WebSocket and REST polling.
+- `"paused": false` → clears `tg_paused`.
+- `"command": "stop"` → sets `running = False` (hard stop, existing behaviour).
+
+### Start the router
+
+```bash
+screen -dmS tgrouter bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u telegram_router.py > /tmp/tgrouter.log 2>&1'
+```
+
+### View log
+
+```bash
+tail -f /tmp/tgrouter.log
+screen -r tgrouter   # attach; Ctrl+A D to detach
+```
 
 ### Log output on startup
 
 ```
-[TG_CMD] Command listener gestartet
+[2026-05-18 23:38:17] Telegram Router gestartet
+[2026-05-18 23:38:17] Chat-ID  : 5696707457
+[2026-05-18 23:38:17] Long-polling gestartet (einziger getUpdates-Aufrufer)
 ```
+
+### Implementation notes
+
+- Handles `/command@botname` format by splitting on `@` before lookup.
+- `_dash_age_min(dash)` computes dashboard staleness from the `time` field — `/status` warns if >10 min old.
+- `send()` chunks messages at 3800 characters for Telegram's 4096-char limit.
+- All messages use HTML parse mode; `&` encoded as `&amp;`.
+- Unknown commands silently ignored; messages from other `chat_id`s silently dropped.
 
 ---
 
@@ -899,6 +1021,68 @@ config["alpaca_secret_key"]   # grid search skipped gracefully if absent
 
 ---
 
+## GitHub Backup Agent (`agents/github_backup.py`)
+
+Runs as its own `backup` screen session. Commits all source changes to a GitHub repository every night at 02:00 and sends a Telegram confirmation.
+
+### Start the agent
+
+```bash
+screen -dmS backup bash -c '
+  cd /home/trading2025/trading_bot/agents &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u github_backup.py > /tmp/backup.log 2>&1'
+```
+
+### View log
+
+```bash
+tail -f /tmp/backup.log
+screen -r backup   # attach; Ctrl+A D to detach
+```
+
+### Setup — one-time steps
+
+1. **Create a GitHub repo** (private recommended) and generate a personal access token with `repo` scope.
+
+2. **Add to `config.py`** on the server (token embedded in URL — no SSH key needed):
+   ```python
+   "github_repo": "https://<token>@github.com/<user>/<repo>.git",
+   ```
+
+3. The agent reads `github_repo` from `config.py` at each 02:00 run and calls `git remote set-url origin` automatically — rotate tokens by editing `config.py` alone, no git commands needed.
+
+4. **First push** — on the first night with `github_repo` set, the agent will push the existing initial commit plus all accumulated changes since setup.
+
+### What is committed / excluded
+
+| Committed | Excluded (`.gitignore`) |
+|-----------|------------------------|
+| All `.py` source files | `config.*` (all variants — API keys) |
+| `*.html` dashboards | `super_state.json`, `crypto/crypto_state.json` |
+| `start_all.sh`, `.gitignore`, `CLAUDE.md` | `bot_control.json`, `crypto/crypto_control.json` |
+| `trades_history.json` (both bots) | `dashboard.json`, `crypto/crypto_dashboard.json` |
+| `agents/backtest_report.txt` + `backtest_results.json` | `agents/risk_halt.json` |
+| `agents/optimize_log.txt` + `optimize_results.json` | `*.log`, `*.save`, `*.swp`, `__pycache__/` |
+| `agents/risk_log.json` | |
+
+### Behaviour
+
+- **No changes**: if `git status --porcelain` is empty, no commit is created (silent skip).
+- **Push skipped**: if `github_repo` is not yet in `config.py`, the agent commits locally but skips the push and logs a reminder.
+- **Branch**: `main` (renamed from `master` on initialisation).
+- **Telegram**: `✅ GitHub Backup OK — 2026-05-20 02:00` on success; `❌ GitHub Backup FEHLER` with details on any failure.
+
+### Git repo state
+
+```
+/home/trading2025/trading_bot/.git   # initialised 2026-05-19
+Branch: main
+Initial commit: 37d16a7
+```
+
+---
+
 ## Backtest Agent (`agents/backtest_agent.py`)
 
 Downloads full-year 2024 historical data from Alpaca and simulates both bots with current indicator settings. Tests indicator gates in isolation (sentiment assumed bullish).
@@ -937,9 +1121,9 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **Risk Agent** — `agents/risk_agent.py` — daily −5% / drawdown −15% halt, auto-resume 09:30
 - [x] **Optimierung Agent** — `agents/optimize_agent.py` — 81-combo weekly grid search (RSI · ST-mult · SL · TP) on live Alpaca data; indicator block analysis; Telegram report every Sunday 00:00
 - [ ] **Kraken WebSocket** (`wss://ws.kraken.com`) — replace REST polling for crypto_bot when using Kraken exchange; subscribe to `trade` channel; same daemon thread pattern as Alpaca WS
-- [ ] **GitHub Backup** — automated `git add -A && git commit && git push` after each main cycle so the full trade history and config snapshots are version-controlled off-server
-- [x] **Telegram Steuerung** — `/status`, `/stop`, `/start`, `/risk`, `/positions`, `/help` in both bots via long-polling daemon thread
-- [ ] **Earnings Calendar** — fetch upcoming earnings dates (e.g. via yfinance) and avoid opening or holding ETF positions in the 2 days before/after major constituent earnings
+- [x] **GitHub Backup** — `agents/github_backup.py` nightly at 02:00; git repo initialised on server (branch `main`); `.gitignore` excludes all secrets (`config.*`), state files, live feeds; push activates when `"github_repo"` key is added to `config.py`
+- [x] **Telegram Steuerung** — `telegram_router.py` standalone router (single `getUpdates` caller) fixes race condition where two bots polled the same token; communicates via `bot_control.json` / `crypto/crypto_control.json`; adds `/stop_super`, `/stop_crypto`, `/start_super`, `/start_crypto` per-bot controls
+- [x] **Earnings Calendar** — `ETF_CONSTITUENTS` dict maps each ETF to top-5 constituent stocks; `_fetch_earnings()` fetches yfinance `.calendar` daily (cached); buy gate skips ETF if any constituent has earnings within −1/+2 days; `_check_held_earnings()` sends one-time Telegram alert per held position; `earnings` field added to `dashboard.json`
 
 ---
 
