@@ -885,7 +885,33 @@ crypto_bot.py   → check_control() every cycle  → reads crypto/crypto_control
 | `/start_super` | Resume Super Bot only |
 | `/stop_crypto` | Pause Crypto Bot only |
 | `/start_crypto`| Resume Crypto Bot only |
+| `/apply`       | Show pending optimisation suggestions from `agents/optimize_results.json` — diffs current vs best params, lists expected improvement, warns about open positions |
+| `/confirm`     | Apply the shown suggestions: regex-patches both bot source files in-place, restarts `trading` + `crypto` screen sessions, confirms new values. Expires after 5 min. |
 | `/help`        | Show command list |
+
+### `/apply` + `/confirm` — parameter update flow
+
+```
+/apply
+ ├─ loads agents/optimize_results.json → grid_search.super/crypto.best_params
+ ├─ reads current params from super_bot.py + crypto/crypto_bot.py via regex
+ │    stop_loss   → self.stop_loss = X.X
+ │    take_profit → self.take_profit = X.X
+ │    rsi_threshold → rsi_ok = ind["rsi"] < XX
+ │    st_mult     → b_ub = hl2 + X.X * st_atr[i]
+ ├─ computes diff — only params with |Δ| > 0.01 are shown
+ ├─ warns if open positions exist (will lose tracking after restart)
+ └─ stores {ts, super:{…}, crypto:{…}} in _pending_apply (5-min TTL)
+
+/confirm
+ ├─ checks _pending_apply exists and not expired
+ ├─ _apply_params_to_file() — re.sub on super_bot.py + crypto_bot.py
+ ├─ restarts screen sessions: trading + crypto
+ ├─ waits 10s, checks screen -list for both sessions
+ └─ reports new active values + session health
+```
+
+**What is and isn't patched**: `stop_loss`, `take_profit`, `rsi_threshold`, `st_mult`. `trailing_stop` is intentionally excluded (changes exit behaviour too drastically to auto-apply).
 
 ### Control file IPC
 
@@ -1123,6 +1149,7 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [ ] **Kraken WebSocket** (`wss://ws.kraken.com`) — replace REST polling for crypto_bot when using Kraken exchange; subscribe to `trade` channel; same daemon thread pattern as Alpaca WS
 - [x] **GitHub Backup** — `agents/github_backup.py` nightly at 02:00; git repo initialised on server (branch `main`); `.gitignore` excludes all secrets (`config.*`), state files, live feeds; push activates when `"github_repo"` key is added to `config.py`
 - [x] **Telegram Steuerung** — `telegram_router.py` standalone router (single `getUpdates` caller) fixes race condition where two bots polled the same token; communicates via `bot_control.json` / `crypto/crypto_control.json`; adds `/stop_super`, `/stop_crypto`, `/start_super`, `/start_crypto` per-bot controls
+- [x] **Telegram /apply + /confirm** — reads `optimize_results.json`, diffs current vs recommended params, patches both bot source files in-place via regex (`stop_loss`, `take_profit`, `rsi_threshold`, `st_mult`), restarts bots; 5-minute confirmation timeout; warns if open positions exist
 - [x] **Earnings Calendar** — `ETF_CONSTITUENTS` dict maps each ETF to top-5 constituent stocks; `_fetch_earnings()` fetches yfinance `.calendar` daily (cached); buy gate skips ETF if any constituent has earnings within −1/+2 days; `_check_held_earnings()` sends one-time Telegram alert per held position; `earnings` field added to `dashboard.json`
 
 ---
