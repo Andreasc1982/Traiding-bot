@@ -139,6 +139,9 @@ class SuperTradingBot:
         # Correlation management — recent closes cached from get_indicators()
         self._bar_cache = {}   # symbol → list of last 20 daily closes
 
+        # VWAP (session) cache — refreshed every 5 min per symbol
+        self._vwap_cache = {}  # symbol → (vwap: float|None, timestamp: float)
+
         # Thread safety — RLock so _ws_check_price can call close_position safely
         self.positions_lock = threading.RLock()
 
@@ -255,6 +258,41 @@ class SuperTradingBot:
             return bullish
         except Exception:
             return True   # neutral on error — don't block trades
+
+    # ── VWAP — Session Fair Value ──────────────────────────────────────────
+
+    def _get_vwap(self, symbol):
+        """Volume-Weighted Average Price from today's intraday 5-min bars.
+        Returns None when market is closed or data unavailable — callers treat
+        None as neutral (vwap_ok = True) so trades are never blocked by connectivity."""
+        cached = self._vwap_cache.get(symbol)
+        if cached and time.time() - cached[1] < 300:   # 5-minute cache
+            return cached[0]
+        try:
+            url    = ALPACA_BASE_URL + "/v2/stocks/" + symbol + "/bars"
+            params = {"timeframe": "5Min", "limit": 80,
+                      "adjustment": "raw", "feed": "iex"}
+            r    = requests.get(url, headers=self.alpaca_headers,
+                                params=params, timeout=6)
+            bars = r.json().get("bars", []) if r.status_code == 200 else []
+            if not bars:
+                self._vwap_cache[symbol] = (None, time.time())
+                return None
+            # Keep only bars from today (UTC date prefix — Alpaca timestamps are UTC)
+            today      = datetime.utcnow().strftime("%Y-%m-%d")
+            today_bars = [b for b in bars if b["t"][:10] == today]
+            if len(today_bars) < 3:
+                # Market closed / pre-market — not enough intraday data
+                self._vwap_cache[symbol] = (None, time.time())
+                return None
+            cum_tp_v = sum((b["h"] + b["l"] + b["c"]) / 3.0 * b["v"]
+                           for b in today_bars)
+            cum_v = sum(b["v"] for b in today_bars)
+            vwap  = round(cum_tp_v / cum_v, 2) if cum_v > 0 else None
+            self._vwap_cache[symbol] = (vwap, time.time())
+            return vwap
+        except Exception:
+            return None   # neutral on any error — don't block trades
 
     # ── Indicators ─────────────────────────────────────────────────────────
 
@@ -1065,6 +1103,12 @@ class SuperTradingBot:
                       " zu " + str(corr_sym) + " (Grenze 0.85)")
                 continue
 
+            # ── VWAP fair-value filter ─────────────────────────────────────────
+            # Price at or below session VWAP (within 0.5% tolerance) = buying
+            # at fair value or below. None returned outside market hours → neutral.
+            vwap     = self._get_vwap(symbol)
+            vwap_ok  = (vwap is None) or (ind["price"] <= vwap * 1.005)
+
             rsi_ok  = ind["rsi"] < 65   # optimized: 70 → 65
             ma_ok   = ind["price"] > ind["ma20"]
             macd_ok = ind["macd"] > ind["macd_signal"]
@@ -1090,11 +1134,12 @@ class SuperTradingBot:
             # MA20 = 1.0 (basic trend filter)
             # CMF = 0.8 (volume/money-flow confirmation — replaces OBV)
             # StochRSI = 0.5 (fast momentum confirmation)
-            # Max possible = 8.0
+            # VWAP = 0.5 (intraday fair-value — neutral outside market hours)
+            # Max possible = 8.5
             gate_score = (rsi_ok   * 1.5 + macd_ok * 1.5 + st_ok  * 1.5 +
                           ichi_ok  * 1.2 + ma_ok   * 1.0 + cmf_ok * 0.8 +
-                          stoch_ok * 0.5)
-            score_pct  = gate_score / 8.0
+                          stoch_ok * 0.5 + vwap_ok * 0.5)
+            score_pct  = gate_score / 8.5
 
             if score_pct < threshold:
                 # PSAR logged for info but not a buy gate — used only as dynamic stop after entry
@@ -1108,6 +1153,8 @@ class SuperTradingBot:
                         "ichi_ok": ichi_ok, "psar_ok": psar_ok,
                     })
                     self.last_skips = self.last_skips[-20:]
+                vwap_str = ("ok($" + str(vwap) + ")" if vwap_ok
+                            else "no($" + str(vwap) + ")")
                 print("[SKIP] " + symbol +
                       " [" + regime + " ADX=" + str(adx) +
                       " score=" + str(round(score_pct * 100)) + "%<" +
@@ -1118,6 +1165,7 @@ class SuperTradingBot:
                       " ST=" + ("bull" if st_ok else "bear") +
                       " CMF=" + str(ind.get("cmf", 0.0)) +
                       " StRSI=" + ("ok" if stoch_ok else "no") +
+                      " VWAP=" + vwap_str +
                       " ICHI=" + ("above" if ichi_ok else "below") +
                       " PSAR=" + ("bull" if psar_ok else "bear"))
                 continue
@@ -1173,6 +1221,8 @@ class SuperTradingBot:
                    " ST=" + str(ind["supertrend"]) +
                    " CMF=" + str(ind.get("cmf", 0.0)) +
                    " StRSI=" + ("ok" if stoch_ok else "no") +
+                   " VWAP=" + ("ok($" + str(vwap) + ")" if vwap_ok
+                               else "no($" + str(vwap) + ")") +
                    " ICHI=" + ("above" if ichi_ok else "below") +
                    " PSAR=" + str(ind.get("psar", "?")) +
                    " | Bal: $" + str(round(self.balance, 0)))
