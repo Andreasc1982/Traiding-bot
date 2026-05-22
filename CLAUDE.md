@@ -383,10 +383,66 @@ _ws_run() [daemon thread — Alpaca only]
 
 ---
 
+## ADX Market Regime Detection + Weighted Scoring
+
+Added to both bots in `get_indicators()` and `trade()`. Replaces the old binary AND-gate (all-7-must-pass) with a regime-aware weighted scoring system.
+
+### ADX — Average Directional Index (Wilder, period=14)
+
+Computed inside `get_indicators()` using the same `trs` (true range) already calculated for ATR:
+
+```
++DM[i] = max(high[i] - high[i-1], 0)  if +DM > -DM  else 0
+-DM[i] = max(low[i-1] - low[i],  0)   if -DM > +DM  else 0
+
+Wilder-smoothed: TR, +DM, -DM  (initial = sum of first 14; each step = prev*(13/14) + curr)
++DI[i] = 100 * smooth_+DM[i] / smooth_TR[i]   → 0–100
+-DI[i] = 100 * smooth_-DM[i] / smooth_TR[i]   → 0–100
+DX[i]  = 100 * |+DI - -DI| / (+DI + -DI)      → 0–100
+ADX    = Wilder MA of DX (initial = average of first 14 DX values; step = (prev*13 + dx)/14)
+```
+
+**NOTE**: ATR/+DM/-DM use `initial = sum` (Wilder's original — the factor-of-14 cancels in +DI/-DI ratio). ADX uses `initial = average` (different formula to keep ADX in 0–100 range).
+
+Returns `"adx"` in the indicator dict.
+
+### Market Regime Detection
+
+Runs at the top of the buy-gate block in `trade()`:
+
+| ADX value | Regime       | Score threshold | Position size multiplier |
+|-----------|-------------|-----------------|--------------------------|
+| ≥ 25      | TRENDING    | 75% of max score | 1.0× (full size)        |
+| 20–24     | TRANSITIONAL | 60% of max score | 0.6× (reduced size)     |
+| < 20      | RANGING     | 45% of max score | 0.4× (minimal size)     |
+
+### Weighted Indicator Score
+
+Replaces the binary AND-gate. Gates are weighted by trend-signal strength:
+
+```
+gate_score = RSI_ok×1.5 + MACD_ok×1.5 + ST_ok×1.5 + ICHI_ok×1.2 + MA_ok×1.0 + OBV_ok×0.8
+score_pct  = gate_score / 7.5    # normalised 0–100%
+```
+
+If `score_pct < threshold` → skip (logged with regime, ADX, score%). PSAR is not a buy gate — still used as dynamic stop only.
+
+Position size: `shares = balance × pos_size × size_mult / price` (super_bot)  
+or: `shares = balance × size × size_mult / price` (crypto_bot, where `size` = `pos_size` or `meme_size`)
+
+### Log format
+
+```
+[SKIP] XLK [TRENDING ADX=38.2 score=53%<75%] RSI=61.2 MA=above MACD=bull ST=bear OBV=down ICHI=below PSAR=bear
+BUY XLK (tech) 18 @ $235.10 [TRENDING ADX=38.2 score=80% x1.0] RSI=61.2 ...
+```
+
+---
+
 ## 7 Technical Indicators
 
 All indicators are computed from OHLCV bars (daily for super_bot, hourly for crypto_bot).  
-**All 7 gate indicators must pass before a buy is placed.**
+Gates are now evaluated as a **weighted score** against an ADX regime threshold (see above) — not a binary AND-gate.
 
 ### 1. RSI — Relative Strength Index
 - Period: 14 bars
@@ -1146,11 +1202,17 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **Backtesting Agent** — `agents/backtest_agent.py` — 2024 full-year results: +18.5% ETFs, +280% crypto
 - [x] **Risk Agent** — `agents/risk_agent.py` — daily −5% / drawdown −15% halt, auto-resume 09:30
 - [x] **Optimierung Agent** — `agents/optimize_agent.py` — 81-combo weekly grid search (RSI · ST-mult · SL · TP) on live Alpaca data; indicator block analysis; Telegram report every Sunday 00:00
-- [ ] **Kraken WebSocket** (`wss://ws.kraken.com`) — replace REST polling for crypto_bot when using Kraken exchange; subscribe to `trade` channel; same daemon thread pattern as Alpaca WS
+- [x] **Kraken WebSocket** (`wss://ws.kraken.com`) — `_kraken_ws_run/on_open/on_message()` daemon thread; public trade channel (no auth); `KRAKEN_WS_PAIR_MAP` maps internal symbols to WS pair names (BTC/USD→XBT/USD etc.); `KRAKEN_WS_REVERSE` for reverse lookup; `start_websocket()` now branches on EXCHANGE: alpaca→Alpaca WS, kraken→Kraken WS; trade ticks update `ws_prices` and call `_ws_check_price()` same as Alpaca; spike detection disabled for Kraken (volume format incompatible); activates automatically when `"exchange": "kraken"` set in config.py
 - [x] **GitHub Backup** — `agents/github_backup.py` nightly at 02:00; git repo initialised on server (branch `main`); `.gitignore` excludes all secrets (`config.*`), state files, live feeds; push activates when `"github_repo"` key is added to `config.py`
 - [x] **Telegram Steuerung** — `telegram_router.py` standalone router (single `getUpdates` caller) fixes race condition where two bots polled the same token; communicates via `bot_control.json` / `crypto/crypto_control.json`; adds `/stop_super`, `/stop_crypto`, `/start_super`, `/start_crypto` per-bot controls
 - [x] **Telegram /apply + /confirm** — reads `optimize_results.json`, diffs current vs recommended params, patches both bot source files in-place via regex (`stop_loss`, `take_profit`, `rsi_threshold`, `st_mult`), restarts bots; 5-minute confirmation timeout; warns if open positions exist
 - [x] **Earnings Calendar** — `ETF_CONSTITUENTS` dict maps each ETF to top-5 constituent stocks; `_fetch_earnings()` fetches yfinance `.calendar` daily (cached); buy gate skips ETF if any constituent has earnings within −1/+2 days; `_check_held_earnings()` sends one-time Telegram alert per held position; `earnings` field added to `dashboard.json`
+- [x] **ADX Market Regime Detection + Weighted Scoring** — ADX(14) added to `get_indicators()` both bots; `trade()` replaces binary AND-gate with regime-aware weighted score (RSI×1.5 + MACD×1.5 + ST×1.5 + ICHI×1.2 + MA×1.0 + OBV×0.8 = max 7.5); TRENDING(ADX≥25)→75% threshold + 1.0× size, TRANSITIONAL(20-24)→60% + 0.6×, RANGING(<20)→45% + 0.4×; BUY/SKIP logs show regime+ADX+score
+- [x] **ATR-basiertes Position Sizing** — `trade()` both bots: `shares = min(risk_budget/atr_risk, max_pos_cap)` where `risk_budget = balance × 1%` and `atr_risk = ATR × 2`; keeps dollar-risk per trade constant at ~1% of capital regardless of volatility; capped by `pos_size × size_mult × balance`; BUY log shows `risk=$X` (actual $ at risk)
+- [x] **VADER Sentiment** — replaces TextBlob in both bots; module-level `_sentiment(text)` helper tries `vaderSentiment.SentimentIntensityAnalyzer` first (compound score), falls back to `TextBlob.sentiment.polarity` if not installed; both return [-1,+1]; VADER is tuned for short financial text (handles caps, negations, punctuation, booster words better than TextBlob); install: `pip install vaderSentiment`; startup log: `[SENTIMENT] VADER geladen`
+- [x] **Multi-Timeframe HTF Filter** — `_get_htf_trend(symbol)` method on both bots; super_bot: Alpaca weekly bars, price > MA10(weekly) = bullish; crypto_bot: Alpaca daily bars, price > MA20(daily) = bullish; cached 30 min (super) / 10 min (crypto); called in `trade()` after `get_indicators()`, before scoring; HTF bearish → hard skip `[SKIP] XLK HTF=bear`; neutral (True) on API error or insufficient data so trades aren't blocked by connectivity issues
+- [x] **CMF (Chaikin Money Flow)** — replaces OBV as the volume gate in both bots; computed in `get_indicators()` from existing OHLCV: `MFM=(2C−H−L)/(H−L)`, `CMF=Σ(MFM×V,20)/Σ(V,20)`; bounded [−1,+1], gate: `cmf_ok = cmf > 0`; OBV still computed (kept for reference) but `cmf_ok×0.8` replaces `obv_ok×0.8` in weighted gate score; `"cmf"` added to indicator dict and shown in BUY/SKIP logs
+- [x] **Korrelations-Management** — `_pearson(a, b)` static method computes Pearson correlation of daily/hourly returns; `_check_correlation(symbol)` compares candidate vs all open positions using `_bar_cache` (last 20 closes cached by `get_indicators()` — zero extra API calls); in `trade()` after HTF check: if max correlation > 0.85 → skip with `[SKIP] XOP Korrelation=0.92 zu XLE`; applies to both bots; threshold 0.85 allows moderate correlation (e.g. BTC+ETH≈0.80) but blocks near-duplicate exposures (e.g. XLE+XOP≈0.95)
 
 ---
 
