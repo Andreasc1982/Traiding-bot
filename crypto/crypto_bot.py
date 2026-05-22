@@ -288,7 +288,7 @@ class CryptoBot:
     # ── State persistence ──────────────────────────────────────────────────────
 
     def _load_state(self):
-        """Restore balance (demo) and start_balance (daily loss baseline) from disk."""
+        """Restore balance, daily-loss baseline, and open positions from disk."""
         try:
             if not os.path.exists(STATE_PATH):
                 return
@@ -314,19 +314,42 @@ class CryptoBot:
             else:
                 # New day — start_balance = current balance (daily counter starts fresh)
                 self.start_balance = self.balance
+
+            # Restore open positions — always, regardless of day
+            # (positions live until explicitly closed; stop/take still fire after restart)
+            saved_pos = st.get("positions", {})
+            if saved_pos and isinstance(saved_pos, dict):
+                valid = {}
+                for sym, pos in saved_pos.items():
+                    # Basic sanity check — entry and shares must be present and positive
+                    if (isinstance(pos, dict) and
+                            pos.get("entry", 0) > 0 and
+                            pos.get("shares", 0) > 0):
+                        valid[sym] = pos
+                if valid:
+                    with self.positions_lock:
+                        self.positions = valid
+                    for sym, pos in valid.items():
+                        spike_tag = " [SPIKE]" if pos.get("spike") else ""
+                        print("[STATE] Position wiederhergestellt: " + sym +
+                              " " + str(round(pos["shares"], 6)) +
+                              " @ $" + str(round(pos["entry"], 4)) +
+                              " seit " + pos.get("time", "?") + spike_tag)
         except Exception as e:
             print("[STATE] Load error: " + str(e))
 
     def _save_state(self):
-        """Persist balance and daily-loss baseline to disk."""
+        """Persist balance, daily-loss baseline, and open positions to disk."""
         try:
             with self.positions_lock:
-                bal   = self.balance
-                start = self.start_balance
+                bal       = self.balance
+                start     = self.start_balance
+                positions = dict(self.positions)   # snapshot under lock
             st = {
                 "balance":           round(bal, 2),
                 "day_start_balance": round(start, 2),
                 "day_date":          datetime.now().strftime("%Y-%m-%d"),
+                "positions":         positions,     # full position dicts, restored on startup
             }
             with open(STATE_PATH, "w") as f:
                 json.dump(st, f)

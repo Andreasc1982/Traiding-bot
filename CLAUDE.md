@@ -314,6 +314,8 @@ Solves three problems unique to demo/paper mode:
 
 3. **Dashboard stuck at 0% P&L during halt**: When `check_day_loss()` fires at bot startup (restored balance already below threshold), the main loop never reaches `save_dashboard()` — it halts before getting there. The dashboard then shows stale data from the previous session with `current_price == entry_price` (0% P&L) for all positions. Fix: `save_dashboard({})` is now called (a) immediately inside `check_day_loss()` before entering the sleep, and (b) every 60s inside `_sleep_until_tomorrow()`. The WebSocket stays connected during halt and keeps `ws_prices` live, so the dashboard accurately reflects current prices throughout the entire halt period.
 
+4. **Positions lost on restart**: `self.positions` was in-memory only — a crash or restart lost all open position tracking. Fix: `_save_state()` now includes `"positions"` in `crypto_state.json` (already called after every buy, sell, and every 30s). `_load_state()` restores valid positions on startup (entry > 0, shares > 0 sanity check), logs each restored position with symbol/shares/entry/time and `[SPIKE]` tag. Works across restarts and days — stop-loss/take-profit continue firing correctly on restored positions.
+
 **State file**: `crypto/crypto_state.json`
 ```json
 {"balance": 95000.0, "day_start_balance": 97000.0, "day_date": "2026-05-19"}
@@ -1242,4 +1244,4 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 
 **crypto_bot dashboard shows 0% P&L during halt**: When the restored balance already exceeds the daily loss limit on startup, `check_day_loss()` fires before the main loop ever reaches `save_dashboard()`. The dashboard then shows stale data from the previous session with `current_price == entry_price`. Fixed: `save_dashboard({})` is called immediately inside `check_day_loss()` before sleeping, and again every 60s inside `_sleep_until_tomorrow()`. The WebSocket stays connected during halt so `ws_prices` remains live.
 
-**crypto_bot positions lost on restart**: `self.positions` is in-memory only — not persisted to disk. If the bot crashes or is restarted, all open position tracking is lost. In demo mode this has no financial consequence (no real orders placed), but the dashboard will show empty positions until new trades are opened. The balance IS persisted via `crypto_state.json`.
+**crypto_bot positions persist across restarts**: `self.positions` is now saved to `crypto_state.json` (alongside balance) after every buy, sell, and every 30s cycle. On startup, `_load_state()` restores all valid positions so stop-loss/take-profit keep firing after a crash or restart. Each restored position is logged: `[STATE] Position wiederhergestellt: BTC/USD 0.04061 @ $75871.60 seit 2026-05-23 10:30`.
