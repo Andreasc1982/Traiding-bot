@@ -335,7 +335,8 @@ class CryptoBot:
 
     def _sleep_until_tomorrow(self):
         """Sleep until 00:30 next day, waking every 60s to honour /stop commands.
-        Keeps the process alive so the monitor agent does NOT see a crash."""
+        Keeps the process alive so the monitor agent does NOT see a crash.
+        Dashboard is updated every minute so live WS prices are visible during halt."""
         now      = datetime.now()
         tomorrow = (now + timedelta(days=1)).replace(
             hour=0, minute=30, second=0, microsecond=0)
@@ -345,6 +346,11 @@ class CryptoBot:
             if not self.running:
                 break       # honour /stop (hard-stop) from telegram_router
             time.sleep(60)
+            # Keep dashboard live during halt — WS prices still update ws_prices
+            try:
+                self.save_dashboard({})
+            except Exception:
+                pass
             self.check_control()
 
     # ── Balance sync ───────────────────────────────────────────────────────
@@ -1499,6 +1505,11 @@ class CryptoBot:
             print("[HALT] " + msg)
             self.send(msg)
             self._save_state()
+            # Write dashboard once immediately so current prices appear right away
+            try:
+                self.save_dashboard({})
+            except Exception:
+                pass
             # Sleep inside the process — monitor sees no crash, no restart loop
             self._sleep_until_tomorrow()
             # Resumed next morning: reset daily counter with whatever balance we have now
