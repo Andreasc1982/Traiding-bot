@@ -125,6 +125,8 @@ class SuperTradingBot:
         self.last_skips  = []
         self.last_congress = {}
         self.last_fg     = {"value": 50, "label": "N/A"}
+        self.last_pc     = {"value": 1.0, "label": "N/A"}   # Put/Call ratio
+        self._pc_cache   = None   # (multiplier: float, timestamp: float)
         self.start_balance = self.balance
         self.max_day_loss  = 0.10
 
@@ -1021,6 +1023,43 @@ class SuperTradingBot:
             print("[F&G] " + str(e))
         return 50, "Neutral"
 
+    def _fetch_put_call_ratio(self):
+        """Fetch CBOE total put/call ratio from the daily market statistics page.
+        Contrarian: high P/C (fear/puts dominate) → buy signal; low P/C (euphoria) → caution.
+        Result cached 1 hour. Returns neutral 1.0 multiplier on any error."""
+        if self._pc_cache and time.time() - self._pc_cache[1] < 3600:
+            return self._pc_cache[0]
+        try:
+            url = "https://www.cboe.com/us/options/market_statistics/daily/"
+            r   = requests.get(url, timeout=10,
+                               headers={"User-Agent":
+                                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+            if r.status_code == 200:
+                # CBOE embeds ratio data as inline JSON in the page:
+                # ...\"TOTAL PUT/CALL RATIO\",\"value\":\"0.83\"...
+                # Quotes may be escaped (\") in Next.js serialised scripts — use flexible regex
+                m = re.search(
+                    r'TOTAL PUT.CALL RATIO[^0-9]{1,40}?(\d+\.\d+)',
+                    r.text, re.I)
+                if m:
+                    pc = float(m.group(1))
+                    if   pc > 1.2:  label, mult = "Extreme Fear (contrarian Buy)",  1.3
+                    elif pc > 1.0:  label, mult = "Fear (contrarian Bullish)",       1.1
+                    elif pc >= 0.85:label, mult = "Neutral",                         1.0
+                    elif pc >= 0.70:label, mult = "Greed (Caution)",                 0.9
+                    else:           label, mult = "Extreme Greed (contrarian Sell)", 0.7
+                    self._pc_cache = (mult, time.time())
+                    self.last_pc   = {"value": round(pc, 2), "label": label}
+                    print("[P/C] Put/Call " + str(round(pc, 2)) +
+                          " → " + str(mult) + "× (" + label + ")")
+                    return mult
+        except Exception as e:
+            print("[P/C] " + str(e))
+        # Neutral fallback — don't block trading when CBOE unreachable
+        self._pc_cache = (1.0, time.time())
+        self.last_pc   = {"value": 1.0, "label": "Neutral (unavailable)"}
+        return 1.0
+
     def analyze(self):
         scores = {k: 0.0 for k in ETFS.keys()}
 
@@ -1060,6 +1099,13 @@ class SuperTradingBot:
 
         self.last_fg = {"value": fg_value, "label": fg_label}
         print("[F&G] Multiplier " + str(multiplier) + "x (" + fg_label + ")")
+
+        # ── Put/Call Ratio — contrarian sentiment multiplier ───────────────────
+        # Fetched from CBOE, cached 1h. Compounds with F&G multiplier.
+        pc_mult = self._fetch_put_call_ratio()
+        for sec in scores:
+            scores[sec] *= pc_mult
+
         return scores
 
     # ── Trade entry ────────────────────────────────────────────────────────
@@ -1280,6 +1326,7 @@ class SuperTradingBot:
             "total_trades": len(trades_snap),
             "running":      self.running,
             "fear_greed":   self.last_fg,
+            "put_call":     self.last_pc,
             "skips":        skips_snap,
             "congress":     self.last_congress,
             "ws_connected": self.ws_connected,
