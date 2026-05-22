@@ -331,6 +331,38 @@ class SuperTradingBot:
             cloud_top = max(span_a, span_b)
             ichi_ok   = closes[-1] > cloud_top   # price above cloud → bullish
 
+            # ── ADX — Average Directional Index (Wilder, period=14) ───────────
+            # Measures trend strength: ≥25 = trending, 20-25 = transitional, <20 = ranging
+            def _wilder(vals, p):
+                if len(vals) < p:
+                    return []
+                s = [sum(vals[:p])]
+                for v in vals[p:]:
+                    s.append(s[-1] * (p - 1) / p + v)
+                return s
+
+            adx_p    = 14
+            plus_dm  = [max(highs[i] - highs[i-1], 0)
+                        if (highs[i] - highs[i-1]) > max(lows[i-1] - lows[i], 0) else 0.0
+                        for i in range(1, n)]
+            minus_dm = [max(lows[i-1] - lows[i], 0)
+                        if (lows[i-1] - lows[i]) > max(highs[i] - highs[i-1], 0) else 0.0
+                        for i in range(1, n)]
+            s_tr  = _wilder(trs,      adx_p)
+            s_pdm = _wilder(plus_dm,  adx_p)
+            s_mdm = _wilder(minus_dm, adx_p)
+            if s_tr and len(s_tr) >= adx_p:
+                dx_list = []
+                for i in range(len(s_tr)):
+                    p_i = 100 * s_pdm[i] / s_tr[i] if s_tr[i] > 0 else 0.0
+                    m_i = 100 * s_mdm[i] / s_tr[i] if s_tr[i] > 0 else 0.0
+                    d   = p_i + m_i
+                    dx_list.append(100 * abs(p_i - m_i) / d if d > 0 else 0.0)
+                adx_smooth = _wilder(dx_list, adx_p)
+                adx = round(adx_smooth[-1], 1) if adx_smooth else 25.0
+            else:
+                adx = 25.0
+
             return {
                 "rsi":         round(rsi, 1),
                 "ma20":        round(ma20, 2),
@@ -348,6 +380,7 @@ class SuperTradingBot:
                 "kijun":       round(kijun, 2),
                 "cloud_top":   round(cloud_top, 2),
                 "ichi_ok":     ichi_ok,
+                "adx":         adx,
                 "price":       closes[-1],
             }
         except Exception:
@@ -887,7 +920,27 @@ class SuperTradingBot:
             obv_ok  = ind["obv_rising"]
             ichi_ok = ind.get("ichi_ok", True)
             psar_ok = ind.get("psar_ok", True)
-            if not (rsi_ok and ma_ok and macd_ok and st_ok and obv_ok and ichi_ok):
+
+            # ── ADX Market Regime Detection ────────────────────────────────────
+            adx = ind.get("adx", 25.0)
+            if adx >= 25:
+                regime, threshold, size_mult = "TRENDING",     0.75, 1.0
+            elif adx >= 20:
+                regime, threshold, size_mult = "TRANSITIONAL", 0.60, 0.6
+            else:
+                regime, threshold, size_mult = "RANGING",      0.45, 0.4
+
+            # Weighted score: strong trend indicators carry more weight
+            # RSI + MACD + Supertrend = 1.5 each (trend-core)
+            # Ichimoku = 1.2 (trend confirmation, lagging)
+            # MA20 = 1.0 (basic trend filter)
+            # OBV = 0.8 (volume confirmation)
+            # Max possible = 7.5
+            gate_score = (rsi_ok  * 1.5 + macd_ok * 1.5 + st_ok  * 1.5 +
+                          ichi_ok * 1.2 + ma_ok   * 1.0 + obv_ok * 0.8)
+            score_pct  = gate_score / 7.5
+
+            if score_pct < threshold:
                 # PSAR logged for info but not a buy gate — used only as dynamic stop after entry
                 with self.positions_lock:
                     self.last_skips.append({
@@ -900,6 +953,9 @@ class SuperTradingBot:
                     })
                     self.last_skips = self.last_skips[-20:]
                 print("[SKIP] " + symbol +
+                      " [" + regime + " ADX=" + str(adx) +
+                      " score=" + str(round(score_pct * 100)) + "%<" +
+                      str(int(threshold * 100)) + "%]" +
                       " RSI=" + str(ind["rsi"]) +
                       " MA=" + ("above" if ma_ok else "below") +
                       " MACD=" + ("bull" if macd_ok else "bear") +
@@ -912,7 +968,7 @@ class SuperTradingBot:
             price = self.get_price(symbol)
             if price is None or price <= 0:
                 continue
-            shares = int(self.balance * self.pos_size / price)
+            shares = int(self.balance * self.pos_size * size_mult / price)
             if shares < 1:
                 continue
 
@@ -938,6 +994,9 @@ class SuperTradingBot:
 
             msg = ("BUY " + symbol + " (" + sector + ") " +
                    str(shares) + " @ $" + str(round(price, 2)) +
+                   " [" + regime + " ADX=" + str(adx) +
+                   " score=" + str(round(score_pct * 100)) + "%" +
+                   " x" + str(size_mult) + "]" +
                    " RSI=" + str(ind["rsi"]) +
                    " MACD=" + str(ind["macd_hist"]) +
                    " ATR=" + str(ind["atr"]) +
