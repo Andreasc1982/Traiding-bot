@@ -144,6 +144,11 @@ class SuperTradingBot:
         # VWAP (session) cache — refreshed every 5 min per symbol
         self._vwap_cache = {}  # symbol → (vwap: float|None, timestamp: float)
 
+        # ML meta-filter — Random Forest trained on trades_history.json
+        self._ml_model         = None   # sklearn RandomForestClassifier or None
+        self._ml_trained_count = 0      # number of labeled trades used in last training
+        self._ml_last_train    = None   # date of last training (datetime.date)
+
         # Thread safety — RLock so _ws_check_price can call close_position safely
         self.positions_lock = threading.RLock()
 
@@ -195,6 +200,9 @@ class SuperTradingBot:
         self.start_balance = self.balance
         # Restore persisted balance (demo mode) and daily-loss baseline (all modes)
         self._load_state()
+
+        # ML startup training — all other __init__ state is now set up
+        self._ml_train()
 
         mode = "DEMO" if self.demo else "LIVE"
         print("=== SUPER BOT v3.0 | " + mode + " ===")
@@ -333,6 +341,7 @@ class SuperTradingBot:
             # StochRSI[i] = (RSI[i] - min(RSI,14)) / (max(RSI,14) - min(RSI,14))
             # %K = 3-bar SMA of StochRSI   |   %D = 3-bar SMA of %K
             stoch_ok = True   # neutral fallback if not enough bars
+            sk = 0.5          # neutral %K fallback for ML feature vector
             if len(rsi_series) >= rsi_p + 5:
                 stoch_raw = []
                 for i in range(rsi_p - 1, len(rsi_series)):
@@ -520,6 +529,7 @@ class SuperTradingBot:
                 "ichi_ok":     ichi_ok,
                 "adx":         adx,
                 "stoch_ok":    stoch_ok,
+                "stoch_k":     round(sk, 4),   # continuous %K for ML feature vector
                 "price":       closes[-1],
             }
         except Exception:
@@ -885,12 +895,14 @@ class SuperTradingBot:
                 self.balance += pos["shares"] * price
 
         trade_record = {
-            "symbol":  symbol,
-            "profit":  round(profit, 0),
-            "pnl_pct": round(pnl_pct, 1),
-            "reason":  reason,
-            "time":    datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "sector":  pos.get("sector", ""),
+            "symbol":   symbol,
+            "profit":   round(profit, 0),
+            "pnl_pct":  round(pnl_pct, 1),
+            "reason":   reason,
+            "time":     datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "sector":   pos.get("sector", ""),
+            "features": pos.get("ml_features"),   # None for pre-ML trades — skipped in training
+            "ml_prob":  pos.get("ml_prob"),        # model's entry confidence (informational)
         }
         with self.positions_lock:
             self.trades.append(trade_record)
@@ -1060,6 +1072,64 @@ class SuperTradingBot:
         self.last_pc   = {"value": 1.0, "label": "Neutral (unavailable)"}
         return 1.0
 
+    # ── ML Meta-Filter — Random Forest ────────────────────────────────────
+
+    ML_THRESHOLD   = 0.55    # minimum win probability to allow entry
+    ML_FEATURE_KEYS = [
+        "rsi", "adx", "cmf", "macd_hist", "stoch_k",
+        "ma_dist_pct", "vwap_dist_pct", "fg_value", "pc_ratio", "score_pct",
+    ]
+    ML_MIN_TRADES  = 30      # don't activate until we have this many labeled samples
+
+    def _ml_train(self):
+        """Train RandomForestClassifier on labeled trade history.
+        A trade is labeled if it has a 'features' dict (stored at entry).
+        Silently disabled if sklearn unavailable or < ML_MIN_TRADES samples."""
+        try:
+            from sklearn.ensemble import RandomForestClassifier
+            import numpy as np
+        except ImportError:
+            print("[ML] sklearn nicht installiert (pip install scikit-learn) — deaktiviert")
+            return
+        with self.positions_lock:
+            trades = list(self.trades)
+        labeled = [(t["features"], 1 if t["profit"] > 0 else 0)
+                   for t in trades
+                   if isinstance(t.get("features"), dict)]
+        self._ml_trained_count = len(labeled)
+        if len(labeled) < self.ML_MIN_TRADES:
+            self._ml_model = None
+            print("[ML] " + str(len(labeled)) + " Trades mit Features — " +
+                  str(self.ML_MIN_TRADES - len(labeled)) +
+                  " weitere bis Aktivierung")
+            return
+        # Recency bias guard: only last 200 trades (older regime may differ)
+        labeled = labeled[-200:]
+        X = np.array([[f.get(k, 0.0) for k in self.ML_FEATURE_KEYS]
+                      for f, _ in labeled])
+        y = np.array([lbl for _, lbl in labeled])
+        clf = RandomForestClassifier(n_estimators=100, max_depth=5,
+                                     min_samples_leaf=5, random_state=42)
+        clf.fit(X, y)
+        self._ml_model      = clf
+        self._ml_last_train = datetime.now().date()
+        win_rate = round(float(y.mean()) * 100, 1)
+        print("[ML] Modell trainiert: " + str(len(y)) + " Trades | " +
+              str(win_rate) + "% Gewinnrate | Threshold=" +
+              str(int(self.ML_THRESHOLD * 100)) + "%")
+
+    def _ml_predict(self, features):
+        """Return estimated win probability [0–1].
+        Returns 1.0 (neutral/pass) when model is not yet trained."""
+        if self._ml_model is None:
+            return 1.0
+        try:
+            import numpy as np
+            vec = np.array([[features.get(k, 0.0) for k in self.ML_FEATURE_KEYS]])
+            return float(self._ml_model.predict_proba(vec)[0][1])
+        except Exception:
+            return 1.0   # neutral on any error — never block trades due to ML crash
+
     def analyze(self):
         scores = {k: 0.0 for k in ETFS.keys()}
 
@@ -1216,6 +1286,30 @@ class SuperTradingBot:
                       " PSAR=" + ("bull" if psar_ok else "bear"))
                 continue
 
+            # ── ML Meta-Filter — Random Forest win-probability gate ───────────
+            # Build feature vector from current indicator state + bot context.
+            # Stored in the position so it can be saved to trades_history at close.
+            ma20_val = ind.get("ma20", ind["price"])
+            ml_features = {
+                "rsi":          float(ind["rsi"]),
+                "adx":          float(ind.get("adx", 25.0)),
+                "cmf":          float(ind.get("cmf", 0.0)),
+                "macd_hist":    max(-2.0, min(2.0, float(ind.get("macd_hist", 0.0)))),
+                "stoch_k":      float(ind.get("stoch_k", 0.5)),
+                "ma_dist_pct":  round((ind["price"] / ma20_val - 1) * 100, 2),
+                "vwap_dist_pct":round((ind["price"] / vwap - 1) * 100, 2) if vwap else 0.0,
+                "fg_value":     float(self.last_fg.get("value", 50)),
+                "pc_ratio":     float(self.last_pc.get("value", 1.0)),
+                "score_pct":    round(float(score_pct), 4),
+            }
+            ml_prob = self._ml_predict(ml_features)
+            if ml_prob < self.ML_THRESHOLD:
+                print("[SKIP] " + symbol + " ML=" +
+                      str(round(ml_prob * 100)) + "%<" +
+                      str(int(self.ML_THRESHOLD * 100)) + "% (model trained on " +
+                      str(self._ml_trained_count) + " trades)")
+                continue
+
             price = self.get_price(symbol)
             if price is None or price <= 0:
                 continue
@@ -1241,12 +1335,14 @@ class SuperTradingBot:
                 if self.demo or not self.alpaca_ok:
                     self.balance -= shares * price
                 self.positions[symbol] = {
-                    "shares":    shares,
-                    "entry":     price,
-                    "sector":    sector,
-                    "time":      datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    "highest":   price,
-                    "psar_stop": ind.get("psar"),   # dynamic stop — updated each cycle
+                    "shares":      shares,
+                    "entry":       price,
+                    "sector":      sector,
+                    "time":        datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "highest":     price,
+                    "psar_stop":   ind.get("psar"),   # dynamic stop — updated each cycle
+                    "ml_features": ml_features,       # saved to trades_history at close
+                    "ml_prob":     round(ml_prob, 3), # win probability at entry
                 }
 
             if not self.demo and self.alpaca_ok:
@@ -1255,11 +1351,14 @@ class SuperTradingBot:
 
             self._save_state()   # persist balance after buy
 
+            ml_str = ("ML=" + str(round(ml_prob * 100)) + "% "
+                      if self._ml_model is not None else "")
             msg = ("BUY " + symbol + " (" + sector + ") " +
                    str(shares) + " @ $" + str(round(price, 2)) +
                    " [" + regime + " ADX=" + str(adx) +
                    " score=" + str(round(score_pct * 100)) + "%" +
-                   " x" + str(size_mult) + "]" +
+                   " " + ml_str +
+                   "x" + str(size_mult) + "]" +
                    " ATR=" + str(ind["atr"]) +
                    " risk=$" + str(round(shares * ind["atr"] * 2, 0)) +
                    " RSI=" + str(ind["rsi"]) +
@@ -1445,6 +1544,11 @@ class SuperTradingBot:
                 self.check_day_loss()
                 self._fetch_earnings()        # no-op after first call of the day
                 self._check_held_earnings()   # alert once per held position per day
+
+                # ML daily retrain — fires once per day on first cycle after midnight
+                today = datetime.now().date()
+                if self._ml_last_train != today:
+                    self._ml_train()
 
                 # Twitter fast-path trade
                 tweets = self.fetch_twitter()
