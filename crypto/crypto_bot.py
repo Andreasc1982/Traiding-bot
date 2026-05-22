@@ -1,7 +1,21 @@
 #!/usr/bin/env python3
 from datetime import datetime, timezone, timedelta
 import time, requests, json, feedparser, re, os, hashlib, hmac, base64, urllib.parse, threading
-from textblob import TextBlob
+
+# ── Sentiment analyser: VADER (preferred) with TextBlob fallback ───────────
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer as _VaderIA
+    _vader = _VaderIA()
+    def _sentiment(text):
+        """Return compound sentiment score in [-1, +1]. VADER primary."""
+        return _vader.polarity_scores(text)["compound"]
+    print("[SENTIMENT] VADER geladen")
+except ImportError:
+    from textblob import TextBlob
+    def _sentiment(text):
+        """Return polarity score in [-1, +1]. TextBlob fallback."""
+        return TextBlob(text).sentiment.polarity
+    print("[SENTIMENT] VADER nicht verfügbar — TextBlob Fallback")
 
 try:
     import websocket as _ws_lib
@@ -65,6 +79,23 @@ KRAKEN_SYMBOL_MAP = {
     "WIF/USD":  "WIFUSD",
 }
 
+# Kraken WebSocket pair names (different from REST — BTC uses "XBT", slashes kept)
+# Only pairs available on Kraken WS; PEPE/WIF excluded (not listed)
+KRAKEN_WS_URL      = "wss://ws.kraken.com"
+KRAKEN_WS_PAIR_MAP = {
+    "BTC/USD":  "XBT/USD",
+    "ETH/USD":  "ETH/USD",
+    "SOL/USD":  "SOL/USD",
+    "XRP/USD":  "XRP/USD",
+    "AVAX/USD": "AVAX/USD",
+    "LINK/USD": "LINK/USD",
+    "LTC/USD":  "LTC/USD",
+    "DOGE/USD": "DOGE/USD",
+    "SHIB/USD": "SHIB/USD",
+}
+# Reverse map: Kraken WS pair → our internal symbol
+KRAKEN_WS_REVERSE  = {v: k for k, v in KRAKEN_WS_PAIR_MAP.items()}
+
 KRAKEN_MIN_QTY = {
     "BTC/USD":  0.0001,
     "ETH/USD":  0.002,
@@ -116,6 +147,12 @@ class CryptoBot:
         self.spike_size = 0.04      # 4% of balance per spike trade
         self.avg_vol    = {}        # symbol → (avg_vol_per_min, timestamp) — main thread populates
         self.ws_volume  = {}        # symbol → {"vol": float, "start": float} — 60s rolling window
+
+        # Higher-Timeframe (daily) trend cache — refreshed every 10 min
+        self._htf_cache = {}        # symbol → (bullish: bool, timestamp: float)
+
+        # Correlation management — recent closes cached from get_indicators()
+        self._bar_cache = {}        # symbol → list of last 20 hourly closes
 
         self.alpaca_headers = {
             "APCA-API-KEY-ID":     ALPACA_API_KEY,
@@ -410,6 +447,75 @@ class CryptoBot:
             print("[KRAKEN BARS] " + str(e))
             return None
 
+    # ── Higher-Timeframe trend filter ──────────────────────────────────────
+
+    def _get_htf_trend(self, symbol):
+        """Daily trend check — price above 20-day SMA = bullish HTF.
+        Result cached 10 min so we don't spam the API on every trade() iteration."""
+        cached = self._htf_cache.get(symbol)
+        if cached and time.time() - cached[1] < 600:
+            return cached[0]
+        try:
+            sym_clean = symbol.replace("/", "")
+            url    = ALPACA_DATA + "/v1beta3/crypto/us/bars"
+            params = {"symbols": sym_clean, "timeframe": "1Day", "limit": 30}
+            r = requests.get(url, headers=self.alpaca_headers,
+                             params=params, timeout=8)
+            bars = (r.json().get("bars", {}).get(sym_clean, [])
+                    if r.status_code == 200 else [])
+            if len(bars) < 20:
+                # Not enough daily data → treat as neutral (allow trade)
+                self._htf_cache[symbol] = (True, time.time())
+                return True
+            closes  = [b["c"] for b in bars]
+            ma20d   = sum(closes[-20:]) / 20
+            bullish = closes[-1] > ma20d
+            self._htf_cache[symbol] = (bullish, time.time())
+            return bullish
+        except Exception:
+            return True   # neutral on error — don't block trades
+
+    # ── Correlation management ─────────────────────────────────────────────
+
+    @staticmethod
+    def _pearson(a, b):
+        """Pearson correlation of hourly returns for two close-price series."""
+        n = min(len(a), len(b))
+        if n < 5:
+            return 0.0
+        a, b = a[-n:], b[-n:]
+        ra = [(a[i] - a[i-1]) / a[i-1] for i in range(1, n) if a[i-1] != 0]
+        rb = [(b[i] - b[i-1]) / b[i-1] for i in range(1, n) if b[i-1] != 0]
+        n2 = min(len(ra), len(rb))
+        if n2 < 5:
+            return 0.0
+        ra, rb = ra[-n2:], rb[-n2:]
+        ma_ = sum(ra) / n2
+        mb_ = sum(rb) / n2
+        num = sum((ra[i] - ma_) * (rb[i] - mb_) for i in range(n2))
+        da  = sum((ra[i] - ma_) ** 2 for i in range(n2)) ** 0.5
+        db  = sum((rb[i] - mb_) ** 2 for i in range(n2)) ** 0.5
+        return num / (da * db) if da * db > 0 else 0.0
+
+    def _check_correlation(self, symbol):
+        """Return (corr, worst_symbol) vs open positions. corr=0 if no positions."""
+        closes_new = self._bar_cache.get(symbol)
+        if not closes_new:
+            return 0.0, None
+        max_corr  = 0.0
+        worst_sym = None
+        with self.positions_lock:
+            open_syms = list(self.positions.keys())
+        for pos_sym in open_syms:
+            closes_pos = self._bar_cache.get(pos_sym)
+            if not closes_pos:
+                continue
+            corr = self._pearson(closes_new, closes_pos)
+            if corr > max_corr:
+                max_corr  = corr
+                worst_sym = pos_sym
+        return round(max_corr, 2), worst_sym
+
     # ── Indicators ─────────────────────────────────────────────────────────
 
     def get_indicators(self, symbol):
@@ -490,6 +596,21 @@ class CryptoBot:
             avg_vol_20 = sum(volumes[-20:]) / 20
             obv_rising = (len(obv) > 11 and obv[-1] > obv[-11]) or volumes[-1] > avg_vol_20 * 0.5
 
+            # ── CMF — Chaikin Money Flow (period=20) ──────────────────────────
+            # MFM = (2C - H - L) / (H - L); CMF = Σ(MFM×V, 20) / Σ(V, 20)
+            # Bounded [-1,+1]: >0 = net buying pressure, <0 = net selling
+            mfv_sum = 0.0
+            vol_sum = 0.0
+            for i in range(max(0, n - 20), n):
+                hl = highs[i] - lows[i]
+                if hl > 0:
+                    mfm = (2 * closes[i] - highs[i] - lows[i]) / hl
+                else:
+                    mfm = 0.0
+                mfv_sum += mfm * volumes[i]
+                vol_sum += volumes[i]
+            cmf = round(mfv_sum / vol_sum, 4) if vol_sum > 0 else 0.0
+
             # Parabolic SAR (af=0.02, max=0.2)
             def calc_psar(hs, ls, af0=0.02, af_max=0.2):
                 rising = True
@@ -553,10 +674,19 @@ class CryptoBot:
                     m_i = 100 * s_mdm[i] / s_tr[i] if s_tr[i] > 0 else 0.0
                     d   = p_i + m_i
                     dx_list.append(100 * abs(p_i - m_i) / d if d > 0 else 0.0)
-                adx_smooth = _wilder(dx_list, adx_p)
-                adx = round(adx_smooth[-1], 1) if adx_smooth else 25.0
+                # ADX = Wilder MA of DX — initial value is AVERAGE (not sum like ATR)
+                if len(dx_list) >= adx_p:
+                    adx_val = sum(dx_list[:adx_p]) / adx_p
+                    for dx_v in dx_list[adx_p:]:
+                        adx_val = (adx_val * (adx_p - 1) + dx_v) / adx_p
+                    adx = round(adx_val, 1)
+                else:
+                    adx = 25.0
             else:
                 adx = 25.0
+
+            # Cache recent closes for correlation check in trade()
+            self._bar_cache[symbol] = closes[-20:]
 
             return {
                 "rsi":         round(rsi, 1),
@@ -569,6 +699,7 @@ class CryptoBot:
                 "atr":         round(atr, 4),
                 "supertrend":  supertrend,
                 "obv_rising":  obv_rising,
+                "cmf":         cmf,
                 "psar":        round(psar_val, 4),
                 "psar_ok":     psar_ok,
                 "tenkan":      round(tenkan, 4),
@@ -605,12 +736,14 @@ class CryptoBot:
         if not WS_AVAILABLE:
             print("[WS] websocket-client nicht verfügbar — kein Echtzeit-Stream")
             return
-        if EXCHANGE != "alpaca":
-            print("[WS] WebSocket nur für Alpaca — übersprungen")
-            return
-        t = threading.Thread(target=self._ws_run, daemon=True, name="ws-price-stream")
-        t.start()
-        print("[WS] Echtzeit Price-Stream Thread gestartet")
+        if EXCHANGE == "alpaca":
+            t = threading.Thread(target=self._ws_run, daemon=True, name="ws-price-stream")
+            t.start()
+            print("[WS] Echtzeit Price-Stream Thread gestartet")
+        elif EXCHANGE == "kraken":
+            t = threading.Thread(target=self._kraken_ws_run, daemon=True, name="kraken-ws")
+            t.start()
+            print("[KRAKEN_WS] Echtzeit Price-Stream Thread gestartet")
 
     def _ws_run(self):
         """Reconnect loop — runs in daemon thread, exits when self.running=False."""
@@ -743,6 +876,85 @@ class CryptoBot:
     def _ws_on_close(self, ws, code, msg):
         self.ws_connected = False
         print("[WS] Geschlossen — Code: " + str(code))
+
+    # ── Kraken WebSocket (public trade channel — no auth required) ─────────
+
+    def _kraken_ws_run(self):
+        """Reconnect loop for Kraken WS — runs in daemon thread."""
+        while self.running:
+            try:
+                self._ws = _ws_lib.WebSocketApp(
+                    KRAKEN_WS_URL,
+                    on_open=self._kraken_ws_on_open,
+                    on_message=self._kraken_ws_on_message,
+                    on_error=self._kraken_ws_on_error,
+                    on_close=self._kraken_ws_on_close,
+                )
+                self._ws.run_forever(ping_interval=30, ping_timeout=10)
+            except Exception as e:
+                print("[KRAKEN_WS] Crash: " + str(e))
+            self.ws_connected = False
+            if self.running:
+                print("[KRAKEN_WS] Verbindung verloren — Reconnect in 5s...")
+                time.sleep(5)
+
+    def _kraken_ws_on_open(self, ws):
+        """Subscribe to public trade channel for all available Kraken pairs."""
+        pairs = list(KRAKEN_WS_PAIR_MAP.values())
+        ws.send(json.dumps({
+            "event":        "subscribe",
+            "pair":         pairs,
+            "subscription": {"name": "trade"},
+        }))
+        print("[KRAKEN_WS] Subscribed: " + str(pairs))
+
+    def _kraken_ws_on_message(self, ws, raw):
+        """Parse Kraken trade messages.
+        Format: [channelID, [["price","vol","time","side","type","misc"],...], "trade", "XBT/USD"]
+        System messages: {"event": "heartbeat"} / {"event": "subscriptionStatus", ...}
+        """
+        try:
+            data = json.loads(raw)
+
+            # System/status messages are dicts — ignore heartbeat, log errors
+            if isinstance(data, dict):
+                ev = data.get("event", "")
+                if ev == "subscriptionStatus" and data.get("status") == "subscribed":
+                    self.ws_connected = True
+                    print("[KRAKEN_WS] Subscription OK: " + data.get("pair", ""))
+                elif ev == "error":
+                    print("[KRAKEN_WS] Server Error: " + str(data))
+                return
+
+            # Trade message is a list: [channelID, [[...]], "trade", "XBT/USD"]
+            if not isinstance(data, list) or len(data) != 4:
+                return
+            if data[2] != "trade":
+                return
+
+            pair_ws   = data[3]                              # e.g. "XBT/USD"
+            our_sym   = KRAKEN_WS_REVERSE.get(pair_ws)      # e.g. "BTC/USD"
+            if not our_sym:
+                return
+
+            for tick in data[1]:                             # list of trades in this msg
+                try:
+                    price = float(tick[0])
+                except (IndexError, ValueError):
+                    continue
+                self.ws_prices[our_sym] = price
+                self._ws_check_price(our_sym, price)
+
+        except Exception as e:
+            print("[KRAKEN_WS] Parse error: " + str(e))
+
+    def _kraken_ws_on_error(self, ws, error):
+        print("[KRAKEN_WS] Error: " + str(error))
+        self.ws_connected = False
+
+    def _kraken_ws_on_close(self, ws, code, msg):
+        self.ws_connected = False
+        print("[KRAKEN_WS] Geschlossen — Code: " + str(code))
 
     def _ws_check_price(self, symbol, price):
         """
@@ -924,7 +1136,7 @@ class CryptoBot:
                 for entry in feed.entries[:15]:
                     raw  = entry.title + " " + getattr(entry, "summary", "")
                     text = re.sub(r"<[^>]+>", " ", raw).lower()
-                    sentiment = TextBlob(text).sentiment.polarity
+                    sentiment = _sentiment(text)
                     for symbol, keywords in KEYWORDS.items():
                         for kw in keywords:
                             if kw in text:
@@ -941,7 +1153,7 @@ class CryptoBot:
 
         for art in self.fetch_news():
             text = art.lower()
-            sentiment = TextBlob(text).sentiment.polarity
+            sentiment = _sentiment(text)
             for symbol, keywords in KEYWORDS.items():
                 for kw in keywords:
                     if kw in text:
@@ -1060,11 +1272,24 @@ class CryptoBot:
                 print("[SKIP] " + symbol + " keine Indikatoren")
                 continue
 
+            # Higher-Timeframe filter — daily trend must be bullish
+            if not self._get_htf_trend(symbol):
+                print("[SKIP] " + symbol + " HTF=bear (Preis unter 20-Tage-MA)")
+                continue
+
+            # Correlation guard — block if too similar to an open position
+            corr, corr_sym = self._check_correlation(symbol)
+            if corr > 0.85:
+                print("[SKIP] " + symbol + " Korrelation=" + str(corr) +
+                      " zu " + str(corr_sym) + " (Grenze 0.85)")
+                continue
+
             rsi_ok  = ind["rsi"] < 65   # optimized: 70 → 65
             ma_ok   = ind["price"] > ind["ma20"]
             macd_ok = ind["macd"] > ind["macd_signal"]
             st_ok   = ind["supertrend"] == 1
-            obv_ok  = ind["obv_rising"]
+            cmf_ok  = ind.get("cmf", 0.0) > 0    # CMF > 0 = net buying pressure
+            obv_ok  = ind["obv_rising"]            # kept for skip-log reference
             ichi_ok = ind.get("ichi_ok", True)
             psar_ok = ind.get("psar_ok", True)
 
@@ -1084,7 +1309,7 @@ class CryptoBot:
             # OBV = 0.8 (volume confirmation)
             # Max possible = 7.5
             gate_score = (rsi_ok  * 1.5 + macd_ok * 1.5 + st_ok  * 1.5 +
-                          ichi_ok * 1.2 + ma_ok   * 1.0 + obv_ok * 0.8)
+                          ichi_ok * 1.2 + ma_ok   * 1.0 + cmf_ok * 0.8)
             score_pct  = gate_score / 7.5
 
             if score_pct < threshold:
@@ -1095,7 +1320,7 @@ class CryptoBot:
                         "time":   datetime.now().strftime("%H:%M"),
                         "rsi": ind["rsi"], "rsi_ok": rsi_ok,
                         "ma_ok": ma_ok, "macd_ok": macd_ok,
-                        "st_ok": st_ok, "obv_ok": obv_ok,
+                        "st_ok": st_ok, "obv_ok": cmf_ok,
                         "ichi_ok": ichi_ok, "psar_ok": psar_ok,
                     })
                     self.last_skips = self.last_skips[-20:]
@@ -1107,7 +1332,7 @@ class CryptoBot:
                       " MA=" + ("above" if ma_ok else "below") +
                       " MACD=" + ("bull" if macd_ok else "bear") +
                       " ST=" + ("bull" if st_ok else "bear") +
-                      " OBV=" + ("up" if obv_ok else "down") +
+                      " CMF=" + str(ind.get("cmf", 0.0)) +
                       " ICHI=" + ("above" if ichi_ok else "below") +
                       " PSAR=" + ("bull" if psar_ok else "bear"))
                 continue
@@ -1116,8 +1341,20 @@ class CryptoBot:
             if price is None or price <= 0:
                 continue
 
-            size   = self.meme_size if symbol in CRYPTO_MEME else self.pos_size
-            shares = (self.balance * size * size_mult) / price
+            size = self.meme_size if symbol in CRYPTO_MEME else self.pos_size
+
+            # ── ATR-based position sizing ──────────────────────────────────────
+            # Risk 1% of balance per trade, sized by ATR distance (2× ATR stop)
+            # Capped at size × size_mult × balance so single position stays bounded
+            atr = ind.get("atr", 0)
+            if atr and atr > 0:
+                risk_per_unit = atr * 2.0            # 2×ATR = expected stop distance in $
+                risk_budget   = self.balance * 0.01  # 1% of balance at risk per trade
+                atr_shares    = risk_budget / risk_per_unit
+                max_shares    = (self.balance * size * size_mult) / price
+                shares = min(atr_shares, max_shares)
+            else:
+                shares = (self.balance * size * size_mult) / price
             if shares * price < 1:
                 continue
 
@@ -1145,11 +1382,12 @@ class CryptoBot:
                    " [" + regime + " ADX=" + str(adx) +
                    " score=" + str(round(score_pct * 100)) + "%" +
                    " x" + str(size_mult) + "]" +
+                   " ATR=" + str(ind["atr"]) +
+                   " risk=$" + str(round(shares * ind["atr"] * 2, 2)) +
                    " RSI=" + str(ind["rsi"]) +
                    " MACD=" + str(ind["macd_hist"]) +
-                   " ATR=" + str(ind["atr"]) +
                    " ST=" + str(ind["supertrend"]) +
-                   " OBV=" + ("up" if ind["obv_rising"] else "down") +
+                   " CMF=" + str(ind.get("cmf", 0.0)) +
                    " ICHI=" + ("above" if ichi_ok else "below") +
                    " PSAR=" + str(ind.get("psar", "?")) +
                    " | Bal: $" + str(round(self.balance, 0)))

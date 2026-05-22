@@ -1,7 +1,21 @@
 #!/usr/bin/env python3
 from datetime import datetime, timedelta
 import time, requests, os, json, re, threading
-from textblob import TextBlob
+
+# ── Sentiment analyser: VADER (preferred) with TextBlob fallback ───────────
+try:
+    from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer as _VaderIA
+    _vader = _VaderIA()
+    def _sentiment(text):
+        """Return compound sentiment score in [-1, +1]. VADER primary."""
+        return _vader.polarity_scores(text)["compound"]
+    print("[SENTIMENT] VADER geladen")
+except ImportError:
+    from textblob import TextBlob
+    def _sentiment(text):
+        """Return polarity score in [-1, +1]. TextBlob fallback."""
+        return TextBlob(text).sentiment.polarity
+    print("[SENTIMENT] VADER nicht verfügbar — TextBlob Fallback")
 
 try:
     import websocket as _ws_lib
@@ -119,6 +133,12 @@ class SuperTradingBot:
         self._earnings_cache_date = None  # date when cache was last built
         self._earnings_alerted    = set() # ETF symbols alerted this session
 
+        # Higher-Timeframe (weekly) trend cache — refreshed every 30 min
+        self._htf_cache = {}   # symbol → (bullish: bool, timestamp: float)
+
+        # Correlation management — recent closes cached from get_indicators()
+        self._bar_cache = {}   # symbol → list of last 20 daily closes
+
         # Thread safety — RLock so _ws_check_price can call close_position safely
         self.positions_lock = threading.RLock()
 
@@ -209,6 +229,33 @@ class SuperTradingBot:
             pass
         return None
 
+    # ── Higher-Timeframe trend filter ──────────────────────────────────────
+
+    def _get_htf_trend(self, symbol):
+        """Weekly trend check — price above 10-week SMA = bullish HTF.
+        Result cached 30 min so we don't spam the API on every trade() iteration."""
+        cached = self._htf_cache.get(symbol)
+        if cached and time.time() - cached[1] < 1800:
+            return cached[0]
+        try:
+            url    = ALPACA_BASE_URL + "/v2/stocks/" + symbol + "/bars"
+            params = {"timeframe": "1Week", "limit": 15,
+                      "adjustment": "raw", "feed": "iex"}
+            r = requests.get(url, headers=self.alpaca_headers,
+                             params=params, timeout=8)
+            bars = r.json().get("bars", []) if r.status_code == 200 else []
+            if len(bars) < 10:
+                # Not enough weekly data → treat as neutral (allow trade)
+                self._htf_cache[symbol] = (True, time.time())
+                return True
+            closes  = [b["c"] for b in bars]
+            ma10w   = sum(closes[-10:]) / 10
+            bullish = closes[-1] > ma10w
+            self._htf_cache[symbol] = (bullish, time.time())
+            return bullish
+        except Exception:
+            return True   # neutral on error — don't block trades
+
     # ── Indicators ─────────────────────────────────────────────────────────
 
     def get_indicators(self, symbol):
@@ -294,6 +341,21 @@ class SuperTradingBot:
             avg_vol_20 = sum(volumes[-20:]) / 20
             obv_rising = (len(obv) > 11 and obv[-1] > obv[-11]) or volumes[-1] > avg_vol_20 * 0.5
 
+            # ── CMF — Chaikin Money Flow (period=20) ──────────────────────────
+            # MFM = (2C - H - L) / (H - L); CMF = Σ(MFM×V, 20) / Σ(V, 20)
+            # Bounded [-1,+1]: >0 = net buying pressure, <0 = net selling
+            mfv_sum = 0.0
+            vol_sum = 0.0
+            for i in range(max(0, n - 20), n):
+                hl = highs[i] - lows[i]
+                if hl > 0:
+                    mfm = (2 * closes[i] - highs[i] - lows[i]) / hl
+                else:
+                    mfm = 0.0
+                mfv_sum += mfm * volumes[i]
+                vol_sum += volumes[i]
+            cmf = round(mfv_sum / vol_sum, 4) if vol_sum > 0 else 0.0
+
             # Parabolic SAR (af=0.02, max=0.2)
             def calc_psar(hs, ls, af0=0.02, af_max=0.2):
                 rising = True
@@ -358,10 +420,19 @@ class SuperTradingBot:
                     m_i = 100 * s_mdm[i] / s_tr[i] if s_tr[i] > 0 else 0.0
                     d   = p_i + m_i
                     dx_list.append(100 * abs(p_i - m_i) / d if d > 0 else 0.0)
-                adx_smooth = _wilder(dx_list, adx_p)
-                adx = round(adx_smooth[-1], 1) if adx_smooth else 25.0
+                # ADX = Wilder MA of DX — initial value is AVERAGE (not sum like ATR)
+                if len(dx_list) >= adx_p:
+                    adx_val = sum(dx_list[:adx_p]) / adx_p
+                    for dx_v in dx_list[adx_p:]:
+                        adx_val = (adx_val * (adx_p - 1) + dx_v) / adx_p
+                    adx = round(adx_val, 1)
+                else:
+                    adx = 25.0
             else:
                 adx = 25.0
+
+            # Cache recent closes for correlation check in trade()
+            self._bar_cache[symbol] = closes[-20:]
 
             return {
                 "rsi":         round(rsi, 1),
@@ -374,6 +445,7 @@ class SuperTradingBot:
                 "atr":         round(atr, 2),
                 "supertrend":  supertrend,
                 "obv_rising":  obv_rising,
+                "cmf":         cmf,
                 "psar":        round(psar_val, 2),
                 "psar_ok":     psar_ok,
                 "tenkan":      round(tenkan, 2),
@@ -385,6 +457,47 @@ class SuperTradingBot:
             }
         except Exception:
             return None
+
+    # ── Correlation management ─────────────────────────────────────────────
+
+    @staticmethod
+    def _pearson(a, b):
+        """Pearson correlation of daily returns for two close-price series."""
+        n = min(len(a), len(b))
+        if n < 5:
+            return 0.0
+        a, b = a[-n:], b[-n:]
+        ra = [(a[i] - a[i-1]) / a[i-1] for i in range(1, n) if a[i-1] != 0]
+        rb = [(b[i] - b[i-1]) / b[i-1] for i in range(1, n) if b[i-1] != 0]
+        n2 = min(len(ra), len(rb))
+        if n2 < 5:
+            return 0.0
+        ra, rb = ra[-n2:], rb[-n2:]
+        ma_ = sum(ra) / n2
+        mb_ = sum(rb) / n2
+        num = sum((ra[i] - ma_) * (rb[i] - mb_) for i in range(n2))
+        da  = sum((ra[i] - ma_) ** 2 for i in range(n2)) ** 0.5
+        db  = sum((rb[i] - mb_) ** 2 for i in range(n2)) ** 0.5
+        return num / (da * db) if da * db > 0 else 0.0
+
+    def _check_correlation(self, symbol):
+        """Return (corr, worst_symbol) vs open positions. corr=0 if no positions."""
+        closes_new = self._bar_cache.get(symbol)
+        if not closes_new:
+            return 0.0, None
+        max_corr   = 0.0
+        worst_sym  = None
+        with self.positions_lock:
+            open_syms = list(self.positions.keys())
+        for pos_sym in open_syms:
+            closes_pos = self._bar_cache.get(pos_sym)
+            if not closes_pos:
+                continue
+            corr = self._pearson(closes_new, closes_pos)
+            if corr > max_corr:
+                max_corr  = corr
+                worst_sym = pos_sym
+        return round(max_corr, 2), worst_sym
 
     # ── WebSocket price stream ─────────────────────────────────────────────
 
@@ -851,7 +964,7 @@ class SuperTradingBot:
             title = art.get("title", "") if isinstance(art, dict) else str(art)
             desc  = art.get("description", "") if isinstance(art, dict) else ""
             text  = re.sub(r"<[^>]+>", " ", title + " " + desc).lower()
-            sentiment = TextBlob(text).sentiment.polarity
+            sentiment = _sentiment(text)
             boost = 1.0
             for fig in FIGURES:
                 if fig.lower() in text:
@@ -913,11 +1026,24 @@ class SuperTradingBot:
                 print("[SKIP] " + symbol + " keine Indikatoren")
                 continue
 
+            # Higher-Timeframe filter — weekly trend must be bullish
+            if not self._get_htf_trend(symbol):
+                print("[SKIP] " + symbol + " HTF=bear (Preis unter 10-Wochen-MA)")
+                continue
+
+            # Correlation guard — block if too similar to an open position
+            corr, corr_sym = self._check_correlation(symbol)
+            if corr > 0.85:
+                print("[SKIP] " + symbol + " Korrelation=" + str(corr) +
+                      " zu " + str(corr_sym) + " (Grenze 0.85)")
+                continue
+
             rsi_ok  = ind["rsi"] < 65   # optimized: 70 → 65
             ma_ok   = ind["price"] > ind["ma20"]
             macd_ok = ind["macd"] > ind["macd_signal"]
             st_ok   = ind["supertrend"] == 1
-            obv_ok  = ind["obv_rising"]
+            cmf_ok  = ind.get("cmf", 0.0) > 0    # CMF > 0 = net buying pressure
+            obv_ok  = ind["obv_rising"]            # kept for skip-log reference
             ichi_ok = ind.get("ichi_ok", True)
             psar_ok = ind.get("psar_ok", True)
 
@@ -934,10 +1060,10 @@ class SuperTradingBot:
             # RSI + MACD + Supertrend = 1.5 each (trend-core)
             # Ichimoku = 1.2 (trend confirmation, lagging)
             # MA20 = 1.0 (basic trend filter)
-            # OBV = 0.8 (volume confirmation)
+            # CMF = 0.8 (volume/money-flow confirmation — replaces OBV)
             # Max possible = 7.5
             gate_score = (rsi_ok  * 1.5 + macd_ok * 1.5 + st_ok  * 1.5 +
-                          ichi_ok * 1.2 + ma_ok   * 1.0 + obv_ok * 0.8)
+                          ichi_ok * 1.2 + ma_ok   * 1.0 + cmf_ok * 0.8)
             score_pct  = gate_score / 7.5
 
             if score_pct < threshold:
@@ -948,7 +1074,7 @@ class SuperTradingBot:
                         "time":   datetime.now().strftime("%H:%M"),
                         "rsi": ind["rsi"], "rsi_ok": rsi_ok,
                         "ma_ok": ma_ok, "macd_ok": macd_ok,
-                        "st_ok": st_ok, "obv_ok": obv_ok,
+                        "st_ok": st_ok, "obv_ok": cmf_ok,
                         "ichi_ok": ichi_ok, "psar_ok": psar_ok,
                     })
                     self.last_skips = self.last_skips[-20:]
@@ -960,7 +1086,7 @@ class SuperTradingBot:
                       " MA=" + ("above" if ma_ok else "below") +
                       " MACD=" + ("bull" if macd_ok else "bear") +
                       " ST=" + ("bull" if st_ok else "bear") +
-                      " OBV=" + ("up" if obv_ok else "down") +
+                      " CMF=" + str(ind.get("cmf", 0.0)) +
                       " ICHI=" + ("above" if ichi_ok else "below") +
                       " PSAR=" + ("bull" if psar_ok else "bear"))
                 continue
@@ -968,7 +1094,19 @@ class SuperTradingBot:
             price = self.get_price(symbol)
             if price is None or price <= 0:
                 continue
-            shares = int(self.balance * self.pos_size * size_mult / price)
+
+            # ── ATR-based position sizing ──────────────────────────────────────
+            # Risk 1% of balance per trade, sized by ATR distance (2× ATR stop)
+            # Capped at pos_size × size_mult × balance so single position stays bounded
+            atr = ind.get("atr", 0)
+            if atr and atr > 0:
+                risk_per_share = atr * 2.0          # 2×ATR = expected stop distance in $
+                risk_budget    = self.balance * 0.01 # 1% of balance at risk per trade
+                atr_shares     = int(risk_budget / risk_per_share)
+                max_shares     = int(self.balance * self.pos_size * size_mult / price)
+                shares = min(atr_shares, max_shares)
+            else:
+                shares = int(self.balance * self.pos_size * size_mult / price)
             if shares < 1:
                 continue
 
@@ -997,11 +1135,12 @@ class SuperTradingBot:
                    " [" + regime + " ADX=" + str(adx) +
                    " score=" + str(round(score_pct * 100)) + "%" +
                    " x" + str(size_mult) + "]" +
+                   " ATR=" + str(ind["atr"]) +
+                   " risk=$" + str(round(shares * ind["atr"] * 2, 0)) +
                    " RSI=" + str(ind["rsi"]) +
                    " MACD=" + str(ind["macd_hist"]) +
-                   " ATR=" + str(ind["atr"]) +
                    " ST=" + str(ind["supertrend"]) +
-                   " OBV=" + ("up" if ind["obv_rising"] else "down") +
+                   " CMF=" + str(ind.get("cmf", 0.0)) +
                    " ICHI=" + ("above" if ichi_ok else "below") +
                    " PSAR=" + str(ind.get("psar", "?")) +
                    " | Bal: $" + str(round(self.balance, 0)))
@@ -1184,7 +1323,7 @@ class SuperTradingBot:
                     tw_scores = {k: 0.0 for k in ETFS.keys()}
                     for t in tweets:
                         text = t.get("title", "").lower()
-                        sentiment = TextBlob(text).sentiment.polarity
+                        sentiment = _sentiment(text)
                         for kw, sectors in KEYWORDS.items():
                             if kw in text:
                                 for sec in sectors:
