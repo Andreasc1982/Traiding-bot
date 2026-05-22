@@ -275,11 +275,37 @@ class SuperTradingBot:
             n = len(closes)
 
             ma20   = sum(closes[-20:]) / 20
-            gains  = [max(closes[i] - closes[i-1], 0) for i in range(1, 15)]
-            losses = [max(closes[i-1] - closes[i], 0) for i in range(1, 15)]
-            avg_gain = sum(gains) / 14
-            avg_loss = sum(losses) / 14
-            rsi = 100 - (100 / (1 + (avg_gain / avg_loss))) if avg_loss > 0 else 100
+
+            # ── Full RSI series (Wilder smoothing) — needed for StochRSI ──────
+            rsi_p    = 14
+            gains_r  = [max(closes[i] - closes[i-1], 0) for i in range(1, n)]
+            losses_r = [max(closes[i-1] - closes[i], 0) for i in range(1, n)]
+            ag = sum(gains_r[:rsi_p]) / rsi_p
+            al = sum(losses_r[:rsi_p]) / rsi_p
+            rsi_series = [100 - 100 / (1 + ag / al) if al > 0 else 100]
+            for i in range(rsi_p, len(gains_r)):
+                ag = (ag * (rsi_p - 1) + gains_r[i]) / rsi_p
+                al = (al * (rsi_p - 1) + losses_r[i]) / rsi_p
+                rsi_series.append(100 - 100 / (1 + ag / al) if al > 0 else 100)
+            rsi = round(rsi_series[-1], 1)   # last value = current RSI (unchanged)
+
+            # ── Stochastic RSI (%K, %D) ────────────────────────────────────────
+            # StochRSI[i] = (RSI[i] - min(RSI,14)) / (max(RSI,14) - min(RSI,14))
+            # %K = 3-bar SMA of StochRSI   |   %D = 3-bar SMA of %K
+            stoch_ok = True   # neutral fallback if not enough bars
+            if len(rsi_series) >= rsi_p + 5:
+                stoch_raw = []
+                for i in range(rsi_p - 1, len(rsi_series)):
+                    win = rsi_series[i - rsi_p + 1: i + 1]
+                    lo, hi = min(win), max(win)
+                    stoch_raw.append((rsi_series[i] - lo) / (hi - lo) if hi > lo else 0.5)
+                if len(stoch_raw) >= 5:
+                    k_ser = [sum(stoch_raw[i-2:i+1]) / 3 for i in range(2, len(stoch_raw))]
+                    d_ser = [sum(k_ser[i-2:i+1])    / 3 for i in range(2, len(k_ser))]
+                    if k_ser and d_ser:
+                        sk, sd = k_ser[-1], d_ser[-1]
+                        # Bullish: %K above %D (momentum up) and not overbought
+                        stoch_ok = sk > sd and sk < 0.8
 
             std20    = (sum((c - ma20) ** 2 for c in closes[-20:]) / 20) ** 0.5
             bb_upper = ma20 + 2 * std20
@@ -453,6 +479,7 @@ class SuperTradingBot:
                 "cloud_top":   round(cloud_top, 2),
                 "ichi_ok":     ichi_ok,
                 "adx":         adx,
+                "stoch_ok":    stoch_ok,
                 "price":       closes[-1],
             }
         except Exception:
@@ -1042,10 +1069,11 @@ class SuperTradingBot:
             ma_ok   = ind["price"] > ind["ma20"]
             macd_ok = ind["macd"] > ind["macd_signal"]
             st_ok   = ind["supertrend"] == 1
-            cmf_ok  = ind.get("cmf", 0.0) > 0    # CMF > 0 = net buying pressure
-            obv_ok  = ind["obv_rising"]            # kept for skip-log reference
-            ichi_ok = ind.get("ichi_ok", True)
-            psar_ok = ind.get("psar_ok", True)
+            cmf_ok   = ind.get("cmf", 0.0) > 0    # CMF > 0 = net buying pressure
+            obv_ok   = ind["obv_rising"]            # kept for skip-log reference
+            ichi_ok  = ind.get("ichi_ok", True)
+            psar_ok  = ind.get("psar_ok", True)
+            stoch_ok = ind.get("stoch_ok", True)   # StochRSI %K > %D and < 0.8
 
             # ── ADX Market Regime Detection ────────────────────────────────────
             adx = ind.get("adx", 25.0)
@@ -1061,10 +1089,12 @@ class SuperTradingBot:
             # Ichimoku = 1.2 (trend confirmation, lagging)
             # MA20 = 1.0 (basic trend filter)
             # CMF = 0.8 (volume/money-flow confirmation — replaces OBV)
-            # Max possible = 7.5
-            gate_score = (rsi_ok  * 1.5 + macd_ok * 1.5 + st_ok  * 1.5 +
-                          ichi_ok * 1.2 + ma_ok   * 1.0 + cmf_ok * 0.8)
-            score_pct  = gate_score / 7.5
+            # StochRSI = 0.5 (fast momentum confirmation)
+            # Max possible = 8.0
+            gate_score = (rsi_ok   * 1.5 + macd_ok * 1.5 + st_ok  * 1.5 +
+                          ichi_ok  * 1.2 + ma_ok   * 1.0 + cmf_ok * 0.8 +
+                          stoch_ok * 0.5)
+            score_pct  = gate_score / 8.0
 
             if score_pct < threshold:
                 # PSAR logged for info but not a buy gate — used only as dynamic stop after entry
@@ -1087,6 +1117,7 @@ class SuperTradingBot:
                       " MACD=" + ("bull" if macd_ok else "bear") +
                       " ST=" + ("bull" if st_ok else "bear") +
                       " CMF=" + str(ind.get("cmf", 0.0)) +
+                      " StRSI=" + ("ok" if stoch_ok else "no") +
                       " ICHI=" + ("above" if ichi_ok else "below") +
                       " PSAR=" + ("bull" if psar_ok else "bear"))
                 continue
@@ -1141,6 +1172,7 @@ class SuperTradingBot:
                    " MACD=" + str(ind["macd_hist"]) +
                    " ST=" + str(ind["supertrend"]) +
                    " CMF=" + str(ind.get("cmf", 0.0)) +
+                   " StRSI=" + ("ok" if stoch_ok else "no") +
                    " ICHI=" + ("above" if ichi_ok else "below") +
                    " PSAR=" + str(ind.get("psar", "?")) +
                    " | Bal: $" + str(round(self.balance, 0)))
