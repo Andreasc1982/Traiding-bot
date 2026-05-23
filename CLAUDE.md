@@ -301,7 +301,7 @@ Trades 11 cryptocurrencies (7 main + 4 meme) using sentiment from crypto RSS, Re
 | `max_pos`       | 6      | Max concurrent positions        |
 | `pos_size`      | 8%     | Main coins per trade            |
 | `meme_size`     | 3%     | Meme coins per trade            |
-| `max_day_loss`  | 10%    | Daily drawdown limit — bot sleeps until 00:30, then auto-resumes |
+| `max_day_loss`  | 10%    | Daily drawdown limit — resets counter and continues immediately (no sleep, crypto is 24/7) |
 | Cycle interval  | ~120s  | 4 × 30s checks per full cycle   |
 
 ### Balance persistence (`crypto_state.json`)
@@ -310,7 +310,7 @@ Solves three problems unique to demo/paper mode:
 
 1. **Balance reset on restart**: Alpaca paper-trading `cash` is always ~$100k (no real orders placed). In demo mode the bot tracks balance in-memory — after a restart this in-memory state is lost. Fix: `_save_state()` writes `crypto_state.json` after every buy, sell, and every 30s cycle. On startup, `_load_state()` restores the saved balance (demo only; live modes read from the exchange API).
 
-2. **Crash/restart loop on daily loss**: Previously `check_day_loss()` set `running=False`, the process exited, and the monitor restarted it within 60s — creating an infinite restart loop on the same depleted balance. Fix: the bot now calls `_sleep_until_tomorrow()` which keeps the process alive (monitor sees no crash) and sleeps in 60s increments until 00:30 next day, still honouring `/stop` commands. On wake-up, `start_balance` resets to the current balance so the new day's loss counter starts fresh.
+2. **No sleep on daily loss — crypto is 24/7**: Unlike stock bots, crypto_bot does not sleep when the daily loss limit is hit. Sleeping until midnight would mean missing hours of potential gains in a market that never closes. Instead, `check_day_loss()` simply resets `start_balance` to the current balance and continues immediately. The -10% limit then applies to each fresh segment going forward. A Telegram alert is sent so the operator is informed.
 
 3. **Dashboard stuck at 0% P&L during halt**: When `check_day_loss()` fires at bot startup (restored balance already below threshold), the main loop never reaches `save_dashboard()` — it halts before getting there. The dashboard then shows stale data from the previous session with `current_price == entry_price` (0% P&L) for all positions. Fix: `save_dashboard({})` is now called (a) immediately inside `check_day_loss()` before entering the sleep, and (b) every 60s inside `_sleep_until_tomorrow()`. The WebSocket stays connected during halt and keeps `ws_prices` live, so the dashboard accurately reflects current prices throughout the entire halt period.
 
@@ -1242,6 +1242,5 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 
 **OBV bounds guard**: `obv[-11]` will crash if bars < 12. Guard: `(len(obv) > 11 and obv[-1] > obv[-11]) or volumes[-1] > avg_vol_20 * 0.5`
 
-**crypto_bot dashboard shows 0% P&L during halt**: When the restored balance already exceeds the daily loss limit on startup, `check_day_loss()` fires before the main loop ever reaches `save_dashboard()`. The dashboard then shows stale data from the previous session with `current_price == entry_price`. Fixed: `save_dashboard({})` is called immediately inside `check_day_loss()` before sleeping, and again every 60s inside `_sleep_until_tomorrow()`. The WebSocket stays connected during halt so `ws_prices` remains live.
 
 **crypto_bot positions persist across restarts**: `self.positions` is now saved to `crypto_state.json` (alongside balance) after every buy, sell, and every 30s cycle. On startup, `_load_state()` restores all valid positions so stop-loss/take-profit keep firing after a crash or restart. Each restored position is logged: `[STATE] Position wiederhergestellt: BTC/USD 0.04061 @ $75871.60 seit 2026-05-23 10:30`.

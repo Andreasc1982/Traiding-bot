@@ -356,25 +356,6 @@ class CryptoBot:
         except Exception as e:
             print("[STATE] Save error: " + str(e))
 
-    def _sleep_until_tomorrow(self):
-        """Sleep until 00:30 next day, waking every 60s to honour /stop commands.
-        Keeps the process alive so the monitor agent does NOT see a crash.
-        Dashboard is updated every minute so live WS prices are visible during halt."""
-        now      = datetime.now()
-        tomorrow = (now + timedelta(days=1)).replace(
-            hour=0, minute=30, second=0, microsecond=0)
-        print("[HALT] Schlafe bis " + tomorrow.strftime("%Y-%m-%d %H:%M") +
-              " — Monitor sieht keinen Crash.")
-        while datetime.now() < tomorrow:
-            if not self.running:
-                break       # honour /stop (hard-stop) from telegram_router
-            time.sleep(60)
-            # Keep dashboard live during halt — WS prices still update ws_prices
-            try:
-                self.save_dashboard({})
-            except Exception:
-                pass
-            self.check_control()
 
     # ── Balance sync ───────────────────────────────────────────────────────
 
@@ -1516,33 +1497,24 @@ class CryptoBot:
             pass
 
     def check_day_loss(self):
+        """Crypto trades 24/7 — no sleep on daily loss limit.
+        Reset start_balance to current balance and continue immediately so no
+        opportunity is missed. The -10% limit now applies to each fresh segment."""
         with self.positions_lock:
             balance = self.balance
         if self.start_balance <= 0:
             return
         loss = (self.start_balance - balance) / self.start_balance
         if loss >= self.max_day_loss:
-            msg = ("WARNUNG: Max Tagesverlust -" + str(int(self.max_day_loss * 100)) +
+            msg = ("WARNUNG: Tagesverlust -" + str(int(self.max_day_loss * 100)) +
                    "% erreicht ($" + str(round(balance, 0)) +
-                   ") — Crypto Bot pausiert bis 00:30.")
-            print("[HALT] " + msg)
+                   ") — Zähler zurückgesetzt, Bot läuft weiter (Crypto 24/7).")
+            print("[DAY_LOSS] " + msg)
             self.send(msg)
-            self._save_state()
-            # Write dashboard once immediately so current prices appear right away
-            try:
-                self.save_dashboard({})
-            except Exception:
-                pass
-            # Sleep inside the process — monitor sees no crash, no restart loop
-            self._sleep_until_tomorrow()
-            # Resumed next morning: reset daily counter with whatever balance we have now
+            # Reset baseline to current balance — next -10% limit applies from here
             with self.positions_lock:
-                self.start_balance = self.balance
+                self.start_balance = balance
             self._save_state()
-            resume_msg = ("Crypto Bot resumed nach Tagespause. Bal: $" +
-                          str(round(self.balance, 0)))
-            print("[RESUME] " + resume_msg)
-            self.send(resume_msg)
 
     # ── Main loop ──────────────────────────────────────────────────────────
 
