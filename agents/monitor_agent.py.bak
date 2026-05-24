@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Monitor Agent -- watches all 8 screen sessions.
+Monitor Agent — watches all 8 screen sessions.
 Checks every 60s, restarts on crash, sends Telegram alerts, daily 08:00 report,
-alerts on high CPU/RAM/disk usage, and alerts if no trades fire in NO_TRADES_HOURS.
+and alerts on high CPU/RAM/disk usage.
 
 Launch:
   screen -dmS monitor bash -c '
@@ -19,7 +19,7 @@ import subprocess
 import requests
 from datetime import datetime, date
 
-# -- Config -------------------------------------------------------------------
+# ── Config ────────────────────────────────────────────────────────────────────
 
 sys.path.insert(0, "/home/trading2025/trading_bot")
 try:
@@ -36,23 +36,17 @@ VENV_ACTIVATE    = "/home/trading2025/trading_bot_env/bin/activate"
 BOT_DIR          = "/home/trading2025/trading_bot"
 RISK_HALT_FILE   = "/home/trading2025/trading_bot/agents/risk_halt.json"
 
-CHECK_INTERVAL     = 60     # seconds between watchdog cycles
-STALE_MINUTES      = 15     # alert if dashboard JSON older than this
-CPU_WARN           = 85.0   # % -- alert threshold
-RAM_WARN           = 85.0   # %
-DISK_WARN          = 85.0   # %
-SYS_ALERT_COOLDOWN = 3600   # seconds between repeated system-health alerts
+CHECK_INTERVAL   = 60    # seconds between watchdog cycles
+STALE_MINUTES    = 15    # alert if dashboard JSON older than this
+CPU_WARN         = 85.0  # % — alert threshold
+RAM_WARN         = 85.0  # %
+DISK_WARN        = 85.0  # %
+SYS_ALERT_COOLDOWN = 3600  # seconds between repeated system-health alerts
 
-# No-trades alert: fire if neither bot has traded in this many hours.
-# Only fires when bots are running and not risk-halted.
-NO_TRADES_HOURS        = 8      # hours of silence before alerting
-NO_TRADES_MIN_HISTORY  = 3      # don't alert if combined trade history < this (fresh start)
-NO_TRADES_COOLDOWN     = 7200   # seconds (2h) between repeated no-trades alerts
-
-# -- Bot / service definitions ------------------------------------------------
+# ── Bot / service definitions ─────────────────────────────────────────────────
 #
-# "trading_only" = True  -> skip restart while risk_agent halt is active
-# "trading_only" = False -> always restart (infrastructure processes)
+# "trading_only" = True  → skip restart while risk_agent halt is active
+# "trading_only" = False → always restart (infrastructure processes)
 #
 BOTS = {
     "trading": {
@@ -129,14 +123,13 @@ BOTS = {
     },
 }
 
-# -- State --------------------------------------------------------------------
+# ── State ─────────────────────────────────────────────────────────────────────
 
-_crash_alerted    = {k: False for k in BOTS}   # True while bot is down (prevents spam)
-_last_daily       = None                         # date of last daily report
-_last_sys_alert   = 0.0                          # timestamp of last sys-health alert
-_last_no_trades   = 0.0                          # timestamp of last no-trades alert
+_crash_alerted   = {k: False for k in BOTS}   # True while bot is down (prevents spam)
+_last_daily      = None                         # date of last daily report
+_last_sys_alert  = 0.0                          # timestamp of last sys-health alert
 
-# -- Telegram -----------------------------------------------------------------
+# ── Telegram ──────────────────────────────────────────────────────────────────
 
 def tg(msg):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
@@ -148,7 +141,7 @@ def tg(msg):
     except Exception as e:
         print("[TG ERROR] " + str(e))
 
-# -- Screen helpers -----------------------------------------------------------
+# ── Screen helpers ─────────────────────────────────────────────────────────────
 
 def screen_alive(session):
     """True if a screen session with this name is listed in `screen -ls`."""
@@ -158,13 +151,13 @@ def screen_alive(session):
         return ("." + session + "\t") in result.stdout
     except Exception as e:
         print("[SCREEN] " + str(e))
-        return False   # assume dead on error -- better to restart than ignore
+        return False   # assume dead on error — better to restart than ignore
 
 def start_bot(session):
     bot = BOTS[session]
     subprocess.run(["screen", "-dmS", session, "bash", "-c", bot["cmd"]])
 
-# -- Watchdog -----------------------------------------------------------------
+# ── Watchdog ───────────────────────────────────────────────────────────────────
 
 def check_bots():
     now_str = datetime.now().strftime("%H:%M")
@@ -173,7 +166,7 @@ def check_bots():
     # Dashboard, monitor, and risk agent itself still get restarted if they crash.
     risk_halted = os.path.exists(RISK_HALT_FILE)
     if risk_halted:
-        print("[MONITOR] Risk halt aktiv -- trading/crypto-Restart uebersprungen")
+        print("[MONITOR] Risk halt aktiv — trading/crypto-Restart übersprungen")
 
     for session, bot in BOTS.items():
         name  = bot["name"]
@@ -184,14 +177,14 @@ def check_bots():
                 # Came back on its own (e.g. manual restart by user)
                 print("[OK] " + name + " wieder aktiv")
                 _crash_alerted[session] = False
-            print("[OK] " + name + " laeuft  (screen:" + session + ")")
+            print("[OK] " + name + " läuft  (screen:" + session + ")")
             continue
 
-        # -- Bot is down -----------------------------------------------------
-        # Don't restart trading/crypto during a risk halt -- risk agent owns them.
+        # ── Bot is down ────────────────────────────────────────────────────
+        # Don't restart trading/crypto during a risk halt — risk agent owns them.
         # Infrastructure services (dashboards, router, agents) always restart.
         if risk_halted and bot.get("trading_only", False):
-            print("[MONITOR] " + name + " ist gestoppt (Risk Halt aktiv -- kein Restart)")
+            print("[MONITOR] " + name + " ist gestoppt (Risk Halt aktiv — kein Restart)")
             continue
 
         if not _crash_alerted[session]:
@@ -212,11 +205,11 @@ def check_bots():
             tg(msg)
             _crash_alerted[session] = False
         else:
-            msg = "❌ RESTART FEHLGESCHLAGEN: " + name + " laeuft immer noch nicht! " + now_str
+            msg = "❌ RESTART FEHLGESCHLAGEN: " + name + " läuft immer noch nicht! " + now_str
             print(msg)
             tg(msg)
 
-# -- Stale dashboard check ----------------------------------------------------
+# ── Stale dashboard check ─────────────────────────────────────────────────────
 
 def check_stale():
     for path, name in [(SUPER_JSON, "Super Bot"), (CRYPTO_JSON, "Crypto Bot")]:
@@ -225,102 +218,11 @@ def check_stale():
         age_min = (time.time() - os.path.getmtime(path)) / 60
         if age_min > STALE_MINUTES:
             msg = ("⚠️ " + name + " Dashboard seit " + str(round(age_min, 0)) +
-                   " min nicht aktualisiert -- Bot evtl. haengend?")
+                   " min nicht aktualisiert — Bot evtl. hängend?")
             print(msg)
             tg(msg)
 
-# -- No-trades alert ----------------------------------------------------------
-
-def _latest_trade_time(trades):
-    """
-    Return the most recent trade timestamp as a datetime, or None.
-    trades is a list of dicts, each with a "time" key like "2026-05-23 14:30:00".
-    """
-    latest = None
-    for t in trades:
-        ts_str = t.get("time", "")
-        if not ts_str:
-            continue
-        try:
-            # Accept both "YYYY-MM-DD HH:MM:SS" and "YYYY-MM-DD HH:MM"
-            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
-                try:
-                    ts = datetime.strptime(ts_str[:19], fmt)
-                    if latest is None or ts > latest:
-                        latest = ts
-                    break
-                except ValueError:
-                    continue
-        except Exception:
-            continue
-    return latest
-
-def check_no_trades():
-    """
-    Alert if neither bot has made any trade in NO_TRADES_HOURS hours.
-    Guards:
-      - Risk halt active -> skip (bots are intentionally stopped)
-      - Either bot session dead -> skip (crash alert already firing)
-      - Combined trade history < NO_TRADES_MIN_HISTORY -> skip (fresh start)
-      - Cooldown: at most one alert per NO_TRADES_COOLDOWN seconds
-    """
-    global _last_no_trades
-
-    # Skip if halted
-    if os.path.exists(RISK_HALT_FILE):
-        return
-
-    # Skip if either trading session is dead (crash alert handles that)
-    if not screen_alive("trading") or not screen_alive("crypto"):
-        return
-
-    # Cooldown
-    if (time.time() - _last_no_trades) < NO_TRADES_COOLDOWN:
-        return
-
-    try:
-        super_d  = read_json(SUPER_JSON)
-        crypto_d = read_json(CRYPTO_JSON)
-
-        super_trades  = super_d.get("trades", [])
-        crypto_trades = crypto_d.get("trades", [])
-        total_trades  = len(super_trades) + len(crypto_trades)
-
-        # Fresh start -- don't alert before we have enough history
-        if total_trades < NO_TRADES_MIN_HISTORY:
-            return
-
-        # Find most recent trade across both bots
-        super_latest  = _latest_trade_time(super_trades)
-        crypto_latest = _latest_trade_time(crypto_trades)
-
-        candidates = [t for t in [super_latest, crypto_latest] if t is not None]
-        if not candidates:
-            return
-
-        most_recent = max(candidates)
-        silence_hours = (datetime.now() - most_recent).total_seconds() / 3600.0
-
-        print("[NO_TRADES] Letzter Trade: " + most_recent.strftime("%Y-%m-%d %H:%M") +
-              " (vor " + str(round(silence_hours, 1)) + "h)")
-
-        if silence_hours >= NO_TRADES_HOURS:
-            msg = (
-                "⚠️ KEIN TRADE seit " + str(round(silence_hours, 1)) + "h\n"
-                "Letzter Trade: " + most_recent.strftime("%Y-%m-%d %H:%M") + "\n"
-                "Super Bot: " + str(len(super_trades)) + " Trades insgesamt\n"
-                "Crypto Bot: " + str(len(crypto_trades)) + " Trades insgesamt\n"
-                "Moegliche Ursachen: Indikatoren zu streng, Markt rangiert, "
-                "Sentiment-Feeds ausgefallen?"
-            )
-            print("[NO_TRADES] " + msg)
-            tg(msg)
-            _last_no_trades = time.time()
-
-    except Exception as e:
-        print("[NO_TRADES ERROR] " + str(e))
-
-# -- System health ------------------------------------------------------------
+# ── System health ─────────────────────────────────────────────────────────────
 
 def cpu_percent():
     """Measure real CPU % over a 0.5s sample from /proc/stat."""
@@ -388,7 +290,7 @@ def system_health(force_print=False):
         print("[SYS ERROR] " + str(e))
         return None, None, None, None
 
-# -- Dashboard reader ---------------------------------------------------------
+# ── Dashboard reader ──────────────────────────────────────────────────────────
 
 def read_json(path):
     try:
@@ -403,15 +305,15 @@ def read_json(path):
         print("[JSON] " + path + ": " + str(e))
         return {}
 
-# -- Daily performance report -------------------------------------------------
+# ── Daily performance report ──────────────────────────────────────────────────
 
 def daily_report():
     super_d  = read_json(SUPER_JSON)
     crypto_d = read_json(CRYPTO_JSON)
     now_str  = datetime.now().strftime("%Y-%m-%d %H:%M")
-    lines    = ["📊 TAGESBERICHT -- " + now_str, ""]
+    lines    = ["📊 TAGESBERICHT — " + now_str, ""]
 
-    # -- Super Bot -----------------------------------------------------------
+    # ── Super Bot ────────────────────────────────────────────────────────────
     if super_d:
         bal   = super_d.get("balance", 0)
         pnl   = super_d.get("total_pnl", 0)
@@ -436,11 +338,11 @@ def daily_report():
         lines.append("  F&G: " + str(fg.get("value", "?")) + " " + fg.get("label", ""))
         lines.append("  (JSON " + str(age) + " min alt)")
     else:
-        lines.append("⚡ SUPER BOT -- keine Daten (JSON fehlt)")
+        lines.append("⚡ SUPER BOT — keine Daten (JSON fehlt)")
 
     lines.append("")
 
-    # -- Crypto Bot ----------------------------------------------------------
+    # ── Crypto Bot ────────────────────────────────────────────────────────────
     if crypto_d:
         bal   = crypto_d.get("balance", 0)
         pnl   = crypto_d.get("total_pnl", 0)
@@ -464,31 +366,31 @@ def daily_report():
         lines.append("  F&G: " + str(fg.get("value", "?")) + " " + fg.get("label", ""))
         lines.append("  (JSON " + str(age) + " min alt)")
     else:
-        lines.append("₿ CRYPTO BOT -- keine Daten (JSON fehlt)")
+        lines.append("₿ CRYPTO BOT — keine Daten (JSON fehlt)")
 
     lines.append("")
 
-    # -- System health -------------------------------------------------------
+    # ── System health ─────────────────────────────────────────────────────────
     cpu, ram, disk_pct, disk_free = system_health()
     lines.append("🖥️  System")
     if cpu is not None:
         lines.append("  CPU: " + str(cpu) + "%  RAM: " + str(ram) + "%" +
                      ("  Disk: " + str(disk_pct) + "% (frei " + str(disk_free) + ")" if disk_pct else ""))
     else:
-        lines.append("  (Systemdaten nicht verfuegbar)")
+        lines.append("  (Systemdaten nicht verfügbar)")
 
-    # -- Screen session status -----------------------------------------------
+    # ── Screen session status ─────────────────────────────────────────────────
     lines.append("")
     lines.append("🖥️  Screen Sessions")
     for session, bot in BOTS.items():
-        status = "✅ laeuft" if screen_alive(session) else "❌ TOT"
+        status = "✅ läuft" if screen_alive(session) else "❌ TOT"
         lines.append("  " + session.ljust(16) + status)
 
     msg = "\n".join(lines)
     print("[REPORT]\n" + msg)
     tg(msg)
 
-# -- Main loop ----------------------------------------------------------------
+# ── Main loop ─────────────────────────────────────────────────────────────────
 
 def run():
     global _last_daily
@@ -496,10 +398,9 @@ def run():
     print("=" * 55)
     print("  MONITOR AGENT gestartet")
     print("  Check-Interval: " + str(CHECK_INTERVAL) + "s")
-    print("  No-trades alert: >" + str(NO_TRADES_HOURS) + "h Stille")
-    print("  Ueberwacht: " + ", ".join(BOTS.keys()))
+    print("  Überwacht: " + ", ".join(BOTS.keys()))
     print("=" * 55)
-    tg("🟢 Monitor Agent gestartet\nUeberwacht: " + ", ".join(b["name"] for b in BOTS.values()))
+    tg("🟢 Monitor Agent gestartet\nÜberwacht: " + ", ".join(b["name"] for b in BOTS.values()))
 
     cycle = 0
     while True:
@@ -508,19 +409,16 @@ def run():
             cycle += 1
             print("\n[" + now.strftime("%H:%M:%S") + "] Zyklus " + str(cycle))
 
-            # 1) Watchdog -- restart dead screen sessions
+            # 1) Watchdog — restart dead screen sessions
             check_bots()
 
             # 2) Stale dashboard check
             check_stale()
 
-            # 3) No-trades alert (runs every cycle, has its own cooldown)
-            check_no_trades()
-
-            # 4) System health -- prints every cycle; Telegram only on threshold breach + cooldown
+            # 3) System health — prints every cycle; Telegram only on threshold breach + cooldown
             system_health()
 
-            # 5) Daily report at 08:00 (fires once per day)
+            # 4) Daily report at 08:00 (fires once per day)
             today = now.date()
             if now.hour == 8 and now.minute == 0 and _last_daily != today:
                 _last_daily = today

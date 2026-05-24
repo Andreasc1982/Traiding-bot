@@ -1,7 +1,7 @@
 {
   "peak_value": 200054.242799419,
-  "day_start_value": 178766.7361575544,
-  "day_start_date": "2026-05-23",
+  "day_start_value": 156525.34099950682,
+  "day_start_date": "2026-05-24",
   "halted": true,
   "resume_at": "2026-05-24 09:30",
   "events": [
@@ -78,6 +78,18 @@
       "portfolio_value": 164190.84,
       "peak_value": 200054.24,
       "resume_at": "2026-05-24 09:30"
+    },
+    {
+      "time": "2026-05-23 02:38:17",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-24 00:00:21",
+      "type": "DAY_START",
+      "date": "2026-05-24",
+      "value": 156525.34
     }
   ]
 }

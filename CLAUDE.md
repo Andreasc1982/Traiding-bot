@@ -813,6 +813,26 @@ screen -r monitor   # attach; Ctrl+A D to detach
 If either dashboard JSON is not updated in >15 minutes (bot alive but hung), sends:
 `⚠️ Super Bot Dashboard seit 16 min nicht aktualisiert — Bot evtl. hängend?`
 
+### No-trades alert
+
+If neither bot has made any trade in `NO_TRADES_HOURS` (default: **8 hours**) and both sessions are alive and no risk halt is active, sends a Telegram alert:
+
+```
+⚠️ KEIN TRADE seit 8.1h
+Letzter Trade: 2026-05-23 06:30
+Super Bot: 14 Trades insgesamt
+Crypto Bot: 7 Trades insgesamt
+Mögliche Ursachen: Indikatoren zu streng, Markt rangiert, Sentiment-Feeds ausgefallen?
+```
+
+**Guards** (alert suppressed if any apply):
+- `risk_halt.json` exists — bots intentionally stopped
+- Either trading session (`trading` or `crypto`) is dead — crash alert already firing
+- Combined trade history < `NO_TRADES_MIN_HISTORY` (3) — fresh start, no history yet
+- Cooldown: at most one alert per `NO_TRADES_COOLDOWN` (2 hours)
+
+Most recent trade time is parsed from the `trades` arrays in both dashboard JSONs (last entries). Handles both `"YYYY-MM-DD HH:MM:SS"` and `"YYYY-MM-DD HH:MM"` timestamp formats.
+
 ### System health thresholds
 
 | Metric | Alert threshold | Cooldown |
@@ -877,12 +897,13 @@ screen -r risk   # attach; Ctrl+A D to detach
 4. Hard-kills `screen:trading` after 15 seconds if still alive
 5. Sends Telegram alert with portfolio value, daily P&L %, drawdown %, peak value, resume time
 
-### Resume (automatic, next day at 09:30 local time)
+### Resume (automatic, 4-hour cooldown)
 
-1. Deletes `risk_halt.json`
-2. monitor_agent detects sessions dead on next 60s cycle and restarts both bots normally
-3. Daily P&L counter resets; all-time peak preserved
-4. Sends Telegram confirmation
+1. `resume_at` is set to `now + 4 hours` at halt time (not a fixed clock time — crypto trades 24/7)
+2. Deletes `risk_halt.json`
+3. monitor_agent detects sessions dead on next 60s cycle and restarts both bots normally
+4. Daily P&L counter resets; all-time peak preserved
+5. Sends Telegram confirmation
 
 ### State files
 
@@ -1204,7 +1225,7 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 ## TODO / Planned Improvements
 
 - [x] **Backtesting Agent** — `agents/backtest_agent.py` — 2024 full-year results: +18.5% ETFs, +280% crypto
-- [x] **Risk Agent** — `agents/risk_agent.py` — daily −5% / drawdown −15% halt, auto-resume 09:30
+- [x] **Risk Agent** — `agents/risk_agent.py` — daily −5% / drawdown −15% halt, auto-resume after 4h cooldown (not fixed 09:30 — crypto trades 24/7)
 - [x] **Optimierung Agent** — `agents/optimize_agent.py` — 81-combo weekly grid search (RSI · ST-mult · SL · TP) on live Alpaca data; indicator block analysis; Telegram report every Sunday 00:00
 - [x] **Kraken WebSocket** (`wss://ws.kraken.com`) — `_kraken_ws_run/on_open/on_message()` daemon thread; public trade channel (no auth); `KRAKEN_WS_PAIR_MAP` maps internal symbols to WS pair names (BTC/USD→XBT/USD etc.); `KRAKEN_WS_REVERSE` for reverse lookup; `start_websocket()` now branches on EXCHANGE: alpaca→Alpaca WS, kraken→Kraken WS; trade ticks update `ws_prices` and call `_ws_check_price()` same as Alpaca; spike detection disabled for Kraken (volume format incompatible); activates automatically when `"exchange": "kraken"` set in config.py
 - [x] **GitHub Backup** — `agents/github_backup.py` nightly at 02:00; git repo initialised on server (branch `main`); `.gitignore` excludes all secrets (`config.*`), state files, live feeds; push activates when `"github_repo"` key is added to `config.py`
@@ -1221,6 +1242,8 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **Korrelations-Management** — `_pearson(a, b)` static method computes Pearson correlation of daily/hourly returns; `_check_correlation(symbol)` compares candidate vs all open positions using `_bar_cache` (last 20 closes cached by `get_indicators()` — zero extra API calls); in `trade()` after HTF check: if max correlation > 0.85 → skip with `[SKIP] XOP Korrelation=0.92 zu XLE`; applies to both bots; threshold 0.85 allows moderate correlation (e.g. BTC+ETH≈0.80) but blocks near-duplicate exposures (e.g. XLE+XOP≈0.95)
 - [x] **Stochastic RSI** — computed in `get_indicators()` from full Wilder RSI series (replaces single-value RSI calc); `StochRSI=(RSI−min14)/(max14−min14)`, `%K=SMA3(StochRSI)`, `%D=SMA3(%K)`; gate: `stoch_ok = %K > %D and %K < 0.8` (momentum up, not overbought); weight `×0.5` in gate score; max score increases from 7.5→8.0 (divisor updated in both bots); shown as `StRSI=ok/no` in BUY/SKIP logs; neutral `True` fallback if insufficient bars; `stoch_k` (continuous 0–1) also returned in `ind` dict as ML feature
 - [x] **Random Forest ML Meta-Filter** — super_bot only; `_ml_train()` called on startup + daily midnight from main loop; loads `trades_history.json`, filters trades with `"features"` key (stored at entry time), trains `sklearn.RandomForestClassifier(n_estimators=100, max_depth=5, min_samples_leaf=5)` on last 200 labeled samples; deactivated (pass-through) when < 30 labeled trades available; 10 features: `rsi, adx, cmf, macd_hist, stoch_k, ma_dist_pct, vwap_dist_pct, fg_value, pc_ratio, score_pct`; `_ml_predict()` returns win probability [0–1]; gate in `trade()` after score check: `ml_prob < 0.55` → `[SKIP] XLK ML=48%<55%`; features stored in `positions[symbol]["ml_features"]` at buy, copied to `trades_history.json` at close so each trade self-labels the next training run; `scikit-learn` installed in venv; neutral 1.0 on ImportError or model crash
+- [x] **Risk Agent 4h Cooldown** — replaced fixed `RESUME_TIME = "09:30"` (next-day stock-market thinking) with `RESUME_HOURS = 4`; `halt_bots()` now sets `resume_dt = now + timedelta(hours=4)`; works correctly for crypto 24/7 — a halt at 22:00 resumes at 02:00, not 09:30 next day; Telegram halt alert shows `Resuming: 2026-05-23 06:30 (+4h)`
+- [x] **Monitor Agent No-Trades Alert** — `check_no_trades()` runs every 60s cycle with 2h cooldown (`NO_TRADES_COOLDOWN=7200`); reads `trades` arrays from both dashboard JSONs; parses most recent trade timestamp; if silence ≥ `NO_TRADES_HOURS` (8h) and bots are running + not risk-halted + ≥3 trades in history → Telegram alert listing silence duration, last trade time, and possible causes; guards against false positives on fresh start and crash states
 
 ---
 
