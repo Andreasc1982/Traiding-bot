@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 from datetime import datetime, timezone, timedelta
-import time, requests, json, feedparser, re, os, hashlib, hmac, base64, urllib.parse, threading
+import time, requests, json, feedparser, re, os, hashlib, hmac, base64, urllib.parse, threading, socket
+
+# Global socket timeout — prevents feedparser.parse() and any urllib call from
+# blocking the main thread indefinitely when an RSS/Nitter/Reddit server hangs.
+# WebSocket keepalive (ping_interval=30, ping_timeout=10) is unaffected since
+# websocket-client manages its own socket after the initial connection.
+socket.setdefaulttimeout(15)
 
 # ── Sentiment analyser: VADER (preferred) with TextBlob fallback ───────────
 try:
@@ -48,8 +54,10 @@ KRAKEN_BASE_URL   = "https://api.kraken.com"
 
 DEMO_MODE         = config.get("demo_mode", True)
 
-CRYPTO_MAIN = ["BTC/USD","ETH/USD","SOL/USD","XRP/USD","AVAX/USD","LINK/USD","LTC/USD"]
-CRYPTO_MEME = ["DOGE/USD","SHIB/USD","PEPE/USD","WIF/USD"]
+CRYPTO_MAIN = ["BTC/USD","ETH/USD","SOL/USD","XRP/USD","AVAX/USD","LINK/USD","LTC/USD",
+               "ADA/USD","DOT/USD","UNI/USD","AAVE/USD",
+               "ARB/USD","POL/USD","RENDER/USD"]
+CRYPTO_MEME = ["DOGE/USD","SHIB/USD","PEPE/USD","WIF/USD","BONK/USD","TRUMP/USD"]
 
 KEYWORDS = {
     "BTC/USD":  ["bitcoin","btc"],
@@ -59,10 +67,19 @@ KEYWORDS = {
     "AVAX/USD": ["avalanche","avax"],
     "LINK/USD": ["chainlink","link"],
     "LTC/USD":  ["litecoin","ltc"],
-    "DOGE/USD": ["dogecoin","doge"],
-    "SHIB/USD": ["shiba","shib"],
-    "PEPE/USD": ["pepe"],
-    "WIF/USD":  ["wif","dogwifhat"],
+    "ADA/USD":  ["cardano","ada"],
+    "DOT/USD":  ["polkadot","dot","parachain"],
+    "UNI/USD":  ["uniswap","uni"],
+    "AAVE/USD": ["aave","aave protocol","defi lending"],
+    "DOGE/USD":   ["dogecoin","doge"],
+    "SHIB/USD":   ["shiba","shib"],
+    "PEPE/USD":   ["pepe"],
+    "WIF/USD":    ["wif","dogwifhat"],
+    "ARB/USD":    ["arbitrum","arb","layer 2","l2"],
+    "POL/USD":    ["polygon","pol","matic"],
+    "RENDER/USD": ["render","rndr","render network","gpu rendering","ai render"],
+    "BONK/USD":   ["bonk","bonk coin","solana meme"],
+    "TRUMP/USD":  ["trump coin","trump token","maga coin","trump crypto"],
 }
 
 KRAKEN_SYMBOL_MAP = {
@@ -73,10 +90,18 @@ KRAKEN_SYMBOL_MAP = {
     "AVAX/USD": "AVAXUSD",
     "LINK/USD": "LINKUSD",
     "LTC/USD":  "LTCUSD",
-    "DOGE/USD": "DOGEUSD",
-    "SHIB/USD": "SHIBUSD",
-    "PEPE/USD": "PEPEUSD",
-    "WIF/USD":  "WIFUSD",
+    "ADA/USD":  "ADAUSD",
+    "DOT/USD":  "DOTUSD",
+    "UNI/USD":  "UNIUSD",
+    "AAVE/USD": "AAVEUSD",
+    "DOGE/USD":   "DOGEUSD",
+    "SHIB/USD":   "SHIBUSD",
+    "PEPE/USD":   "PEPEUSD",
+    "WIF/USD":    "WIFUSD",
+    "ARB/USD":    "ARBUSD",
+    "POL/USD":    "POLUSD",
+    "RENDER/USD": "RENDERUSD",
+    # BONK + TRUMP not on Kraken — Alpaca only
 }
 
 # Kraken WebSocket pair names (different from REST — BTC uses "XBT", slashes kept)
@@ -90,8 +115,16 @@ KRAKEN_WS_PAIR_MAP = {
     "AVAX/USD": "AVAX/USD",
     "LINK/USD": "LINK/USD",
     "LTC/USD":  "LTC/USD",
-    "DOGE/USD": "DOGE/USD",
-    "SHIB/USD": "SHIB/USD",
+    "ADA/USD":  "ADA/USD",
+    "DOT/USD":  "DOT/USD",
+    "UNI/USD":  "UNI/USD",
+    "AAVE/USD": "AAVE/USD",
+    "DOGE/USD":   "DOGE/USD",
+    "SHIB/USD":   "SHIB/USD",
+    "ARB/USD":    "ARB/USD",
+    "POL/USD":    "POL/USD",
+    "RENDER/USD": "RENDER/USD",
+    # PEPE, WIF, BONK, TRUMP not listed on Kraken WS — excluded intentionally
 }
 # Reverse map: Kraken WS pair → our internal symbol
 KRAKEN_WS_REVERSE  = {v: k for k, v in KRAKEN_WS_PAIR_MAP.items()}
@@ -104,10 +137,19 @@ KRAKEN_MIN_QTY = {
     "AVAX/USD": 0.1,
     "LINK/USD": 0.5,
     "LTC/USD":  0.05,
-    "DOGE/USD": 50.0,
-    "SHIB/USD": 1_000_000.0,
-    "PEPE/USD": 1_000_000.0,
-    "WIF/USD":  1.0,
+    "ADA/USD":  15.0,
+    "DOT/USD":  0.5,
+    "UNI/USD":  0.5,
+    "AAVE/USD": 0.02,
+    "DOGE/USD":   50.0,
+    "SHIB/USD":   1_000_000.0,
+    "PEPE/USD":   1_000_000.0,
+    "WIF/USD":    1.0,
+    "ARB/USD":    5.0,
+    "POL/USD":    5.0,
+    "RENDER/USD": 1.0,
+    "BONK/USD":   100_000.0,
+    "TRUMP/USD":  1.0,
 }
 
 # Persists balance + daily-loss baseline between restarts
@@ -120,11 +162,11 @@ class CryptoBot:
         self.balance   = 10000.0
         self.positions = {}
         self.trades    = []
-        self.stop_loss    = 3.0   # optimized: 4.0 → 3.0
-        self.take_profit  = 8.0   # optimized: 10.0 → 8.0
-        self.max_pos      = 6
-        self.pos_size     = 0.08
-        self.meme_size    = 0.03
+        self.stop_loss    = 4.0   # main coins — 4% hard stop
+        self.take_profit  = 8.0
+        self.max_pos      = 8     # 6→8: bigger universe (20 coins) needs more slots
+        self.pos_size     = 0.06  # 8%→6%: smaller per position, more positions active
+        self.meme_size    = 0.03  # meme coins stay at 3%
         self.running      = True
         self.last_skips   = []
         self.last_fg      = {"value": 50, "label": "N/A"}
@@ -148,11 +190,16 @@ class CryptoBot:
         self.avg_vol    = {}        # symbol → (avg_vol_per_min, timestamp) — main thread populates
         self.ws_volume  = {}        # symbol → {"vol": float, "start": float} — 60s rolling window
 
+        # Whale Alert fast-path — separate polling thread
+        self._whale_seen  = set()   # transaction IDs already processed (dedup)
+        self._whale_alerted = set() # symbols already fast-path traded this hour
+
         # Higher-Timeframe (daily) trend cache — refreshed every 10 min
         self._htf_cache = {}        # symbol → (bullish: bool, timestamp: float)
 
         # Correlation management — recent closes cached from get_indicators()
-        self._bar_cache = {}        # symbol → list of last 20 hourly closes
+        self._bar_cache    = {}     # symbol → list of last 20 hourly closes
+        self._price_changes = {}    # symbol → 24h price change % (updated each analyze cycle)
 
         self.alpaca_headers = {
             "APCA-API-KEY-ID":     ALPACA_API_KEY,
@@ -330,10 +377,14 @@ class CryptoBot:
                     with self.positions_lock:
                         self.positions = valid
                     for sym, pos in valid.items():
-                        spike_tag = " [SPIKE]" if pos.get("spike") else ""
+                        spike_tag = " [SPIKE]" if pos.get("spike") else (" [WHALE]" if pos.get("whale") else "")
+                        entry = pos["entry"]
+                        # Use more decimal places for sub-cent coins (SHIB, PEPE, etc.)
+                        entry_str = ("{:.8f}".format(entry).rstrip("0") if entry < 0.01
+                                     else str(round(entry, 4)))
                         print("[STATE] Position wiederhergestellt: " + sym +
                               " " + str(round(pos["shares"], 6)) +
-                              " @ $" + str(round(pos["entry"], 4)) +
+                              " @ $" + entry_str +
                               " seit " + pos.get("time", "?") + spike_tag)
         except Exception as e:
             print("[STATE] Load error: " + str(e))
@@ -721,6 +772,14 @@ class CryptoBot:
             # Cache recent closes for correlation check in trade()
             self._bar_cache[symbol] = closes[-20:]
 
+            # 24h price change (hourly bars: index -25 ≈ 24h ago)
+            if len(closes) >= 25:
+                change_24h = (closes[-1] - closes[-25]) / closes[-25] * 100
+                self._price_changes[symbol] = round(change_24h, 2)
+            elif len(closes) >= 2:
+                change_24h = (closes[-1] - closes[0]) / closes[0] * 100
+                self._price_changes[symbol] = round(change_24h, 2)
+
             return {
                 "rsi":         round(rsi, 1),
                 "ma20":        round(ma20, 4),
@@ -733,10 +792,10 @@ class CryptoBot:
                 "supertrend":  supertrend,
                 "obv_rising":  obv_rising,
                 "cmf":         cmf,
-                "psar":        round(psar_val, 4),
+                "psar":        round(psar_val, 8),   # 8 decimals for micro-prices (SHIB/PEPE/BONK)
                 "psar_ok":     psar_ok,
-                "tenkan":      round(tenkan, 4),
-                "kijun":       round(kijun, 4),
+                "tenkan":      round(tenkan, 8),
+                "kijun":       round(kijun, 8),
                 "cloud_top":   round(cloud_top, 4),
                 "ichi_ok":     ichi_ok,
                 "adx":         adx,
@@ -765,6 +824,160 @@ class CryptoBot:
         """Non-blocking lookup for the WS thread. Returns None if not yet cached."""
         cached = self.avg_vol.get(symbol)
         return cached[0] if cached else None
+
+    # ── Whale Alert fast-path ─────────────────────────────────────────────────
+
+    def _whale_fast_path_run(self):
+        """Background thread: polls Whale Alert every 60s.
+        On a mega-transfer (≥$100M FROM exchange → bullish, ≥$200M TO exchange → bearish),
+        fires an immediate buy/sell decision without waiting for the 2-min analyze() cycle.
+
+        Free tier delay: ~1-5 min after on-chain confirmation.
+        Typical lead time over market reaction: 5-20 min → exploitable edge.
+        """
+        WA_KEY = config.get("whale_alert_key", "")
+        if not WA_KEY:
+            return   # silently exit — no key configured
+
+        SYMBOL_MAP = {
+            "btc":  "BTC/USD",  "eth":  "ETH/USD",  "sol":  "SOL/USD",
+            "xrp":  "XRP/USD",  "avax": "AVAX/USD", "link": "LINK/USD",
+            "ltc":  "LTC/USD",  "doge": "DOGE/USD", "shib": "SHIB/USD",
+            "pepe": "PEPE/USD", "wif":  "WIF/USD",
+        }
+        WHALE_BUY_THRESHOLD  = 100_000_000   # $100M from exchange → likely accumulation
+        WHALE_SELL_THRESHOLD = 200_000_000   # $200M to exchange   → likely distribution
+        WHALE_POS_SIZE       = 0.06          # 6% of balance per whale buy
+        WHALE_SL             = 2.0           # 2% stop-loss
+        WHALE_TP             = 8.0           # 8% take-profit (same as normal)
+        ALERT_TTL            = 3600          # reset per-symbol cooldown every hour
+
+        print("[WHALE-FP] Fast-Path Thread gestartet (Poll alle 60s, Schwelle: $100M)")
+
+        last_alert_reset = time.time()
+
+        while self.running:
+            try:
+                # Reset per-symbol cooldown every hour to allow fresh signals
+                if time.time() - last_alert_reset > ALERT_TTL:
+                    self._whale_alerted.clear()
+                    last_alert_reset = time.time()
+
+                start = int(time.time()) - 90   # last 90s (overlap so we don't miss anything)
+                r = requests.get(
+                    "https://api.whale-alert.io/v1/transactions",
+                    params={"api_key": WA_KEY, "min_value": WHALE_BUY_THRESHOLD,
+                            "start": start, "limit": 50},
+                    timeout=10,
+                )
+                if r.status_code != 200:
+                    time.sleep(60)
+                    continue
+
+                txs = r.json().get("transactions", [])
+                for tx in txs:
+                    tx_id     = str(tx.get("id", ""))
+                    sym_key   = tx.get("symbol", "").lower()
+                    symbol    = SYMBOL_MAP.get(sym_key)
+                    amount_usd = float(tx.get("amount_usd", 0))
+
+                    if not symbol or tx_id in self._whale_seen:
+                        continue
+                    self._whale_seen.add(tx_id)
+                    # Keep seen-set bounded
+                    if len(self._whale_seen) > 500:
+                        self._whale_seen.clear()
+
+                    to_type   = tx.get("to",   {}).get("owner_type", "unknown")
+                    from_type = tx.get("from", {}).get("owner_type", "unknown")
+
+                    # ── BUY trigger: large outflow from exchange (accumulation) ──
+                    if (from_type == "exchange"
+                            and amount_usd >= WHALE_BUY_THRESHOLD
+                            and symbol not in self._whale_alerted):
+
+                        self._whale_alerted.add(symbol)
+                        usd_m = round(amount_usd / 1_000_000)
+                        owner = tx.get("from", {}).get("owner", "exchange")
+
+                        with self.positions_lock:
+                            already_in = symbol in self.positions
+                            pos_full   = len(self.positions) >= self.max_pos
+                            bal        = self.balance
+
+                        if already_in or pos_full or self.tg_paused:
+                            self.log("[WHALE-FP] SIGNAL {}: ${:,}M von {} — Pos voll/pausiert, kein Kauf".format(
+                                symbol, usd_m, owner))
+                            continue
+
+                        price = self.ws_prices.get(symbol)
+                        if not price:
+                            continue
+
+                        size   = WHALE_POS_SIZE
+                        shares = round((bal * size) / price, 6)
+                        cost   = round(shares * price, 2)
+
+                        if shares <= 0 or cost > bal * 0.95:
+                            continue
+
+                        self.log("[WHALE-FP] BUY {} ${:,}M Abfluss von {} → sofortiger Kauf".format(
+                            symbol, usd_m, owner))
+
+                        ok = self.place_order(symbol, "buy", shares, price)
+                        if ok:
+                            with self.positions_lock:
+                                self.balance -= cost
+                                self.positions[symbol] = {
+                                    "shares":      shares,
+                                    "entry":       price,
+                                    "highest":     price,
+                                    "time":        datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                    "stop_loss":   WHALE_SL,
+                                    "take_profit": WHALE_TP,
+                                    "whale":       True,
+                                    "whale_usd_m": usd_m,
+                                }
+                            self._save_state()
+                            self.send("🐋 <b>WHALE BUY {}</b> ${:,}M Abfluss von {}\n"
+                                      "Kauf {} @ ${} | SL {}% TP {}%".format(
+                                symbol, usd_m, owner,
+                                shares, round(price, 4),
+                                WHALE_SL, WHALE_TP))
+
+                    # ── ALERT trigger: massive inflow to exchange (distribution) ──
+                    elif (to_type == "exchange"
+                            and amount_usd >= WHALE_SELL_THRESHOLD
+                            and symbol not in self._whale_alerted):
+
+                        self._whale_alerted.add(symbol)
+                        usd_m = round(amount_usd / 1_000_000)
+                        owner = tx.get("to", {}).get("owner", "exchange")
+
+                        with self.positions_lock:
+                            has_pos = symbol in self.positions
+
+                        msg = "🐋⚠️ <b>WHALE SELL-SIGNAL {}</b>\n${:,}M Zufluss zu {}\n".format(
+                            symbol, usd_m, owner)
+                        if has_pos:
+                            msg += "⚡ Position vorhanden — Stop auf 0.5% gezogen"
+                            # Tighten stop on existing position
+                            with self.positions_lock:
+                                if symbol in self.positions:
+                                    current = self.ws_prices.get(symbol,
+                                        self.positions[symbol]["entry"])
+                                    self.positions[symbol]["stop_loss"] = 0.5
+                                    self.positions[symbol]["psar_stop"] = current * 0.995
+                        else:
+                            msg += "Keine offene Position — Kauf blockiert"
+                        self.send(msg)
+                        self.log("[WHALE-FP] SELL-SIGNAL {}: ${:,}M zu {}".format(
+                            symbol, usd_m, owner))
+
+            except Exception as e:
+                self.log("[WHALE-FP] Fehler: " + str(e))
+
+            time.sleep(60)
 
     def start_websocket(self):
         if not WS_AVAILABLE:
@@ -990,6 +1203,61 @@ class CryptoBot:
         self.ws_connected = False
         print("[KRAKEN_WS] Geschlossen — Code: " + str(code))
 
+    def _exit_trigger(self, pos, price, ws=True):
+        """
+        Tiered profit-protection exit logic — uses live WebSocket prices.
+
+        Zones (based on best P&L ever seen for this position):
+          ≥ tp%   → classic 1.5% trailing stop from peak
+          ≥ 6%    → lock minimum (peak − 2%) — trail 2% behind best gain
+          ≥ 4%    → lock minimum +2%
+          ≥ 2%    → break-even stop (never lose on a winning trade)
+          < 2%    → standard hard stop-loss
+
+        PSAR dynamic stop always checked first (highest priority).
+        Returns trigger string or None.
+        """
+        entry    = pos["entry"]
+        highest  = pos.get("highest", entry)
+        pnl_pct  = ((price - entry) / entry) * 100
+        best_pnl = ((highest - entry) / entry) * 100
+        trailing = ((highest - price) / highest) * 100
+        psar_stop = pos.get("psar_stop")
+        sl = pos.get("stop_loss", self.stop_loss)
+        tp = pos.get("take_profit", self.take_profit)
+        pfx = "WS-" if ws else ""
+
+        # 1. PSAR dynamic stop — always highest priority
+        if psar_stop is not None and price < psar_stop:
+            return pfx + "PSAR-STOP"
+
+        # 2. Take-profit zone — classic trailing
+        if best_pnl >= tp:
+            if trailing >= 1.5:
+                return pfx + "TRAIL-STOP"
+
+        # 3. Deep profit zone (≥6%) — trail 2% behind personal best
+        elif best_pnl >= 6.0:
+            if pnl_pct < best_pnl - 2.0:
+                return pfx + "PROFIT-LOCK"
+
+        # 4. Good profit zone (≥4%) — protect minimum +2%
+        elif best_pnl >= 4.0:
+            if pnl_pct < 2.0:
+                return pfx + "PROFIT-LOCK"
+
+        # 5. Break-even zone (≥2%) — never lose on a trade that was winning
+        elif best_pnl >= 2.0:
+            if pnl_pct < 0.0:
+                return pfx + "BREAKEVEN"
+
+        # 6. Standard hard stop — position never reached +2%
+        else:
+            if pnl_pct <= -sl:
+                return pfx + "STOP-LOSS"
+
+        return None
+
     def _ws_check_price(self, symbol, price):
         """
         Called on every trade tick. Evaluates stop-loss and trailing take-profit
@@ -1000,24 +1268,14 @@ class CryptoBot:
             if symbol not in self.positions:
                 return
             pos = self.positions[symbol]
-            pnl_pct = ((price - pos["entry"]) / pos["entry"]) * 100
 
             # Track intraday high for trailing stop
             if price > pos.get("highest", pos["entry"]):
                 pos["highest"] = price
 
-            trailing = ((pos["highest"] - price) / pos["highest"]) * 100
-
-            psar_stop = pos.get("psar_stop")
-            sl = pos.get("stop_loss", self.stop_loss)
-            tp = pos.get("take_profit", self.take_profit)
-            if psar_stop is not None and price < psar_stop:
-                trigger = "WS-PSAR-STOP"
-            elif pnl_pct <= -sl:
-                trigger = "WS-STOP-LOSS"
-            elif pnl_pct >= tp and trailing >= 2.0:
-                trigger = "WS-TRAIL-STOP"
-            else:
+            pnl_pct = ((price - pos["entry"]) / pos["entry"]) * 100
+            trigger = self._exit_trigger(pos, price, ws=True)
+            if trigger is None:
                 return
 
         # Close outside the lock — close_position re-acquires it internally.
@@ -1093,17 +1351,275 @@ class CryptoBot:
             "https://news.google.com/rss/search?q=crypto+whale+bitcoin&hl=en-US&gl=US&ceid=US:en",
             "https://news.google.com/rss/search?q=crypto+SEC+regulation&hl=en-US&gl=US&ceid=US:en",
             "https://news.google.com/rss/search?q=bitcoin+blackrock+etf&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=cardano+ADA+crypto&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=polkadot+DOT+crypto&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=uniswap+UNI+defi&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=aave+defi+lending+crypto&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=arbitrum+ARB+layer2&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=polygon+POL+MATIC+crypto&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=render+network+RNDR+AI+crypto&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=bonk+coin+solana+meme&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=trump+coin+crypto+maga&hl=en-US&gl=US&ceid=US:en",
         ]
         articles = []
         for url in feeds:
             try:
-                feed = feedparser.parse(url)
+                r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                feed = feedparser.parse(r.content)
                 for entry in feed.entries[:10]:
                     articles.append(entry.title + " " + getattr(entry, "summary", ""))
             except Exception as e:
                 print("[RSS] Fehler: " + str(e))
         print("[NEWS] " + str(len(articles)) + " Artikel via RSS")
         return articles
+
+    # ── On-Chain Exchange Wallet Tracker ─────────────────────────────────────
+    #
+    # Tracks balance changes in the ACTUAL exchange cold/hot wallets on-chain.
+    # When coins leave these wallets → accumulation (bullish).
+    # When coins flow IN  → distribution / sell pressure (bearish).
+    #
+    # This is as close to "insider trading detection" as free data allows:
+    # large coordinated outflows from exchange wallets often precede price pumps
+    # by 15-60 minutes as OTC deals and large off-exchange buys settle.
+    #
+    # Data sources:
+    #   BTC  — blockchain.info balance API   (no key needed)
+    #   ETH  — Etherscan V2 balance API      (free key: etherscan.io)
+
+    # Known exchange cold/hot wallets
+    _BTC_EXCHANGE_WALLETS = {
+        "Binance":  "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo",
+        "Bitfinex": "3JZq4atUahhuA9rLhXLMhhTo133J9rq97E",
+    }
+    _ETH_EXCHANGE_WALLETS = {
+        "Binance1": "0xBE0eB53F46Cd790Cd13851d5EFf43D12404d33E8",
+        "Binance2": "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+        "Coinbase": "0x71660c4005BA85c37ccec55d0C4493E66Fe775d3",
+        "Kraken":   "0x2910543Af39abA0Cd09dBb2D50200b3E800A63D2",
+    }
+    # Insider-signal thresholds
+    _BTC_ALERT_LARGE   = 2000    # BTC leaving in 1h → Telegram alert + strong buy
+    _BTC_SIGNAL_SMALL  = 500     # BTC leaving in 1h → moderate buy signal
+    _ETH_ALERT_LARGE   = 20_000  # ETH leaving in 1h → alert
+    _ETH_SIGNAL_SMALL  = 5_000   # ETH leaving in 1h → moderate signal
+
+    def _onchain_btc_balance(self):
+        """Sum BTC balance across tracked exchange wallets. Returns dict {name: btc}."""
+        balances = {}
+        for name, addr in self._BTC_EXCHANGE_WALLETS.items():
+            try:
+                r = requests.get(
+                    "https://blockchain.info/balance",
+                    params={"active": addr},
+                    timeout=10,
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    btc = data[addr]["final_balance"] / 1e8
+                    balances[name] = btc
+            except Exception as e:
+                print("[ONCHAIN] BTC {}: {}".format(name, e))
+            time.sleep(1)   # be polite to blockchain.info
+        return balances
+
+    def _onchain_erc20_flows(self, es_key):
+        """Track ERC-20 token flows for LINK, SHIB, PEPE via Etherscan.
+        Detects large transfers FROM known exchange wallets (insider accumulation).
+        Small coins move faster — even $1M outflow can trigger 50-500% pump.
+        """
+        TOKEN_CONTRACTS = {
+            # symbol         contract                                       decimals  min_tokens (≈$1M worth)
+            "LINK/USD":   ("0x514910771AF9Ca656af840dff83E8264EcF986CA", 18,      50_000),
+            "AAVE/USD":   ("0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", 18,      10_000),
+            "UNI/USD":    ("0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", 18,     200_000),
+            "ARB/USD":    ("0xB50721BCf8d664c30412Cfbc6cf7a15145234ad1", 18,   1_000_000),
+            "POL/USD":    ("0x455e53CBB86018Ac2B8092FdCd39d8444aFFC3F6", 18,   5_000_000),
+            "RENDER/USD": ("0x6De037ef9aD2725EB40118Bb1702EBb27e4Aeb24", 18,      50_000),
+            "SHIB/USD":   ("0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", 18, 50_000_000_000_000),
+            "PEPE/USD":   ("0x6982508145454Ce325dDbE47a25d4ec3d2311933", 18,  5_000_000_000_000),
+        }
+        EXCHANGE_ADDRS = {a.lower() for a in self._ETH_EXCHANGE_WALLETS.values()}
+        scores = {}
+
+        try:
+            rb = requests.get(
+                "https://api.etherscan.io/v2/api",
+                params={"chainid": "1", "module": "proxy",
+                        "action": "eth_blockNumber", "apikey": es_key},
+                timeout=8,
+            )
+            if rb.status_code != 200:
+                return scores
+            current_block = int(rb.json()["result"], 16)
+            start_block   = current_block - 300   # ≈ last 1 hour (12s/block)
+        except Exception as e:
+            print("[ONCHAIN-ERC20] Block lookup: " + str(e))
+            return scores
+
+        for symbol, (contract, decimals, min_tokens) in TOKEN_CONTRACTS.items():
+            try:
+                time.sleep(0.25)
+                r = requests.get(
+                    "https://api.etherscan.io/v2/api",
+                    params={
+                        "chainid": "1", "module": "account", "action": "tokentx",
+                        "contractaddress": contract,
+                        "startblock": start_block, "endblock": "latest",
+                        "sort": "desc", "apikey": es_key,
+                        "offset": 100, "page": 1,
+                    },
+                    timeout=10,
+                )
+                if r.status_code != 200 or r.json()["status"] != "1":
+                    continue
+
+                outflow = 0.0
+                inflow  = 0.0
+                for tx in r.json()["result"]:
+                    amount  = int(tx["value"]) / (10 ** decimals)
+                    from_ex = tx["from"].lower() in EXCHANGE_ADDRS
+                    to_ex   = tx["to"].lower()   in EXCHANGE_ADDRS
+                    if from_ex:
+                        outflow += amount
+                    elif to_ex:
+                        inflow  += amount
+
+                ticker = symbol.split("/")[0]
+                if outflow >= min_tokens:
+                    factor = outflow / min_tokens
+                    score  = min(factor * 0.8, 3.0)
+                    scores[symbol] = scores.get(symbol, 0) + score
+                    print("[ONCHAIN-ERC20] {} Abfluss {:,.0f} ({}×) → +{:.1f}".format(
+                        ticker, outflow, round(factor, 1), score))
+                    if outflow >= min_tokens * 5:
+                        self.send("🚨 <b>ONCHAIN INSIDER SIGNAL — {}</b>\n"
+                                  "{:,.0f} Token verlassen Exchange ({}×)\n"
+                                  "→ Insider-Akkumulation vor möglichem Pump!".format(
+                            ticker, outflow, round(factor, 1)))
+                if inflow >= min_tokens:
+                    score = min((inflow / min_tokens) * 0.5, 2.0)
+                    scores[symbol] = scores.get(symbol, 0) - score
+                    print("[ONCHAIN-ERC20] {} Zufluss {:,.0f} → -{:.1f}".format(
+                        ticker, inflow, score))
+
+            except Exception as e:
+                print("[ONCHAIN-ERC20] {}: {}".format(symbol, e))
+
+        return scores
+
+    def _onchain_eth_balance(self, es_key):
+        """Sum ETH balance across tracked exchange wallets (Etherscan API)."""
+        balances = {}
+        addrs = ",".join(self._ETH_EXCHANGE_WALLETS.values())
+        names = list(self._ETH_EXCHANGE_WALLETS.keys())
+        try:
+            r = requests.get(
+                "https://api.etherscan.io/v2/api",
+                params={"chainid": "1", "module": "account", "action": "balancemulti",
+                        "address": addrs, "tag": "latest", "apikey": es_key},
+                timeout=10,
+            )
+            if r.status_code == 200 and r.json()["status"] == "1":
+                for item in r.json()["result"]:
+                    addr  = item["account"].lower()
+                    eth   = int(item["balance"]) / 1e18
+                    # find name for this address
+                    for name, a in self._ETH_EXCHANGE_WALLETS.items():
+                        if a.lower() == addr:
+                            balances[name] = eth
+                            break
+        except Exception as e:
+            print("[ONCHAIN] ETH Etherscan: {}".format(e))
+        return balances
+
+
+    def fetch_onchain(self):
+        """Main on-chain call — runs in analyze() cycle every ~2 min.
+        Returns score dict for BTC/ETH/LTC based on exchange wallet flows.
+        Sends Telegram alert on insider-scale movements (>BTC_ALERT_LARGE in 1h).
+        """
+        scores = {s: 0.0 for s in CRYPTO_MAIN + CRYPTO_MEME}
+        now    = time.time()
+
+        ES_KEY = config.get("etherscan_api_key", "")
+
+        # ── 1. BTC exchange wallet balances (blockchain.info, always free) ──
+        btc_now = self._onchain_btc_balance()
+        if btc_now:
+            # Compare to 1-hour-ago snapshot
+            prev = getattr(self, "_onchain_btc_prev", {})
+            prev_time = getattr(self, "_onchain_btc_prev_time", 0)
+
+            if prev and (now - prev_time) >= 3500:   # ~1h window
+                for name, bal_now in btc_now.items():
+                    bal_prev = prev.get(name, bal_now)
+                    delta = bal_prev - bal_now   # positive = coins LEAVING (bullish)
+                    if abs(delta) > 50:
+                        direction = "⬇️ Abfluss" if delta > 0 else "⬆️ Zufluss"
+                        print("[ONCHAIN] BTC {} {}: {:+.0f} BTC in 1h".format(
+                            name, direction, delta))
+                        if delta > self._BTC_ALERT_LARGE:
+                            scores["BTC/USD"] += 3.0
+                            self.send("🚨 <b>ONCHAIN INSIDER SIGNAL</b>\n"
+                                      "BTC: {:+.0f} verlassen {} in 1h\n"
+                                      "→ Grosse Akkumulation — möglicher Insider-Kauf!".format(delta, name))
+                        elif delta > self._BTC_SIGNAL_SMALL:
+                            scores["BTC/USD"] += 1.5
+                        elif delta < -self._BTC_SIGNAL_SMALL:
+                            scores["BTC/USD"] -= 1.0
+
+                # Reset 1h window
+                self._onchain_btc_prev      = btc_now
+                self._onchain_btc_prev_time = now
+            elif not prev:
+                # First run — store baseline
+                self._onchain_btc_prev      = btc_now
+                self._onchain_btc_prev_time = now
+                total = sum(btc_now.values())
+                print("[ONCHAIN] BTC Baseline: {:.0f} BTC in {} Exchange-Wallets".format(
+                    total, len(btc_now)))
+
+        # ── 2. ERC-20 token flows: LINK, SHIB, PEPE (Etherscan) ─────────────
+        if ES_KEY:
+            for sym, val in self._onchain_erc20_flows(ES_KEY).items():
+                scores[sym] = scores.get(sym, 0) + val
+
+        # ── 3. ETH exchange wallet balances (Etherscan) ─────────────────────
+        if ES_KEY:
+            eth_now = self._onchain_eth_balance(ES_KEY)
+            if eth_now:
+                prev_eth  = getattr(self, "_onchain_eth_prev", {})
+                prev_time = getattr(self, "_onchain_eth_prev_time", 0)
+
+                if prev_eth and (now - prev_time) >= 3500:
+                    total_delta = sum(
+                        prev_eth.get(n, b) - b for n, b in eth_now.items()
+                    )
+                    if total_delta > self._ETH_ALERT_LARGE:
+                        scores["ETH/USD"] += 3.0
+                        self.send("🚨 <b>ONCHAIN INSIDER SIGNAL</b>\n"
+                                  "ETH: {:+.0f} verlassen Exchanges in 1h\n"
+                                  "→ Grosse Akkumulation!".format(total_delta))
+                    elif total_delta > self._ETH_SIGNAL_SMALL:
+                        scores["ETH/USD"] += 1.5
+                    elif total_delta < -self._ETH_SIGNAL_SMALL:
+                        scores["ETH/USD"] -= 1.0
+                    if abs(total_delta) > 1000:
+                        print("[ONCHAIN] ETH Δ {:+.0f} ETH in 1h ({})".format(
+                            total_delta, "Abfluss=bullish" if total_delta > 0 else "Zufluss=bearish"))
+                    self._onchain_eth_prev      = eth_now
+                    self._onchain_eth_prev_time = now
+                elif not prev_eth:
+                    self._onchain_eth_prev      = eth_now
+                    self._onchain_eth_prev_time = now
+                    print("[ONCHAIN] ETH Baseline: {:.0f} ETH total in {} Wallets".format(
+                        sum(eth_now.values()), len(eth_now)))
+        else:
+            print("[ONCHAIN] Etherscan übersprungen (etherscan_api_key in config.py)")
+
+
+        return scores
 
     def fetch_fear_greed(self):
         try:
@@ -1119,56 +1635,116 @@ class CryptoBot:
         return 50, "Neutral"
 
     def fetch_whale_alerts(self):
+        """Whale Alert REST API (free tier) — replaces dead Nitter RSS.
+        Free key: https://whale-alert.io  →  add 'whale_alert_key' to config.py
+        Without a key the function returns neutral scores (silent skip).
+        """
         scores = {s: 0.0 for s in CRYPTO_MAIN + CRYPTO_MEME}
+        WA_KEY = config.get("whale_alert_key", "")
+        if not WA_KEY:
+            print("[WHALE] Kein API-Key — übersprungen (whale_alert_key in config.py setzen)")
+            return scores
+
+        # Map Whale Alert symbol names → our internal symbols
+        SYMBOL_MAP = {
+            "btc":  "BTC/USD",  "eth":  "ETH/USD",  "sol":  "SOL/USD",
+            "xrp":  "XRP/USD",  "avax": "AVAX/USD", "link": "LINK/USD",
+            "ltc":  "LTC/USD",  "doge": "DOGE/USD", "shib": "SHIB/USD",
+            "pepe": "PEPE/USD", "wif":  "WIF/USD",
+        }
         try:
-            feed = feedparser.parse("https://nitter.poast.org/whale_alert/rss")
+            start = int(time.time()) - 3600   # last 1 h (free-tier max lookback)
+            r = requests.get(
+                "https://api.whale-alert.io/v1/transactions",
+                params={"api_key": WA_KEY, "min_value": 10_000_000,
+                        "start": start, "limit": 100},
+                timeout=10,
+            )
+            if r.status_code != 200:
+                print("[WHALE] API Fehler: " + str(r.status_code))
+                return scores
+            txs   = r.json().get("transactions", [])
             count = 0
-            for entry in feed.entries[:30]:
-                text = (entry.title + " " + getattr(entry, "summary", "")).lower()
-                usd_match = re.search(r'\(([\d,]+(?:\.\d+)?)\s*usd\)', text)
-                if not usd_match:
+            for tx in txs:
+                sym_key = tx.get("symbol", "").lower()
+                symbol  = SYMBOL_MAP.get(sym_key)
+                if not symbol:
                     continue
-                try:
-                    usd_val = float(usd_match.group(1).replace(",", ""))
-                except ValueError:
-                    continue
-                if usd_val < 10_000_000:
-                    continue
-                to_exchange   = any(x in text for x in ["to #coinbase","to #binance","to #kraken","to #okx","to #bybit"])
-                from_exchange = any(x in text for x in ["from #coinbase","from #binance","from #kraken","from #okx","from #bybit"])
-                for symbol, keywords in KEYWORDS.items():
-                    for kw in keywords:
-                        if "#" + kw in text or " " + kw + " " in text:
-                            if to_exchange:
-                                scores[symbol] -= 0.4
-                            elif from_exchange:
-                                scores[symbol] += 0.4
-                            else:
-                                scores[symbol] += 0.15
-                            count += 1
-            print("[WHALE] " + str(count) + " grosse Transfers ($10M+)")
+                to_type   = tx.get("to",   {}).get("owner_type", "unknown")
+                from_type = tx.get("from", {}).get("owner_type", "unknown")
+                if to_type == "exchange":
+                    scores[symbol] -= 0.4    # bearish: coins flowing to exchange (sell pressure)
+                elif from_type == "exchange":
+                    scores[symbol] += 0.4    # bullish: coins leaving exchange (accumulation)
+                else:
+                    scores[symbol] += 0.15   # neutral: wallet-to-wallet move
+                count += 1
+            print("[WHALE] " + str(count) + " grosse Transfers ($10M+) via Whale Alert API")
         except Exception as e:
             print("[WHALE] " + str(e))
         return scores
 
+    def _reddit_token(self):
+        """OAuth2 client-credentials token for Reddit API (100 req/min).
+        Register a free 'script' app at reddit.com/prefs/apps, then add to config.py:
+            "reddit_client_id":     "...",
+            "reddit_client_secret": "...",
+        """
+        cid = config.get("reddit_client_id", "")
+        sec = config.get("reddit_client_secret", "")
+        if not cid or not sec:
+            return None
+        try:
+            r = requests.post(
+                "https://www.reddit.com/api/v1/access_token",
+                auth=(cid, sec),
+                data={"grant_type": "client_credentials"},
+                headers={"User-Agent": "TradingBot/2.0"},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                return r.json().get("access_token")
+            print("[REDDIT] Token Fehler: HTTP " + str(r.status_code))
+        except Exception as e:
+            print("[REDDIT] Token: " + str(e))
+        return None
+
     def fetch_reddit(self):
+        """Reddit OAuth API — public JSON is IP-blocked (429). Needs free OAuth app.
+        Without credentials → silently skipped; other 13 crypto feeds still active.
+        """
         scores = {s: 0.0 for s in CRYPTO_MAIN + CRYPTO_MEME}
-        feeds = [
-            ("https://www.reddit.com/r/CryptoCurrency/hot/.rss",  1.0),
-            ("https://www.reddit.com/r/CryptoCurrency/new/.rss",  0.7),
-            ("https://www.reddit.com/r/Bitcoin/hot/.rss",         1.3),
-            ("https://www.reddit.com/r/Bitcoin/new/.rss",         0.9),
-            ("https://www.reddit.com/r/ethereum/hot/.rss",        1.3),
-            ("https://www.reddit.com/r/ethereum/new/.rss",        0.9),
-            ("https://www.reddit.com/r/solana/hot/.rss",          1.1),
-            ("https://www.reddit.com/r/dogecoin/hot/.rss",        1.1),
+        token = self._reddit_token()
+        if not token:
+            print("[REDDIT] Kein OAuth-Key — übersprungen (reddit_client_id/secret in config.py)")
+            return scores
+
+        subs = [
+            ("CryptoCurrency", "hot", 25, 1.0),
+            ("CryptoCurrency", "new", 15, 0.7),
+            ("Bitcoin",        "hot", 25, 1.3),
+            ("Bitcoin",        "new", 15, 0.9),
+            ("ethereum",       "hot", 25, 1.3),
+            ("ethereum",       "new", 15, 0.9),
+            ("solana",         "hot", 20, 1.1),
+            ("dogecoin",       "hot", 20, 1.1),
         ]
+        headers = {
+            "Authorization": "bearer " + token,
+            "User-Agent":    "TradingBot/2.0",
+        }
         total = 0
-        for url, weight in feeds:
+        for sub, sort, limit, weight in subs:
             try:
-                feed = feedparser.parse(url)
-                for entry in feed.entries[:15]:
-                    raw  = entry.title + " " + getattr(entry, "summary", "")
+                url = "https://oauth.reddit.com/r/{}/{}?limit={}".format(sub, sort, limit)
+                r   = requests.get(url, timeout=10, headers=headers)
+                if r.status_code != 200:
+                    print("[REDDIT] {}/{} → HTTP {}".format(sub, sort, r.status_code))
+                    continue
+                posts = r.json().get("data", {}).get("children", [])
+                for post in posts:
+                    d    = post.get("data", {})
+                    raw  = d.get("title", "") + " " + d.get("selftext", "")
                     text = re.sub(r"<[^>]+>", " ", raw).lower()
                     sentiment = _sentiment(text)
                     for symbol, keywords in KEYWORDS.items():
@@ -1199,6 +1775,10 @@ class CryptoBot:
         for sym, val in self.fetch_whale_alerts().items():
             scores[sym] += val
 
+        # On-chain exchange wallet tracker — BTC/ETH insider flow signal
+        for sym, val in self.fetch_onchain().items():
+            scores[sym] += val
+
         fg_value, fg_label = self.fetch_fear_greed()
         if   fg_value <= 25: multiplier = 1.3
         elif fg_value <= 45: multiplier = 1.1
@@ -1226,21 +1806,12 @@ class CryptoBot:
             with self.positions_lock:
                 if symbol not in self.positions:
                     continue
-                pos     = self.positions[symbol]
-                pnl_pct = ((price - pos["entry"]) / pos["entry"]) * 100
+                pos = self.positions[symbol]
                 if price > pos.get("highest", pos["entry"]):
                     pos["highest"] = price
-                trailing = ((pos["highest"] - price) / pos["highest"]) * 100
-                psar_stop = pos.get("psar_stop")
-                sl = pos.get("stop_loss", self.stop_loss)
-                tp = pos.get("take_profit", self.take_profit)
-                if psar_stop is not None and price < psar_stop:
-                    trigger = "PSAR-STOP"
-                elif pnl_pct <= -sl:
-                    trigger = "STOP-LOSS"
-                elif pnl_pct >= tp and trailing >= 2.0:
-                    trigger = "TRAIL-STOP"
-                else:
+                pnl_pct = ((price - pos["entry"]) / pos["entry"]) * 100
+                trigger = self._exit_trigger(pos, price, ws=False)
+                if trigger is None:
                     continue
             self.close_position(symbol, price, trigger, pnl_pct)
 
@@ -1264,12 +1835,14 @@ class CryptoBot:
                 self.balance += pos["shares"] * price
 
         trade_record = {
-            "symbol": symbol,
-            "profit": round(profit, 2),
-            "pct":    round(pnl_pct, 1),
-            "reason": reason,
-            "time":   datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "spike":  pos.get("spike", False),
+            "symbol":    symbol,
+            "profit":    round(profit, 2),
+            "pct":       round(pnl_pct, 1),
+            "reason":    reason,
+            "time":      datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "spike":     pos.get("spike", False),
+            "whale":     pos.get("whale", False),
+            "whale_usd_m": pos.get("whale_usd_m", 0),
         }
         with self.positions_lock:
             self.trades.append(trade_record)
@@ -1379,7 +1952,11 @@ class CryptoBot:
             if price is None or price <= 0:
                 continue
 
-            size = self.meme_size if symbol in CRYPTO_MEME else self.pos_size
+            is_meme   = symbol in CRYPTO_MEME
+            # Extreme-volatile meme coins get wider stop (5%) — BONK/TRUMP can drop 5% intraday
+            WILD_MEME = {"BONK/USD", "TRUMP/USD", "PEPE/USD", "WIF/USD"}
+            meme_sl   = 5.0 if symbol in WILD_MEME else self.stop_loss
+            size      = self.meme_size if is_meme else self.pos_size
 
             # ── ATR-based position sizing ──────────────────────────────────────
             # Risk 1% of balance per trade, sized by ATR distance (2× ATR stop)
@@ -1402,13 +1979,18 @@ class CryptoBot:
                     continue
                 if self.demo or not self.exchange_ok:
                     self.balance -= shares * price
-                self.positions[symbol] = {
+                pos_entry = {
                     "shares":    shares,
                     "entry":     price,
                     "time":      datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "highest":   price,
                     "psar_stop": ind.get("psar"),   # dynamic stop — updated each cycle
                 }
+                # Wild meme coins get a wider per-position stop (5%) stored explicitly
+                # so _ws_check_price and check_stops both use it via pos.get("stop_loss")
+                if symbol in WILD_MEME:
+                    pos_entry["stop_loss"] = meme_sl
+                self.positions[symbol] = pos_entry
 
             if not self.demo and self.exchange_ok:
                 self.place_order(symbol, shares, "buy")
@@ -1445,12 +2027,15 @@ class CryptoBot:
         positions_data = {}
         for sym, pos in positions_snap.items():
             curr = self.get_price(sym) or pos["entry"]
-            pnl_pct = ((curr - pos["entry"]) / pos["entry"]) * 100
-            pnl_usd = pos["shares"] * (curr - pos["entry"])
+            entry = pos["entry"]
+            pnl_pct = ((curr - entry) / entry) * 100 if entry else 0
+            pnl_usd = pos["shares"] * (curr - entry)
+            # Use 8 decimal places so micro-prices (SHIB 0.000005, PEPE 0.0000001)
+            # are not truncated to 0.0 by round(..., 4)
             positions_data[sym] = {
                 "shares":        round(pos["shares"], 6),
-                "entry":         round(pos["entry"], 4),
-                "current_price": round(curr, 4),
+                "entry":         round(entry, 8),
+                "current_price": round(curr, 8),
                 "pnl_pct":       round(pnl_pct, 1),
                 "pnl_usd":       round(pnl_usd, 2),
             }
@@ -1463,18 +2048,19 @@ class CryptoBot:
             mode_str += " | WS✓"
 
         data = {
-            "time":         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "mode":         mode_str,
-            "balance":      round(balance_snap, 2),
-            "positions":    positions_data,
-            "scores":       {k: round(v, 2) for k, v in scores.items()},
-            "trades":       trades_snap[-20:],
-            "total_pnl":    round(total_pnl, 0),
-            "total_trades": len(trades_snap),
-            "running":      self.running,
-            "fear_greed":   self.last_fg,
-            "skips":        skips_snap,
-            "ws_connected": self.ws_connected,
+            "time":          datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "mode":          mode_str,
+            "balance":       round(balance_snap, 2),
+            "positions":     positions_data,
+            "scores":        {k: round(v, 2) for k, v in scores.items()},
+            "price_changes": dict(self._price_changes),
+            "trades":        trades_snap[-20:],
+            "total_pnl":     round(total_pnl, 0),
+            "total_trades":  len(trades_snap),
+            "running":       self.running,
+            "fear_greed":    self.last_fg,
+            "skips":         skips_snap,
+            "ws_connected":  self.ws_connected,
         }
         with open("/home/trading2025/trading_bot/crypto/crypto_dashboard.json", "w") as f:
             json.dump(data, f)
@@ -1535,6 +2121,10 @@ class CryptoBot:
 
         # Start real-time price stream (Alpaca only; Kraken uses REST polling)
         self.start_websocket()
+
+        # Start Whale Alert fast-path thread (fires buys on $100M+ exchange outflows)
+        wt = threading.Thread(target=self._whale_fast_path_run, daemon=True, name="whale-fast-path")
+        wt.start()
 
         while self.running:
             try:

@@ -184,6 +184,15 @@ config = {
 
     # False = LIVE real money (Kraken only). Alpaca is always paper.
     "demo_mode":  True,
+
+    # On-chain & signal API keys (optional — bots skip gracefully if absent)
+    "etherscan_api_key":      "3549HE6Y1RAX35XUE54KGFVPS72TVW1CC8",  # set ✓
+    "whale_alert_key":        "",    # Whale Alert REST API — free tier or $15/mo paid
+    "reddit_client_id":       "",    # Reddit OAuth — needs app registration
+    "reddit_client_secret":   "",    # Reddit OAuth — needs app registration
+
+    # GitHub nightly backup
+    "github_repo": "",               # "https://<token>@github.com/<user>/<repo>.git"
 }
 ```
 
@@ -284,22 +293,23 @@ _ws_run() [daemon thread]
 ## Crypto Bot Architecture (`crypto_bot.py`)
 
 ### Overview
-Trades 11 cryptocurrencies (7 main + 4 meme) using sentiment from crypto RSS, Reddit, Whale Alert, and Fear & Greed. 2-minute polling cycle. WebSocket real-time stream when using Alpaca; REST polling when using Kraken.
+Trades 20 cryptocurrencies (14 main + 6 meme) using sentiment from crypto RSS, Reddit, Whale Alert, on-chain wallet flows, and Fear & Greed. 2-minute polling cycle. WebSocket real-time stream when using Alpaca; REST polling when using Kraken.
 
 ### Universe
 
-**Main** (8% position size): BTC/USD, ETH/USD, SOL/USD, XRP/USD, AVAX/USD, LINK/USD, LTC/USD  
-**Meme** (3% position size): DOGE/USD, SHIB/USD, PEPE/USD, WIF/USD
+**Main** (6% position size): BTC/USD, ETH/USD, SOL/USD, XRP/USD, AVAX/USD, LINK/USD, LTC/USD, ADA/USD, DOT/USD, UNI/USD, AAVE/USD, ARB/USD, POL/USD, RENDER/USD  
+**Meme** (3% position size): DOGE/USD, SHIB/USD, PEPE/USD, WIF/USD, BONK/USD, TRUMP/USD
 
 ### Key Parameters
 
 | Parameter       | Value  | Notes                           |
 |-----------------|--------|---------------------------------|
-| `stop_loss`     | 4.0%   | Higher than stocks (crypto volatile) |
-| `take_profit`   | 10.0%  | Min gain before trailing        |
-| `trailing_stop` | 2.0%   | Pullback from peak to trigger   |
-| `max_pos`       | 6      | Max concurrent positions        |
-| `pos_size`      | 8%     | Main coins per trade            |
+| `stop_loss`     | 4.0%   | Main coins hard stop            |
+| `stop_loss`     | 5.0%   | Wild meme coins (BONK/TRUMP/PEPE/WIF) — stored per-position |
+| `take_profit`   | 8.0%   | Min gain before trailing        |
+| `trailing_stop` | 1.5%   | Pullback from peak to trigger (was 2.0%) |
+| `max_pos`       | 8      | Max concurrent positions (was 6) |
+| `pos_size`      | 6%     | Main coins per trade (was 8%)   |
 | `meme_size`     | 3%     | Meme coins per trade            |
 | `max_day_loss`  | 10%    | Daily drawdown limit — resets counter and continues immediately (no sleep, crypto is 24/7) |
 | Cycle interval  | ~120s  | 4 × 30s checks per full cycle   |
@@ -377,7 +387,7 @@ _ws_run() [daemon thread — Alpaca only]
  └─ WebSocketApp(wss://stream.data.alpaca.markets/v1beta3/crypto/us)
      ├─ on_open  → auth with Alpaca key/secret
      ├─ on_message:
-     │   ├─ T=authenticated → subscribe trades: all 11 crypto symbols
+     │   ├─ T=authenticated → subscribe trades: all 15 crypto symbols
      │   ├─ T=t (trade tick) → update ws_prices[symbol]
      │   │                   → call _ws_check_price(symbol, price)
      │   └─ T=error → log
@@ -530,7 +540,10 @@ Gates are now evaluated as a **weighted score** against an ADX regime threshold 
 | UnusualWhales   | `unusualwhales.com/rss/congress`                | congress score |
 | UnusualWhales   | `unusualwhales.com/rss/political`               | congress score |
 | Congress Google | `...q=congress+stock+trade+disclosure`          | congress score |
-| Twitter/Nitter  | realDonaldTrump, elonmusk, POTUS (Nitter scrape) | 1.5×   |
+| VIP Google News | `...q=trump+economy+stocks+market`              | 1.5×    |
+| VIP Google News | `...q=trump+tariff+trade+economy`               | 1.5×    |
+| VIP Google News | `...q=elon+musk+market+economy+stocks`          | 1.5×    |
+| VIP Google News | `...q=white+house+executive+order+economy`      | 1.5×    |
 | Fear & Greed    | `api.alternative.me/fng`                        | multiplier |
 
 **Key figures that boost score 1.3×**: Trump, Musk, Powell, Yellen, Buffett, BlackRock, Goldman, JPMorgan, Citadel, Pelosi, Dalio, Soros, Bezos, Zuckerberg, Fink, Dimon, Griffin, Icahn, Ackman, Nvidia, Microsoft, Amazon, Apple, Tesla, Vanguard, Berkshire, OpenAI, Mnuchin
@@ -551,21 +564,41 @@ Gates are now evaluated as a **weighted score** against an ADX regime threshold 
 | Google SOL     | `...q=solana+SOL`                                 | 1.0     |
 | Google XRP     | `...q=ripple+XRP`                                 | 1.0     |
 | Google DOGE    | `...q=dogecoin+DOGE`                              | 1.0     |
+| Google ADA     | `...q=cardano+ADA`                                | 1.0     |
+| Google DOT     | `...q=polkadot+DOT`                               | 1.0     |
+| Google UNI     | `...q=uniswap+UNI`                                | 1.0     |
+| Google AAVE    | `...q=aave+defi+lending`                          | 1.0     |
+| Google ARB     | `...q=arbitrum+ARB+layer2`                        | 1.0     |
+| Google POL     | `...q=polygon+POL+MATIC`                          | 1.0     |
+| Google RENDER  | `...q=render+network+RNDR+AI`                     | 1.0     |
+| Google BONK    | `...q=bonk+coin+solana+meme`                      | 1.0     |
+| Google TRUMP   | `...q=trump+coin+crypto+maga`                     | 1.0     |
 | Google Whale   | `...q=crypto+whale+bitcoin`                       | 1.0     |
 | Google SEC     | `...q=crypto+SEC+regulation`                      | 1.0     |
 | Google IBIT    | `...q=bitcoin+blackrock+etf`                      | 1.0     |
-| Reddit r/CC    | hot + new                                         | 1.0/0.7 |
-| Reddit r/BTC   | hot + new                                         | 1.3/0.9 |
-| Reddit r/ETH   | hot + new                                         | 1.3/0.9 |
-| Reddit r/SOL   | hot                                               | 1.1     |
-| Reddit r/DOGE  | hot                                               | 1.1     |
-| Whale Alert    | Nitter RSS — filters >$10M transfers              | ±0.4    |
+| Reddit r/CC    | hot + new (OAuth; graceful skip without creds)    | 1.0/0.7 |
+| Reddit r/BTC   | hot + new (OAuth; graceful skip without creds)    | 1.3/0.9 |
+| Reddit r/ETH   | hot + new (OAuth; graceful skip without creds)    | 1.3/0.9 |
+| Reddit r/SOL   | hot (OAuth; graceful skip without creds)          | 1.1     |
+| Reddit r/DOGE  | hot (OAuth; graceful skip without creds)          | 1.1     |
+| Whale Alert    | REST API `api.whale-alert.io/v1/transactions`     | ±0.4    |
+| On-chain BTC   | blockchain.info — exchange wallet balances (free)  | ±0.3    |
+| On-chain ETH   | Etherscan V2 — exchange wallet flows              | ±0.3    |
+| ERC-20 flows   | Etherscan V2 tokentx — LINK/AAVE/UNI/SHIB/PEPE   | ±0.25   |
 | Fear & Greed   | `api.alternative.me/fng`                          | multiplier |
 
 **Whale Alert logic**:
 - `to exchange` (Coinbase/Binance/Kraken/OKX/Bybit): −0.4 (bearish, sell pressure)
 - `from exchange`: +0.4 (bullish, accumulation)
 - unknown wallet-to-wallet: +0.15 (weak bullish)
+- Requires `whale_alert_key` in config.py (free tier: $0; paid: $15/mo). Falls back gracefully if absent.
+- Fast-path thread (`_whale_fast_path_run`): polls every 60s; immediately buys on $100M+ exchange outflows without waiting for next analyze() cycle.
+
+**On-chain tracking logic** (crypto_bot only):
+- BTC: monitors Binance (`34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo`) + Bitfinex cold wallets via blockchain.info. 1h windowed outflow: >500 BTC/h → buy signal +0.3; >2000 BTC/h → Telegram alert + stronger buy.
+- ETH: monitors Binance + Coinbase + Kraken hot wallets via Etherscan V2 (`/v2/api?chainid=1`). 1h outflow: >5000 ETH → signal; >20000 ETH → alert.
+- ERC-20: `tokentx` endpoint tracks LINK, AAVE, UNI, SHIB, PEPE outflows from exchange addresses. Signal thresholds per token (e.g. 50k LINK/h = buy).
+- Key: `config["etherscan_api_key"]` — already set on server (`3549HE6Y1RAX35XUE54KGFVPS72TVW1CC8`).
 
 ### Fear & Greed Multiplier (both bots)
 
@@ -1244,6 +1277,16 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **Random Forest ML Meta-Filter** — super_bot only; `_ml_train()` called on startup + daily midnight from main loop; loads `trades_history.json`, filters trades with `"features"` key (stored at entry time), trains `sklearn.RandomForestClassifier(n_estimators=100, max_depth=5, min_samples_leaf=5)` on last 200 labeled samples; deactivated (pass-through) when < 30 labeled trades available; 10 features: `rsi, adx, cmf, macd_hist, stoch_k, ma_dist_pct, vwap_dist_pct, fg_value, pc_ratio, score_pct`; `_ml_predict()` returns win probability [0–1]; gate in `trade()` after score check: `ml_prob < 0.55` → `[SKIP] XLK ML=48%<55%`; features stored in `positions[symbol]["ml_features"]` at buy, copied to `trades_history.json` at close so each trade self-labels the next training run; `scikit-learn` installed in venv; neutral 1.0 on ImportError or model crash
 - [x] **Risk Agent 4h Cooldown** — replaced fixed `RESUME_TIME = "09:30"` (next-day stock-market thinking) with `RESUME_HOURS = 4`; `halt_bots()` now sets `resume_dt = now + timedelta(hours=4)`; works correctly for crypto 24/7 — a halt at 22:00 resumes at 02:00, not 09:30 next day; Telegram halt alert shows `Resuming: 2026-05-23 06:30 (+4h)`
 - [x] **Monitor Agent No-Trades Alert** — `check_no_trades()` runs every 60s cycle with 2h cooldown (`NO_TRADES_COOLDOWN=7200`); reads `trades` arrays from both dashboard JSONs; parses most recent trade timestamp; if silence ≥ `NO_TRADES_HOURS` (8h) and bots are running + not risk-halted + ≥3 trades in history → Telegram alert listing silence duration, last trade time, and possible causes; guards against false positives on fresh start and crash states
+- [x] **Feedparser hang fix** — all `feedparser.parse(url)` calls replaced with `requests.get(url, timeout=10)` + `feedparser.parse(r.content)` in both bots; hard 10s timeout prevents RSS servers from hanging the main thread indefinitely (global `socket.setdefaulttimeout(15)` alone was insufficient for slow servers that bypass socket-level timeouts)
+- [x] **Nitter removed — VIP feeds replaced** — all Nitter instances dead (403); super_bot now uses 4 Google News VIP RSS feeds (Trump economy, Trump tariff, Musk market, White House EO) with same 1.5× weight; crypto_bot Whale Alert Nitter RSS replaced with official REST API (`whale_alert_key` in config.py — graceful skip if absent; free tier available)
+- [x] **Reddit graceful skip** — RSS returns 403, JSON returns 429 (server IP flagged). Code implements OAuth flow (app ID + secret → bearer token), but Reddit's new policy blocks new app registrations for bots. Credentials go in `config["reddit_client_id"]` + `config["reddit_client_secret"]`; silently skips if absent.
+- [x] **Whale Alert fast-path thread** — daemon thread `_whale_fast_path_run()` polls Whale Alert API every 60s independently of main analyze() cycle; fires immediate buy on $100M+ exchange outflows without waiting for next 2-minute cycle; dedup via `_whale_seen` set; position tagged `"whale": True, "whale_usd_m": X` for trade history; requires `whale_alert_key` in config.py
+- [x] **On-Chain Exchange Wallet Tracking** (replaces Glassnode $999/mo) — `fetch_onchain()` wired into `analyze()` each cycle; BTC: blockchain.info free API monitors Binance + Bitfinex cold wallets, 1h windowed comparison (>500 BTC/h outflow = buy +0.3; >2000 = Telegram alert); ETH: Etherscan V2 (`/v2/api?chainid=1`) monitors Binance + Coinbase + Kraken hot wallets; ERC-20: `tokentx` endpoint tracks LINK/AAVE/UNI/SHIB/PEPE outflows per contract; Etherscan key in `config["etherscan_api_key"]` (set); Glassnode code removed entirely
+- [x] **Coin universe expanded 11→15→20** — first added ADA/USD, DOT/USD, UNI/USD, AAVE/USD; then ARB/USD, POL/USD, RENDER/USD (Main 6%) and BONK/USD, TRUMP/USD (Meme 3%); ARB/POL/RENDER tracked via ERC-20 on-chain flows (Etherscan); BONK/TRUMP Alpaca-only (not on Kraken WS); PEPE/WIF/BONK/TRUMP excluded from Kraken WS; Alpaca supports all 20 pairs
+- [x] **Portfolio-Parameter optimiert** — `max_pos` 6→8, `pos_size` 8%→6%, `stop_loss` 4.0% Main / 5.0% Wild-Meme (BONK/TRUMP/PEPE/WIF per-position), `trailing_stop` 2.0%→1.5%; Dashboard poscount /6→/8
+- [x] **Tiered Exit-System via Live-WebSocket-Daten** — `_exit_trigger()` Methode ersetzt hardcodierte Stop-Logik in `_ws_check_price()` und `check_stops()`; 5 Zonen basierend auf `best_pnl` (persönlichem Hoch): ≥tp%→Trailing 1.5%, ≥6%→Profit-Lock (peak−2%), ≥4%→min +2% sichern, ≥2%→Break-Even (kein Verlust mehr möglich), <2%→normaler Hard-Stop; neue Trigger-Namen: `WS-PROFIT-LOCK`, `WS-BREAKEVEN`
+- [x] **Micro-Preis Rounding Bug gefixt** — `get_indicators()` rundet PSAR, Tenkan, Kijun jetzt auf 8 Dezimalstellen statt 4; `save_dashboard()` rundet Entry/CurrentPrice auf 8 Stellen; verhindert dass Micro-Preise (SHIB $0.00000563, PEPE, BONK) auf 0.0 zusammenbrechen und PSAR/Stop nie feuert
+- [x] **Dashboard No-Cache Headers** — `<meta http-equiv="Cache-Control" content="no-cache">` in dashboard_crypto.html; verhindert dass Browser alte HTML-Version mit falschen Parametern cached
 
 ---
 
@@ -1267,3 +1310,19 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 
 
 **crypto_bot positions persist across restarts**: `self.positions` is now saved to `crypto_state.json` (alongside balance) after every buy, sell, and every 30s cycle. On startup, `_load_state()` restores all valid positions so stop-loss/take-profit keep firing after a crash or restart. Each restored position is logged: `[STATE] Position wiederhergestellt: BTC/USD 0.04061 @ $75871.60 seit 2026-05-23 10:30`.
+
+**Feedparser hangs on slow RSS servers**: `socket.setdefaulttimeout(15)` is not enough — some servers accept the connection then stall sending headers, bypassing the socket timeout entirely. Fix: always use `r = requests.get(url, timeout=10); feedparser.parse(r.content)` instead of `feedparser.parse(url)`. Both bots now use this pattern for every feed.
+
+**Etherscan V1 deprecated**: `/api` endpoint returns `"deprecated V1 endpoint"` since 2024. Use `/v2/api` with `chainid=1` parameter: `https://api.etherscan.io/v2/api?chainid=1&module=...&apikey=...`.
+
+**Reddit IP ban**: Reddit's public JSON API (`/r/xxx.json`) returns 429 even with 1.5s delay — the server IP is permanently flagged for scrapers. OAuth bearer tokens work but Reddit's policy page blocks new bot app registrations. Reddit code present and ready; add `reddit_client_id` + `reddit_client_secret` to `config.py` if an app can be registered.
+
+**Kraken WS: PEPE and WIF not available**: `KRAKEN_WS_PAIR_MAP` intentionally excludes PEPE/USD and WIF/USD — these pairs are not listed on Kraken's WebSocket feed. REST trading still works if they appear in the symbol map.
+
+**Nitter is dead**: All public Nitter instances return 403. Twitter/X scraping is gone from both bots. super_bot uses VIP Google News RSS feeds instead (same 1.5× weight). crypto_bot uses Whale Alert REST API for whale signals.
+
+**Micro-price rounding (SHIB, PEPE, BONK)**: Prices like $0.00000563 collapse to `0.0` with `round(x, 4)`. All indicator values (PSAR, Tenkan, Kijun) and dashboard prices now use `round(x, 8)`. If PSAR is `0.0` in the state file for an existing position, the stop never fires — fix by manual close or bot restart after the rounding patch is deployed.
+
+**BONK/TRUMP/PEPE/WIF wider stop**: These wild meme coins get `"stop_loss": 5.0` stored in the position dict at buy time. `_ws_check_price` and `check_stops` both read `pos.get("stop_loss", self.stop_loss)` so the override is automatic. Positions opened before this change use the default `self.stop_loss`.
+
+**Tiered exit only protects profit once reached**: `_exit_trigger()` break-even zone (≥2%) only activates after the position has actually been +2% in profit. A position that drifts between -1% and +1% for days stays open until the hard stop-loss fires at -4% (or -5% for wild memes). Solution: monitor stale positions via time-based stop tightening (not yet implemented).

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 from datetime import datetime, timedelta
-import time, requests, os, json, re, threading
+import time, requests, os, json, re, threading, socket
+
+# Global socket timeout — prevents feedparser.parse() and any urllib call from
+# blocking the main thread indefinitely when an RSS/Nitter/Bloomberg server hangs.
+# WebSocket keepalive (ping_interval=30, ping_timeout=10) is unaffected.
+socket.setdefaulttimeout(15)
 
 # ── Sentiment analyser: VADER (preferred) with TextBlob fallback ───────────
 try:
@@ -763,7 +768,13 @@ class SuperTradingBot:
     # ── Earnings calendar ──────────────────────────────────────────────────
 
     def _fetch_earnings(self):
-        """Fetch next-earnings dates for all ETF constituents. Cached once per day."""
+        """Fetch next-earnings dates for all ETF constituents. Cached once per day.
+
+        Runs all ~30 yfinance calls in parallel (ThreadPoolExecutor, 6 workers)
+        with a hard 45-second total timeout so a hanging Yahoo Finance request
+        never blocks the main bot loop.
+        """
+        import concurrent.futures
         today = datetime.now().date()
         if self._earnings_cache_date == today:
             return
@@ -772,27 +783,44 @@ class SuperTradingBot:
         cache = {}
         try:
             import yfinance as yf
+
             all_stocks = set(s for stocks in ETF_CONSTITUENTS.values() for s in stocks)
-            for stock in sorted(all_stocks):
+
+            def _fetch_one(stock):
+                """Fetch calendar for a single stock. Returns (stock, date|None)."""
                 try:
                     cal = yf.Ticker(stock).calendar
                     ed = None
                     if isinstance(cal, dict):
                         raw = cal.get("Earnings Date")
                         if raw:
-                            # May be list or single value
                             item = raw[0] if isinstance(raw, list) else raw
                             ed = self._parse_earnings_date(item)
                     elif hasattr(cal, "columns"):
-                        # Old DataFrame format
                         if "Earnings Date" in cal.columns:
                             ed = self._parse_earnings_date(cal["Earnings Date"].iloc[0])
-                    if ed:
-                        cache[stock] = ed
+                    return stock, ed
                 except Exception:
-                    pass   # stock might be unavailable — skip silently
+                    return stock, None   # unavailable or parse error — skip silently
+
+            done = 0
+            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+                futs = {pool.submit(_fetch_one, s): s for s in sorted(all_stocks)}
+                try:
+                    for fut in concurrent.futures.as_completed(futs, timeout=45):
+                        stock, ed = fut.result()
+                        if ed:
+                            cache[stock] = ed
+                        done += 1
+                except concurrent.futures.TimeoutError:
+                    print("[EARNINGS] Timeout nach 45s — " + str(done) + "/" +
+                          str(len(all_stocks)) + " Stocks abgerufen")
+
         except ImportError:
             print("[EARNINGS] yfinance nicht installiert — Earnings-Check deaktiviert")
+        except Exception as e:
+            print("[EARNINGS] Fehler: " + str(e))
+
         self.earnings_cache       = cache
         self._earnings_cache_date = today
         print("[EARNINGS] Cache aktualisiert: " + str(len(cache)) +
@@ -923,21 +951,31 @@ class SuperTradingBot:
     # ── News & sentiment ───────────────────────────────────────────────────
 
     def fetch_twitter(self):
-        tweets = []
-        accounts = ["realDonaldTrump", "elonmusk", "POTUS"]
-        try:
-            from bs4 import BeautifulSoup
-            for acc in accounts:
-                r = requests.get("https://nitter.poast.org/" + acc, timeout=10,
-                    headers={"User-Agent": "Mozilla/5.0"})
-                if r.status_code == 200:
-                    soup = BeautifulSoup(r.text, "html.parser")
-                    for t in soup.find_all("div", class_="tweet-content")[:5]:
-                        tweets.append({"title": t.get_text(), "description": ""})
-        except Exception as e:
-            print("[TWITTER] " + str(e))
-        print("[TWITTER] " + str(len(tweets)) + " Tweets")
-        return tweets
+        """VIP sentiment via Google News RSS (replaces dead Nitter/Twitter scraping).
+        Tracks market-moving statements from Trump, Musk, and the White House through
+        news articles — same 1.3x VIP boost applies in the scoring loop.
+        """
+        import feedparser
+        feeds = [
+            "https://news.google.com/rss/search?q=trump+economy+stocks+market&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=trump+tariff+trade+economy&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=elon+musk+market+economy+stocks&hl=en-US&gl=US&ceid=US:en",
+            "https://news.google.com/rss/search?q=white+house+executive+order+economy&hl=en-US&gl=US&ceid=US:en",
+        ]
+        articles = []
+        for url in feeds:
+            try:
+                r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                feed = feedparser.parse(r.content)
+                for entry in feed.entries[:8]:
+                    articles.append({
+                        "title":       entry.title,
+                        "description": getattr(entry, "summary", ""),
+                    })
+            except Exception as e:
+                print("[VIP-NEWS] " + str(e))
+        print("[VIP-NEWS] " + str(len(articles)) + " Artikel (Trump/Musk/POTUS via Google News)")
+        return articles
 
     def fetch_news(self):
         import feedparser
@@ -963,7 +1001,8 @@ class SuperTradingBot:
         articles = []
         for url in feeds:
             try:
-                feed = feedparser.parse(url)
+                r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                feed = feedparser.parse(r.content)
                 for entry in feed.entries[:10]:
                     articles.append(entry.title + " " + getattr(entry, "summary", ""))
             except Exception as e:
@@ -1002,7 +1041,8 @@ class SuperTradingBot:
         count = 0
         for url in feeds:
             try:
-                feed = feedparser.parse(url)
+                r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                feed = feedparser.parse(r.content)
                 for entry in feed.entries[:20]:
                     raw  = entry.title + " " + getattr(entry, "summary", "")
                     text = re.sub(r"<[^>]+>", " ", raw).lower()

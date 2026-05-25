@@ -609,81 +609,6 @@ def cmd_confirm():
     send("\n".join(confirm_lines))
 
 
-
-# -- /restart + /logs -- emergency remote restart & diagnosis -----------------
-
-RISK_HALT_FILE = os.path.join(BASE_DIR, "agents", "risk_halt.json")
-
-BOT_SESSIONS = {
-    "super":  ("trading", BASE_DIR,             "super_bot.py",  "/tmp/super_bot.log"),
-    "crypto": ("crypto",  BASE_DIR + "/crypto", "crypto_bot.py", "/tmp/crypto_bot.log"),
-}
-
-
-def _do_restart(do_super=True, do_crypto=True):
-    """Kill + relaunch bot screen sessions, then report result via Telegram."""
-    halt_active = os.path.exists(RISK_HALT_FILE)
-    lines = ["<b>🔄 Notstart</b>", ""]
-    if halt_active:
-        lines.append("⚠️ Risk Halt ist aktiv — Bots werden trotzdem gestartet.")
-        lines.append("")
-
-    targets = []
-    if do_super:  targets.append("super")
-    if do_crypto: targets.append("crypto")
-
-    for key in targets:
-        session, workdir, script, _ = BOT_SESSIONS[key]
-        name = "Super Bot" if key == "super" else "Crypto Bot"
-        log(f"RESTART: {name}")
-        _restart_bot(session, workdir, script)
-        lines.append(f"🔄 {name} wird gestartet...")
-
-    send("\n".join(lines))
-    time.sleep(8)
-
-    result = subprocess.run("screen -list", shell=True, capture_output=True, text=True)
-    vlines = ["<b>Neustart-Ergebnis:</b>"]
-    for key in targets:
-        session = BOT_SESSIONS[key][0]
-        name    = "Super Bot" if key == "super" else "Crypto Bot"
-        alive   = ("." + session + "\t") in result.stdout
-        vlines.append(
-            f"{'✅' if alive else '❌'} {name}: "
-            f"{'läuft' if alive else 'FEHLER — /logs für Details'}"
-        )
-    vlines.append("")
-    vlines.append("<i>Logs anzeigen: /logs</i>")
-    send("\n".join(vlines))
-
-
-def cmd_restart():        _do_restart(do_super=True,  do_crypto=True)
-def cmd_restart_super():  _do_restart(do_super=True,  do_crypto=False)
-def cmd_restart_crypto(): _do_restart(do_super=False, do_crypto=True)
-
-
-def cmd_logs():
-    """Send last 15 lines of each bot log for remote diagnosis."""
-    lines = ["<b>📋 Bot Logs (letzte 15 Zeilen)</b>", ""]
-    for key in ["crypto", "super"]:
-        _, _, _, log_path = BOT_SESSIONS[key]
-        name = "Super Bot" if key == "super" else "Crypto Bot"
-        lines.append(f"<b>{name}</b>  <i>({log_path})</i>")
-        try:
-            r = subprocess.run(["tail", "-15", log_path],
-                               capture_output=True, text=True, timeout=5)
-            tail = r.stdout.strip()
-            if tail:
-                tail = tail.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                lines.append("<pre>" + tail + "</pre>")
-            else:
-                lines.append("<i>(Log leer oder nicht vorhanden)</i>")
-        except Exception as e:
-            lines.append(f"<i>(Fehler: {e})</i>")
-        lines.append("")
-    send("\n".join(lines))
-
-
 def cmd_help():
     send(
         "<b>🤖 Trading Bot — Befehle</b>\n\n"
@@ -702,11 +627,6 @@ def cmd_help():
         "<b>Optimierung</b>\n"
         "/apply          — Vorschläge aus letzter Optimierung anzeigen\n"
         "/confirm        — Vorschläge anwenden &amp; Bots neu starten\n\n"
-"<b>Notstart &amp; Diagnose</b>\n"
-        "/restart        — Beide Bots sofort neu starten\n"
-        "/restart_super  — Nur Super Bot neu starten\n"
-        "/restart_crypto — Nur Crypto Bot neu starten\n"
-        "/logs           — Letzte Log-Zeilen zur Fehlerdiagnose\n\n"
         "/help           — Diese Hilfe\n\n"
         "<i>Hinweis: /stop pausiert nur neue Eintritte. "
         "Stop-Loss &amp; Take-Profit laufen immer weiter.</i>"
@@ -726,12 +646,8 @@ DISPATCH = {
     "/stop_crypto":  lambda: cmd_stop(crypto_only=True),
     "/start_crypto": lambda: cmd_start(crypto_only=True),
     "/apply":        cmd_apply,
-    "/confirm":        cmd_confirm,
-    "/restart":        cmd_restart,
-    "/restart_super":  cmd_restart_super,
-    "/restart_crypto": cmd_restart_crypto,
-    "/logs":           cmd_logs,
-    "/help":           cmd_help,
+    "/confirm":      cmd_confirm,
+    "/help":         cmd_help,
 }
 
 # ── Polling loop ─────────────────────────────────────────────────────────────
