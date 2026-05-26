@@ -201,6 +201,27 @@ class CryptoBot:
         self._bar_cache    = {}     # symbol → list of last 20 hourly closes
         self._price_changes = {}    # symbol → 24h price change % (updated each analyze cycle)
 
+        # Watchdog — updated every main loop iteration; watchdog thread kills process if stuck > 5 min
+        self._last_heartbeat = time.time()
+
+        # On-chain scores — updated by background thread, read by analyze()
+        self._onchain_scores = {s: 0.0 for s in CRYPTO_MAIN + CRYPTO_MEME}
+        self._onchain_lock   = threading.Lock()
+
+        # Volatility regime cache — BTC realized vol, refreshed every 30 min
+        self._vol_cache = None   # ((name, size_mult), timestamp)
+
+        # Drawdown alert flags — prevent repeated Telegram messages per zone
+        self._dd_caution_sent = False
+        self._dd_warning_sent = False
+        self._dd_danger_sent  = False
+
+        # BTC Lead Indicator — crash detection + trend filter
+        self._btc_10min_ref   = None   # BTC price ~10 min ago for trend filter
+        self._btc_10min_time  = 0.0
+        self._btc_5min_window = []     # [(price, ts), ...] rolling 5-min crash detection
+        self._btc_crash_mode  = False  # True when BTC dropped ≥2% in 5 min
+
         self.alpaca_headers = {
             "APCA-API-KEY-ID":     ALPACA_API_KEY,
             "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY,
@@ -372,6 +393,8 @@ class CryptoBot:
                     if (isinstance(pos, dict) and
                             pos.get("entry", 0) > 0 and
                             pos.get("shares", 0) > 0):
+                        # Clear transient runtime flags that must not survive a restart
+                        pos.pop("btc_crash_mode", None)   # BTC crash may have resolved
                         valid[sym] = pos
                 if valid:
                     with self.positions_lock:
@@ -404,6 +427,7 @@ class CryptoBot:
             }
             with open(STATE_PATH, "w") as f:
                 json.dump(st, f)
+            os.chmod(STATE_PATH, 0o600)   # owner read/write only — API keys adjacent
         except Exception as e:
             print("[STATE] Save error: " + str(e))
 
@@ -518,7 +542,7 @@ class CryptoBot:
             return cached[0]
         try:
             sym_clean = symbol.replace("/", "")
-            url    = ALPACA_DATA + "/v1beta3/crypto/us/bars"
+            url    = ALPACA_DATA_URL + "/v1beta3/crypto/us/bars"
             params = {"symbols": sym_clean, "timeframe": "1Day", "limit": 30}
             r = requests.get(url, headers=self.alpaca_headers,
                              params=params, timeout=8)
@@ -809,16 +833,143 @@ class CryptoBot:
     # ── WebSocket price stream (Alpaca only) ───────────────────────────────
 
     def _refresh_avg_vols(self):
-        """Pre-populate per-minute volume baselines from 20-bar hourly OHLCV.
-        Called from the main thread so the WS thread never blocks on network I/O."""
-        for symbol in CRYPTO_MAIN + CRYPTO_MEME:
-            cached = self.avg_vol.get(symbol)
-            if cached and time.time() - cached[1] < 3600:
-                continue
-            bars = self._fetch_bars(symbol)
-            if bars and len(bars) >= 20:
-                avg_per_min = sum(b["v"] for b in bars[-20:]) / 20 / 60
-                self.avg_vol[symbol] = (avg_per_min, time.time())
+        """Pre-populate per-minute volume baselines — runs in background thread
+        so a hanging Alpaca bar-fetch never blocks the main loop."""
+        def _run():
+            for symbol in CRYPTO_MAIN + CRYPTO_MEME:
+                cached = self.avg_vol.get(symbol)
+                if cached and time.time() - cached[1] < 3600:
+                    continue
+                try:
+                    bars = self._fetch_bars(symbol)
+                    if bars and len(bars) >= 20:
+                        avg_per_min = sum(b["v"] for b in bars[-20:]) / 20 / 60
+                        self.avg_vol[symbol] = (avg_per_min, time.time())
+                except Exception:
+                    pass
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        # Don't join — fire-and-forget; cache is updated in background
+
+    def _watchdog_run(self):
+        """Daemon thread — kills process if main loop hasn't updated heartbeat in 5 min.
+        Monitor agent detects the dead screen session and restarts the bot within 60s."""
+        TIMEOUT = 300   # 5 minutes
+        while True:
+            time.sleep(60)
+            age = time.time() - self._last_heartbeat
+            if age > TIMEOUT:
+                print("[WATCHDOG] Hauptloop haengt seit {:.0f}s — erzwinge Neustart".format(age))
+                os._exit(1)
+
+    def _get_vol_regime(self):
+        """Calculate BTC 7-day annualized realized volatility from hourly bars.
+        Returns (regime_name, size_mult):
+          LOW      vol < 50%  → 1.2× size  (calm crypto market)
+          NORMAL   vol 50-80% → 1.0× size  (standard)
+          HIGH     vol 80-120%→ 0.5× size  (very volatile, reduce exposure)
+          EXTREME  vol > 120% → 0.3× size  (crash/mania, tiny positions only)
+        Cached 30 min. Returns NORMAL on error (never blocks trades).
+        """
+        cached = self._vol_cache
+        if cached and time.time() - cached[1] < 1800:
+            return cached[0]
+        try:
+            bars = self._fetch_bars("BTC/USD")
+            if not bars or len(bars) < 100:
+                return ("NORMAL", 1.0)
+
+            closes  = [b["c"] for b in bars[-168:]]   # up to 7 days hourly
+            returns = [(closes[i] - closes[i-1]) / closes[i-1]
+                       for i in range(1, len(closes)) if closes[i-1] > 0]
+            if len(returns) < 24:
+                return ("NORMAL", 1.0)
+
+            variance    = sum(r * r for r in returns) / len(returns)
+            vol_hourly  = variance ** 0.5
+            vol_annual  = vol_hourly * (8760 ** 0.5) * 100   # annualised %
+
+            if vol_annual < 50:
+                result = ("LOW",     1.2)
+            elif vol_annual < 80:
+                result = ("NORMAL",  1.0)
+            elif vol_annual < 120:
+                result = ("HIGH",    0.5)
+            else:
+                result = ("EXTREME", 0.3)
+
+            self._vol_cache = (result, time.time())
+            print("[VOL] BTC Ann.Vol={:.0f}% → {} (size×{})".format(
+                  vol_annual, result[0], result[1]))
+            return result
+        except Exception as e:
+            print("[VOL] Fehler: " + str(e) + " → NORMAL")
+            return ("NORMAL", 1.0)
+
+    def _btc_crash_check(self, price):
+        """Called on every BTC WebSocket tick (WS thread).
+        Two jobs:
+          1. Crash detection: BTC -2% in 5 min → set btc_crash_mode=True on all positions,
+             send Telegram alert, block new entries in trade().
+          2. 10-min reference: updated every 600s for the trend filter in trade().
+        Fully lock-free except for the brief positions_lock when setting crash mode.
+        """
+        now = time.time()
+
+        # ── 1. Rolling 5-min window for crash detection ───────────────────────
+        self._btc_5min_window.append((price, now))
+        # Prune entries older than 5 min
+        cutoff = now - 300
+        self._btc_5min_window = [(p, t) for p, t in self._btc_5min_window if t >= cutoff]
+        # Hard cap to prevent unbounded growth on very active ticks
+        if len(self._btc_5min_window) > 600:
+            self._btc_5min_window = self._btc_5min_window[-300:]
+
+        if len(self._btc_5min_window) >= 3:
+            peak_5min = max(p for p, _ in self._btc_5min_window)
+            drop_pct  = (peak_5min - price) / peak_5min * 100
+
+            if drop_pct >= 2.0 and not self._btc_crash_mode:
+                # BTC just crashed — tighten all open positions
+                self._btc_crash_mode = True
+                with self.positions_lock:
+                    affected = list(self.positions.keys())
+                    for sym in affected:
+                        if sym in self.positions:
+                            self.positions[sym]["btc_crash_mode"] = True
+                n = len(affected)
+                print("[BTC-GUARD] BTC -{:.1f}% in 5min — Crash-Stop auf {} Positionen".format(
+                      drop_pct, n))
+                if n > 0:
+                    self.send("🚨 <b>BTC CRASH: -{:.1f}% in 5min</b>\n"
+                              "Tight-Stop (1.5% Trailing) auf {} offene Positionen angezogen\n"
+                              "Neue Käufe bis zur Erholung blockiert".format(drop_pct, n))
+
+            elif drop_pct < 0.5 and self._btc_crash_mode:
+                # BTC recovered — lift crash mode
+                self._btc_crash_mode = False
+                with self.positions_lock:
+                    for sym in self.positions:
+                        self.positions[sym].pop("btc_crash_mode", None)
+                print("[BTC-GUARD] BTC erholt (Rückgang nur {:.1f}%) — Crash-Schutz aufgehoben".format(
+                      drop_pct))
+
+        # ── 2. Update 10-min reference for trend filter in trade() ────────────
+        if now - self._btc_10min_time >= 600:
+            self._btc_10min_ref  = price
+            self._btc_10min_time = now
+
+    def _onchain_refresh_run(self):
+        """Background thread: refreshes on-chain scores every 120s independently.
+        Prevents blockchain.info / Etherscan calls from blocking the main loop."""
+        while self.running:
+            try:
+                new_scores = self.fetch_onchain()
+                with self._onchain_lock:
+                    self._onchain_scores = new_scores
+            except Exception as e:
+                print("[ONCHAIN-BG] " + str(e))
+            time.sleep(120)
 
     def _get_avg_vol(self, symbol):
         """Non-blocking lookup for the WS thread. Returns None if not yet cached."""
@@ -906,7 +1057,7 @@ class CryptoBot:
                             bal        = self.balance
 
                         if already_in or pos_full or self.tg_paused:
-                            self.log("[WHALE-FP] SIGNAL {}: ${:,}M von {} — Pos voll/pausiert, kein Kauf".format(
+                            print("[WHALE-FP] SIGNAL {}: ${:,}M von {} — Pos voll/pausiert, kein Kauf".format(
                                 symbol, usd_m, owner))
                             continue
 
@@ -921,10 +1072,10 @@ class CryptoBot:
                         if shares <= 0 or cost > bal * 0.95:
                             continue
 
-                        self.log("[WHALE-FP] BUY {} ${:,}M Abfluss von {} → sofortiger Kauf".format(
+                        print("[WHALE-FP] BUY {} ${:,}M Abfluss von {} → sofortiger Kauf".format(
                             symbol, usd_m, owner))
 
-                        ok = self.place_order(symbol, "buy", shares, price)
+                        ok = self.place_order(symbol, shares, "buy")
                         if ok:
                             with self.positions_lock:
                                 self.balance -= cost
@@ -971,11 +1122,11 @@ class CryptoBot:
                         else:
                             msg += "Keine offene Position — Kauf blockiert"
                         self.send(msg)
-                        self.log("[WHALE-FP] SELL-SIGNAL {}: ${:,}M zu {}".format(
+                        print("[WHALE-FP] SELL-SIGNAL {}: ${:,}M zu {}".format(
                             symbol, usd_m, owner))
 
             except Exception as e:
-                self.log("[WHALE-FP] Fehler: " + str(e))
+                print("[WHALE-FP] Fehler: " + str(e))
 
             time.sleep(60)
 
@@ -1041,6 +1192,10 @@ class CryptoBot:
                         price = float(price)
                         self.ws_prices[symbol] = price
                         self._ws_check_price(symbol, price)
+                        # BTC crash detection runs on every BTC tick,
+                        # even when BTC is not in self.positions
+                        if symbol == "BTC/USD":
+                            self._btc_crash_check(price)
                         # Rolling 60s volume accumulation for spike detection
                         now = time.time()
                         v = self.ws_volume.get(symbol)
@@ -1227,9 +1382,17 @@ class CryptoBot:
         tp = pos.get("take_profit", self.take_profit)
         pfx = "WS-" if ws else ""
 
-        # 1. PSAR dynamic stop — always highest priority
-        if psar_stop is not None and price < psar_stop:
+        # 1. PSAR dynamic stop — only active once position is in profit (≥+1.5%)
+        # Below that threshold PSAR is too noisy on 1h bars and stops out early
+        if psar_stop is not None and price < psar_stop and pnl_pct >= 1.5:
             return pfx + "PSAR-STOP"
+
+        # 1b. BTC crash mode — tighter 1.5% trailing + tighter hard stop
+        if pos.get("btc_crash_mode"):
+            if trailing >= 1.5:
+                return pfx + "BTC-CRASH-STOP"
+            if pnl_pct <= -1.5:
+                return pfx + "BTC-CRASH-STOP"
 
         # 2. Take-profit zone — classic trailing
         if best_pnl >= tp:
@@ -1362,14 +1525,26 @@ class CryptoBot:
             "https://news.google.com/rss/search?q=trump+coin+crypto+maga&hl=en-US&gl=US&ceid=US:en",
         ]
         articles = []
-        for url in feeds:
+
+        def _fetch_feed(url):
             try:
-                r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                r    = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
                 feed = feedparser.parse(r.content)
-                for entry in feed.entries[:10]:
-                    articles.append(entry.title + " " + getattr(entry, "summary", ""))
-            except Exception as e:
-                print("[RSS] Fehler: " + str(e))
+                return [entry.title + " " + getattr(entry, "summary", "")
+                        for entry in feed.entries[:10]]
+            except Exception:
+                return []
+
+        # Fetch all feeds in parallel — worst case 10s instead of 22×10s=220s
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            futures = {pool.submit(_fetch_feed, url): url for url in feeds}
+            for fut in as_completed(futures, timeout=15):
+                try:
+                    articles.extend(fut.result())
+                except Exception:
+                    pass
+
         print("[NEWS] " + str(len(articles)) + " Artikel via RSS")
         return articles
 
@@ -1757,6 +1932,66 @@ class CryptoBot:
         print("[REDDIT] " + str(total) + " Beiträge verarbeitet")
         return scores
 
+    def check_stuck_positions(self):
+        """Time-based exit for positions that are blocking slots without going anywhere.
+
+        Rules:
+        - Spike trade  open > 12h  → always exit (spikes must resolve fast)
+        - Normal trade open > 72h  AND best P&L never reached +4% → TIME-EXIT
+        - Any trade    open > 120h → hard exit regardless (free up capital)
+        """
+        SPIKE_MAX_H  = 12    # spike trades must close within 12h
+        STUCK_H      = 72    # normal trades: stuck threshold
+        STUCK_PEAK   = 4.0   # only 'stuck' if best P&L was never above this %
+        HARD_MAX_H   = 120   # 5 days — absolute maximum for any position
+
+        with self.positions_lock:
+            symbols = list(self.positions.keys())
+
+        for symbol in symbols:
+            try:
+                price = self.get_price(symbol)
+                if not price or price <= 0:
+                    continue
+
+                with self.positions_lock:
+                    if symbol not in self.positions:
+                        continue
+                    pos = self.positions[symbol]
+
+                entry_time = pos.get("time", "")
+                try:
+                    entry_dt = datetime.strptime(entry_time, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    try:
+                        entry_dt = datetime.strptime(entry_time, "%Y-%m-%d %H:%M")
+                    except ValueError:
+                        continue
+
+                age_h    = (datetime.now() - entry_dt).total_seconds() / 3600
+                pnl_pct  = ((price - pos["entry"]) / pos["entry"]) * 100
+                best_pnl = ((pos.get("highest", pos["entry"]) - pos["entry"]) / pos["entry"]) * 100
+                is_spike = pos.get("spike", False)
+
+                reason = None
+                if is_spike and age_h >= SPIKE_MAX_H:
+                    reason = "TIME-EXIT-SPIKE"
+                elif age_h >= HARD_MAX_H:
+                    reason = "TIME-EXIT-MAX"
+                elif age_h >= STUCK_H and best_pnl < STUCK_PEAK:
+                    reason = "TIME-EXIT-STUCK"
+
+                if reason:
+                    print("[TIME-EXIT] {} nach {:.0f}h | P&L: {:.1f}% | Grund: {}".format(
+                        symbol, age_h, pnl_pct, reason))
+                    self.send("⏰ <b>TIME-EXIT</b>: {} nach <b>{:.0f}h</b>\n"
+                              "P&amp;L: {:.1f}% | Best: {:.1f}% | {}".format(
+                              symbol, age_h, pnl_pct, best_pnl, reason))
+                    self.close_position(symbol, price, reason, pnl_pct)
+
+            except Exception as e:
+                print("[TIME-EXIT] Fehler bei {}: {}".format(symbol, e))
+
     def analyze(self):
         self._refresh_avg_vols()   # keep per-minute volume baselines fresh for spike detection
         scores = {s: 0.0 for s in CRYPTO_MAIN + CRYPTO_MEME}
@@ -1775,8 +2010,10 @@ class CryptoBot:
         for sym, val in self.fetch_whale_alerts().items():
             scores[sym] += val
 
-        # On-chain exchange wallet tracker — BTC/ETH insider flow signal
-        for sym, val in self.fetch_onchain().items():
+        # On-chain exchange wallet tracker — read cached scores (updated by background thread)
+        with self._onchain_lock:
+            onchain_snap = dict(self._onchain_scores)
+        for sym, val in onchain_snap.items():
             scores[sym] += val
 
         fg_value, fg_label = self.fetch_fear_greed()
@@ -1860,10 +2097,64 @@ class CryptoBot:
 
     # ── Trade entry ────────────────────────────────────────────────────────
 
+    def _get_drawdown_mult(self):
+        """Gradual position-size scaling based on today's P&L.
+        Returns (size_mult, zone, allow_meme).
+
+        HEALTHY  > -3%        → 1.0×  alle Trades erlaubt
+        CAUTION  -3% to -6%   → 0.7×  -30% Grösse, Telegram-Warnung
+        WARNING  -6% to -9%   → 0.4×  -60% Grösse, keine Meme-Coins
+        DANGER   < -9%        → 0.0×  keine neuen Käufe
+        """
+        if self.start_balance <= 0:
+            return 1.0, "HEALTHY", True
+        day_pct = (self.balance - self.start_balance) / self.start_balance * 100
+        if day_pct > -3.0:
+            return 1.0, "HEALTHY", True
+        elif day_pct > -6.0:
+            if not getattr(self, "_dd_caution_sent", False):
+                self.send("⚠️ Drawdown CAUTION: {:.1f}% heute — Positionsgrösse -30%".format(day_pct))
+                self._dd_caution_sent = True
+            return 0.7, "CAUTION", True
+        elif day_pct > -9.0:
+            if not getattr(self, "_dd_warning_sent", False):
+                self.send("🔴 Drawdown WARNING: {:.1f}% heute — -60% Grösse, keine Meme-Coins".format(day_pct))
+                self._dd_warning_sent = True
+            return 0.4, "WARNING", False
+        else:
+            if not getattr(self, "_dd_danger_sent", False):
+                self.send("🚨 Drawdown DANGER: {:.1f}% heute — keine neuen Trades!".format(day_pct))
+                self._dd_danger_sent = True
+            return 0.0, "DANGER", False
+
     def trade(self, scores):
         if self.tg_paused:
             print("[TRADE] Pausiert (via Telegram /stop)")
             return
+
+        # Gradual drawdown protection
+        dd_mult, dd_zone, dd_allow_meme = self._get_drawdown_mult()
+        if dd_mult == 0.0:
+            print("[TRADE] DD=" + dd_zone + " — keine neuen Käufe")
+            return
+        if dd_zone == "HEALTHY":
+            self._dd_caution_sent = False
+            self._dd_warning_sent = False
+            self._dd_danger_sent  = False
+
+        # ── BTC Lead Indicator — trade filter ────────────────────────────────
+        # Block all new buys during an active BTC crash (already tightened stops)
+        if self._btc_crash_mode:
+            print("[TRADE] BTC-CRASH aktiv — keine neuen Käufe")
+            return
+        # Soft filter: BTC trending down >1% over last 10 min → wait for stabilisation
+        btc_now = self.ws_prices.get("BTC/USD")
+        if btc_now and self._btc_10min_ref and self._btc_10min_ref > 0:
+            btc_10m_chg = (btc_now - self._btc_10min_ref) / self._btc_10min_ref * 100
+            if btc_10m_chg < -1.0:
+                print("[TRADE] BTC-TREND {:.1f}% (10min) — keine neuen Käufe".format(btc_10m_chg))
+                return
+
         ranked = sorted(scores.items(), key=lambda x: abs(x[1]), reverse=True)
         for symbol, score in ranked:
             if score <= 0.1:
@@ -1910,6 +2201,10 @@ class CryptoBot:
             else:
                 regime, threshold, size_mult = "RANGING",      0.45, 0.4
 
+            # ── BTC Realized Volatility Regime — multiplied on top of ADX ─────
+            vol_regime, vol_mult = self._get_vol_regime()
+            size_mult = round(size_mult * vol_mult * dd_mult, 2)
+
             # Weighted score: strong trend indicators carry more weight
             # RSI + MACD + Supertrend = 1.5 each (trend-core)
             # Ichimoku = 1.2 (trend confirmation, lagging)
@@ -1953,6 +2248,10 @@ class CryptoBot:
                 continue
 
             is_meme   = symbol in CRYPTO_MEME
+            # Block meme coins in WARNING/DANGER drawdown zones
+            if not dd_allow_meme and is_meme:
+                print("[SKIP] " + symbol + " DD=" + dd_zone + " — keine Meme-Coins in dieser Zone")
+                continue
             # Extreme-volatile meme coins get wider stop (5%) — BONK/TRUMP can drop 5% intraday
             WILD_MEME = {"BONK/USD", "TRUMP/USD", "PEPE/USD", "WIF/USD"}
             meme_sl   = 5.0 if symbol in WILD_MEME else self.stop_loss
@@ -2000,6 +2299,8 @@ class CryptoBot:
 
             msg = ("CRYPTO BUY " + symbol + " $" + str(round(price, 4)) +
                    " [" + regime + " ADX=" + str(adx) +
+                   " VOL=" + vol_regime +
+                   " DD=" + dd_zone +
                    " score=" + str(round(score_pct * 100)) + "%" +
                    " x" + str(size_mult) + "]" +
                    " ATR=" + str(ind["atr"]) +
@@ -2126,13 +2427,25 @@ class CryptoBot:
         wt = threading.Thread(target=self._whale_fast_path_run, daemon=True, name="whale-fast-path")
         wt.start()
 
+        # Watchdog thread — kills process if main loop hangs > 5 min (monitor restarts)
+        wd = threading.Thread(target=self._watchdog_run, daemon=True, name="watchdog")
+        wd.start()
+
+        # On-chain background thread — updates scores every 120s without blocking main loop
+        oc = threading.Thread(target=self._onchain_refresh_run, daemon=True, name="onchain-bg")
+        oc.start()
+
+        print("[WATCHDOG] Aktiv — Neustart wenn Hauptloop > 5 min haengt")
+
         while self.running:
             try:
+                self._last_heartbeat = time.time()   # watchdog: main loop alive
                 self.check_control()
                 self.check_day_loss()
                 scores = self.analyze()
                 self.trade(scores)
                 self._update_psar_stops()
+                self.check_stuck_positions()
                 self.save_dashboard(scores)
 
                 ws_status = "WS✓" if self.ws_connected else "WS✗"
@@ -2146,6 +2459,7 @@ class CryptoBot:
 
                 # Polling stop-check every 30s as fallback when WS is down
                 for _ in range(4):
+                    self._last_heartbeat = time.time()   # watchdog: inner loop alive
                     if not self.ws_connected:
                         self.check_stops()
                     self.save_dashboard(scores)

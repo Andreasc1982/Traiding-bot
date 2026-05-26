@@ -1,9 +1,9 @@
 {
-  "peak_value": 200054.242799419,
-  "day_start_value": 115038.89711312215,
-  "day_start_date": "2026-05-25",
-  "halted": true,
-  "resume_at": "2026-05-25 05:30",
+  "peak_value": 115183.87251940493,
+  "day_start_value": 115146.6023049489,
+  "day_start_date": "2026-05-26",
+  "halted": false,
+  "resume_at": null,
   "events": [
     {
       "time": "2026-05-18 22:55:09",
@@ -176,6 +176,94 @@
       "portfolio_value": 115037.8,
       "peak_value": 200054.24,
       "resume_at": "2026-05-25 05:30"
+    },
+    {
+      "time": "2026-05-25 05:30:08",
+      "type": "RESUME",
+      "portfolio_value": 115037.8,
+      "new_day_start": 115037.8
+    },
+    {
+      "time": "2026-05-25 05:30:53",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.50% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.5,
+      "portfolio_value": 115037.8,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 09:30"
+    },
+    {
+      "time": "2026-05-25 09:30:05",
+      "type": "RESUME",
+      "portfolio_value": 115037.8,
+      "new_day_start": 115037.8
+    },
+    {
+      "time": "2026-05-25 09:30:50",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.50% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.5,
+      "portfolio_value": 115037.8,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 13:30"
+    },
+    {
+      "time": "2026-05-25 13:30:22",
+      "type": "RESUME",
+      "portfolio_value": 115132.75,
+      "new_day_start": 115132.75
+    },
+    {
+      "time": "2026-05-25 13:31:07",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.45% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.45,
+      "portfolio_value": 115132.75,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 17:30"
+    },
+    {
+      "time": "2026-05-25 17:30:09",
+      "type": "RESUME",
+      "portfolio_value": 115132.75,
+      "new_day_start": 115132.75
+    },
+    {
+      "time": "2026-05-25 17:30:54",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.45% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.45,
+      "portfolio_value": 115132.75,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 21:30"
+    },
+    {
+      "type": "PEAK_RESET",
+      "time": "2026-05-25 19:01:28",
+      "reason": "Manuell korrigiert \u2014 falscher Peak-Wert (00k war ein Datenfehler)",
+      "portfolio_value": 111342.54000000001
+    },
+    {
+      "time": "2026-05-25 19:03:14",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-25 19:03:32",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-26 00:00:03",
+      "type": "DAY_START",
+      "date": "2026-05-26",
+      "value": 115146.6
     }
   ]
 }

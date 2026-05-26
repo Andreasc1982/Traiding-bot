@@ -362,6 +362,23 @@ def run():
                 if resume_at:
                     resume_dt = datetime.strptime(resume_at, "%Y-%m-%d %H:%M")
                     if now >= resume_dt:
+                        # If drawdown still > -30% after cooldown, peak was wrong -- reset it
+                        if drawdown_pct <= -30.0:
+                            old_peak = state["peak_value"]
+                            state["peak_value"] = combined
+                            state["day_start_value"] = combined
+                            msg = ("[RISK] Peak-Reset: $" + "{:,.2f}".format(old_peak) +
+                                   " -> $" + "{:,.2f}".format(combined) +
+                                   " (DD=" + "{:.1f}".format(drawdown_pct) + "% war Datenfehler)")
+                            print(msg)
+                            tg("Peak-Reset: $" + "{:,.2f}".format(old_peak) +
+                               " korrigiert auf $" + "{:,.2f}".format(combined) +
+                               " (DD > 30% nach Cooldown = falscher Peak)")
+                            log_event(state, "PEAK_RESET",
+                                      old_peak=round(old_peak, 2),
+                                      new_peak=round(combined, 2),
+                                      reason="DD > 30pct nach 4h Cooldown")
+                            save_state(state)
                         resume_bots(state, combined)
                     elif cycle % 20 == 0:
                         mins_left = int((resume_dt - now).total_seconds() / 60)

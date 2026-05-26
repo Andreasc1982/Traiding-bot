@@ -455,7 +455,7 @@ def daily_report():
         lines.append("  Balance:    $" + "{:,.2f}".format(bal))
         lines.append("  Gesamt P&L: $" + pnl_s)
         lines.append("  Trades: " + str(total))
-        lines.append("  Positionen: " + str(len(pos)) + "/6")
+        lines.append("  Positionen: " + str(len(pos)) + "/8")
         for sym, p in list(pos.items())[:6]:
             pct  = p.get("pnl_pct", 0)
             sign = "+" if pct >= 0 else ""

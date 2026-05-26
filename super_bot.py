@@ -165,6 +165,20 @@ class SuperTradingBot:
         # Telegram command flag — set True by /stop command, False by /start
         self.tg_paused    = False
 
+        # Watchdog — updated each main loop iteration; watchdog thread kills on hang > 6 min
+        self._last_heartbeat = time.time()
+
+        # SPY macro cache — refreshed every 10 min
+        self._spy_cache = None   # (pct_change: float, timestamp: float)
+
+        # VIX volatility regime cache — refreshed every 30 min
+        self._vix_cache = None   # ((name, size_mult), timestamp)
+
+        # Drawdown alert flags — prevent repeated Telegram messages per zone
+        self._dd_caution_sent = False
+        self._dd_warning_sent = False
+        self._dd_danger_sent  = False
+
         if os.path.exists("/home/trading2025/trading_bot/trades_history.json"):
             import json as _j
             self.trades = _j.load(open("/home/trading2025/trading_bot/trades_history.json"))
@@ -762,6 +776,7 @@ class SuperTradingBot:
             }
             with open(SUPER_STATE_PATH, "w") as f:
                 json.dump(st, f)
+            os.chmod(SUPER_STATE_PATH, 0o600)   # owner read/write only
         except Exception as e:
             print("[STATE] Save error: " + str(e))
 
@@ -948,6 +963,138 @@ class SuperTradingBot:
         print(msg)
         self.send(msg)
 
+    # ── Watchdog ────────────────────────────────────────────────────────────
+
+    def _watchdog_run(self):
+        """Daemon thread — kills process if main loop hasn't updated heartbeat in 6 min.
+        Monitor agent detects dead screen session and restarts within 60s."""
+        TIMEOUT = 360   # 6 minutes (10-min cycle + buffer)
+        while True:
+            time.sleep(60)
+            age = time.time() - self._last_heartbeat
+            if age > TIMEOUT:
+                print("[WATCHDOG] Hauptloop haengt seit {:.0f}s — erzwinge Neustart".format(age))
+                os._exit(1)
+
+    # ── Time-based exit for stuck positions ─────────────────────────────────
+
+    def check_stuck_positions(self):
+        """Exit positions that block slots without going anywhere.
+
+        Rules (stocks — market only open ~6.5h/day):
+        - Any position open > 5 trading days AND best P&L never reached +5% → TIME-EXIT
+        - Any position open > 10 trading days → hard exit (free up capital)
+        """
+        STUCK_DAYS  = 5    # calendar days without meaningful move
+        STUCK_PEAK  = 5.0  # only 'stuck' if best P&L was never above this %
+        HARD_DAYS   = 10   # absolute maximum
+
+        with self.positions_lock:
+            symbols = list(self.positions.keys())
+
+        for symbol in symbols:
+            try:
+                with self.positions_lock:
+                    if symbol not in self.positions:
+                        continue
+                    pos = self.positions[symbol]
+
+                entry_time = pos.get("time", "")
+                try:
+                    entry_dt = datetime.strptime(entry_time, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    try:
+                        entry_dt = datetime.strptime(entry_time, "%Y-%m-%d %H:%M")
+                    except ValueError:
+                        continue
+
+                age_days = (datetime.now() - entry_dt).total_seconds() / 86400
+                price = self.ws_prices.get(symbol)
+                if not price or price <= 0:
+                    continue
+
+                pnl_pct  = ((price - pos["entry"]) / pos["entry"]) * 100
+                best_pnl = ((pos.get("highest", pos["entry"]) - pos["entry"]) / pos["entry"]) * 100
+
+                reason = None
+                if age_days >= HARD_DAYS:
+                    reason = "TIME-EXIT-MAX"
+                elif age_days >= STUCK_DAYS and best_pnl < STUCK_PEAK:
+                    reason = "TIME-EXIT-STUCK"
+
+                if reason:
+                    print("[TIME-EXIT] {} nach {:.1f}d | P&L: {:.1f}% | {}".format(
+                        symbol, age_days, pnl_pct, reason))
+                    self.send("⏰ <b>TIME-EXIT</b>: {} nach <b>{:.1f}d</b>\n"
+                              "P&amp;L: {:.1f}% | Best: {:.1f}% | {}".format(
+                              symbol, age_days, pnl_pct, best_pnl, reason))
+                    self.close_position(symbol, price, reason, pnl_pct)
+
+            except Exception as e:
+                print("[TIME-EXIT] Fehler bei {}: {}".format(symbol, e))
+
+    # ── SPY macro filter ─────────────────────────────────────────────────────
+
+    def _get_spy_trend(self):
+        """Returns today's SPY % change as market-wide filter.
+        Cached 10 min. Returns 0.0 on error (neutral — don't block trades)."""
+        cached = self._spy_cache
+        if cached and time.time() - cached[1] < 600:
+            return cached[0]
+        try:
+            url = "https://data.alpaca.markets/v2/stocks/bars"
+            params = {"symbols": "SPY", "timeframe": "1Day", "limit": 2, "feed": "iex"}
+            r = requests.get(url, headers=self.alpaca_headers, params=params, timeout=8)
+            bars = r.json().get("bars", {}).get("SPY", []) if r.status_code == 200 else []
+            if len(bars) >= 2:
+                pct = (bars[-1]["c"] - bars[-2]["c"]) / bars[-2]["c"] * 100
+            elif len(bars) == 1:
+                pct = (bars[0]["c"] - bars[0]["o"]) / bars[0]["o"] * 100
+            else:
+                pct = 0.0
+            self._spy_cache = (round(pct, 2), time.time())
+            return round(pct, 2)
+        except Exception:
+            return 0.0
+
+    def _get_vix_regime(self):
+        """Fetch VIX from Yahoo Finance and return volatility regime.
+        Returns (regime_name, size_mult):
+          LOW      VIX < 15  → 1.2× size  (calm market, go bigger)
+          NORMAL   VIX 15-25 → 1.0× size  (standard)
+          HIGH     VIX 25-35 → 0.5× size  (stressed, reduce exposure)
+          EXTREME  VIX > 35  → 0.0× size  (no new trades — crash mode)
+        Cached 30 min. Returns NORMAL on any error (never blocks trades).
+        """
+        cached = self._vix_cache
+        if cached and time.time() - cached[1] < 1800:
+            return cached[0]
+        try:
+            r = requests.get(
+                "https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX",
+                params={"interval": "1d", "range": "5d"},
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=8,
+            )
+            closes = r.json()["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+            vix = next((v for v in reversed(closes) if v is not None), 20.0)
+
+            if vix < 15:
+                result = ("LOW",     1.2)
+            elif vix < 25:
+                result = ("NORMAL",  1.0)
+            elif vix < 35:
+                result = ("HIGH",    0.5)
+            else:
+                result = ("EXTREME", 0.0)
+
+            self._vix_cache = (result, time.time())
+            print("[VIX] {:.1f} → {} (size×{})".format(vix, result[0], result[1]))
+            return result
+        except Exception as e:
+            print("[VIX] Fehler: " + str(e) + " → NORMAL")
+            return ("NORMAL", 1.0)
+
     # ── News & sentiment ───────────────────────────────────────────────────
 
     def fetch_twitter(self):
@@ -963,17 +1110,23 @@ class SuperTradingBot:
             "https://news.google.com/rss/search?q=white+house+executive+order+economy&hl=en-US&gl=US&ceid=US:en",
         ]
         articles = []
-        for url in feeds:
+        def _fetch_vip(url):
             try:
-                r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                import feedparser
+                r    = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
                 feed = feedparser.parse(r.content)
-                for entry in feed.entries[:8]:
-                    articles.append({
-                        "title":       entry.title,
-                        "description": getattr(entry, "summary", ""),
-                    })
-            except Exception as e:
-                print("[VIP-NEWS] " + str(e))
+                return [{"title": e.title, "description": getattr(e, "summary", "")}
+                        for e in feed.entries[:8]]
+            except Exception:
+                return []
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {pool.submit(_fetch_vip, url): url for url in feeds}
+            for fut in as_completed(futures, timeout=15):
+                try:
+                    articles.extend(fut.result())
+                except Exception:
+                    pass
         print("[VIP-NEWS] " + str(len(articles)) + " Artikel (Trump/Musk/POTUS via Google News)")
         return articles
 
@@ -999,14 +1152,22 @@ class SuperTradingBot:
             "https://news.google.com/rss/search?q=senator+representative+stock+purchase&hl=en-US&gl=US&ceid=US:en",
         ]
         articles = []
-        for url in feeds:
+        def _fetch_feed(url):
             try:
-                r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+                import feedparser
+                r    = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
                 feed = feedparser.parse(r.content)
-                for entry in feed.entries[:10]:
-                    articles.append(entry.title + " " + getattr(entry, "summary", ""))
-            except Exception as e:
-                print("[RSS] Fehler: " + str(e))
+                return [e.title + " " + getattr(e, "summary", "") for e in feed.entries[:10]]
+            except Exception:
+                return []
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        with ThreadPoolExecutor(max_workers=10) as pool:
+            futures = {pool.submit(_fetch_feed, url): url for url in feeds}
+            for fut in as_completed(futures, timeout=15):
+                try:
+                    articles.extend(fut.result())
+                except Exception:
+                    pass
         print("[NEWS] " + str(len(articles)) + " Artikel via RSS")
         return articles
 
@@ -1220,10 +1381,51 @@ class SuperTradingBot:
 
     # ── Trade entry ────────────────────────────────────────────────────────
 
+    def _get_drawdown_mult(self):
+        """Gradual position-size scaling based on today's P&L.
+        Returns (size_mult, zone) — applied on top of ADX + VIX multipliers.
+
+        HEALTHY  > -3%        → 1.0×  full size
+        CAUTION  -3% to -6%   → 0.7×  -30% size, Telegram warning (once)
+        WARNING  -6% to -9%   → 0.4×  -60% size
+        DANGER   < -9%        → 0.0×  no new trades (bot stops buying before risk agent halts)
+        """
+        if self.start_balance <= 0:
+            return 1.0, "HEALTHY"
+        day_pct = (self.balance - self.start_balance) / self.start_balance * 100
+        if day_pct > -3.0:
+            return 1.0, "HEALTHY"
+        elif day_pct > -6.0:
+            if not getattr(self, "_dd_caution_sent", False):
+                self.send("⚠️ Drawdown CAUTION: {:.1f}% heute — Positionsgrösse -30%".format(day_pct))
+                self._dd_caution_sent = True
+            return 0.7, "CAUTION"
+        elif day_pct > -9.0:
+            if not getattr(self, "_dd_warning_sent", False):
+                self.send("🔴 Drawdown WARNING: {:.1f}% heute — Positionsgrösse -60%".format(day_pct))
+                self._dd_warning_sent = True
+            return 0.4, "WARNING"
+        else:
+            if not getattr(self, "_dd_danger_sent", False):
+                self.send("🚨 Drawdown DANGER: {:.1f}% heute — keine neuen Trades!".format(day_pct))
+                self._dd_danger_sent = True
+            return 0.0, "DANGER"
+
     def trade(self, scores):
         if self.tg_paused:
             print("[TRADE] Pausiert (via Telegram /stop)")
             return
+
+        # Gradual drawdown protection — scale down before risk agent hard-halts
+        dd_mult, dd_zone = self._get_drawdown_mult()
+        if dd_mult == 0.0:
+            print("[TRADE] DD=" + dd_zone + " — keine neuen Käufe")
+            return
+        if dd_zone == "HEALTHY":
+            self._dd_caution_sent = False
+            self._dd_warning_sent = False
+            self._dd_danger_sent  = False
+
         ranked = sorted(scores.items(), key=lambda x: abs(x[1]), reverse=True)
         for sector, score in ranked:
             if abs(score) < 1.0:
@@ -1283,6 +1485,13 @@ class SuperTradingBot:
                 regime, threshold, size_mult = "TRANSITIONAL", 0.60, 0.6
             else:
                 regime, threshold, size_mult = "RANGING",      0.45, 0.4
+
+            # ── VIX Volatility Regime — multiplied on top of ADX size_mult ────
+            vix_regime, vix_mult = self._get_vix_regime()
+            if vix_mult == 0.0:
+                print("[SKIP] " + symbol + " VIX=EXTREME — keine neuen Trades (Crash-Schutz)")
+                continue
+            size_mult = round(size_mult * vix_mult * dd_mult, 2)
 
             # Weighted score: strong trend indicators carry more weight
             # RSI + MACD + Supertrend = 1.5 each (trend-core)
@@ -1396,6 +1605,7 @@ class SuperTradingBot:
             msg = ("BUY " + symbol + " (" + sector + ") " +
                    str(shares) + " @ $" + str(round(price, 2)) +
                    " [" + regime + " ADX=" + str(adx) +
+                   " VIX=" + vix_regime + " DD=" + dd_zone +
                    " score=" + str(round(score_pct * 100)) + "%" +
                    " " + ml_str +
                    "x" + str(size_mult) + "]" +
@@ -1564,13 +1774,18 @@ class SuperTradingBot:
     def run(self, interval=600):
         self.send("Bot v3.0 | Bal: $" + str(round(self.balance, 0)))
 
-        # Telegram commands handled by telegram_router.py (single getUpdates poller)
         # Start real-time price stream in background daemon thread
         self.start_websocket()
+
+        # Watchdog — kills process if main loop hangs > 6 min
+        wd = threading.Thread(target=self._watchdog_run, daemon=True, name="watchdog")
+        wd.start()
+        print("[WATCHDOG] Aktiv — Neustart wenn Hauptloop > 6 min haengt")
 
         cycle = 0
         while True:
             try:
+                self._last_heartbeat = time.time()   # watchdog: alive
                 self.check_control()
                 if not self.running:
                     self.save_dashboard({k: 0.0 for k in ETFS.keys()})
@@ -1579,9 +1794,15 @@ class SuperTradingBot:
 
                 cycle += 1
                 ws_status = "WS✓" if self.ws_connected else "WS✗"
+
+                # SPY macro check — log but don't block (informational for now)
+                spy_pct = self._get_spy_trend()
+                spy_tag = " | SPY{:+.1f}%".format(spy_pct) if spy_pct != 0.0 else ""
+
                 print("[" + str(cycle) + "] " + datetime.now().strftime("%H:%M:%S") +
-                      " | " + ws_status)
+                      " | " + ws_status + spy_tag)
                 self.check_day_loss()
+                self.check_stuck_positions()
                 self._fetch_earnings()        # no-op after first call of the day
                 self._check_held_earnings()   # alert once per held position per day
 
@@ -1621,6 +1842,7 @@ class SuperTradingBot:
 
                 # Intra-cycle momentum + stop polling every 2 min
                 for _ in range(interval // 120):
+                    self._last_heartbeat = time.time()   # watchdog: inner loop alive
                     time.sleep(120)
                     import datetime as dt
                     utc_hour = dt.datetime.now(dt.timezone.utc).hour
@@ -1633,7 +1855,6 @@ class SuperTradingBot:
                         if len(sbars) >= 2:
                             chg = (sbars[-1]["c"] - sbars[-2]["c"]) / sbars[-2]["c"] * 100
                             if chg >= 2.0:
-                                pscore.get(sym) and None   # ETF tickers match directly
                                 # Map ETF ticker back to sector key
                                 for sec, etf in ETFS.items():
                                     if etf == sym:

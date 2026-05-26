@@ -14,6 +14,7 @@ h1{color:#00ffcc;font-size:18px;letter-spacing:3px;padding-bottom:10px;border-bo
 .ts{color:#3a6a50;font-size:11px;margin-bottom:14px}
 .row{display:grid;gap:10px;margin-bottom:10px}
 .r4{grid-template-columns:repeat(4,1fr)}
+.r5{grid-template-columns:repeat(5,1fr)}
 .r2{grid-template-columns:1fr 1fr}
 .card{background:#080f0c;border:1px solid #0a3020;border-radius:8px;padding:12px}
 .lbl{font-size:10px;letter-spacing:2px;color:#3a6a50;margin-bottom:6px}
@@ -59,9 +60,14 @@ td{padding:5px 4px;border-bottom:1px solid #0a1810;font-size:12px}
 <div class="ts" id="ts">--</div>
 
 <!-- Stats row -->
-<div class="row r4">
+<div class="row r5">
   <div class="card"><div class="lbl">BALANCE</div><div class="val g" id="balance">--</div></div>
   <div class="card"><div class="lbl">POSITIONEN</div><div class="val b" id="poscount">--</div></div>
+  <div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px">
+    <div class="lbl" style="margin:0">REFRESH</div>
+    <div class="cd-ring" id="cd" style="font-size:28px;padding:0;line-height:1">30</div>
+    <div class="cd-bar" style="width:100%;margin:0"><div class="cd-fill" id="cd-fill" style="width:100%"></div></div>
+  </div>
   <div class="card"><div class="lbl">GESAMT P&amp;L</div><div class="val" id="pnl">--</div></div>
   <div class="card"><div class="lbl">MODE</div><div class="val y" id="mode">--</div></div>
 </div>
@@ -104,20 +110,17 @@ td{padding:5px 4px;border-bottom:1px solid #0a1810;font-size:12px}
   </div>
 </div>
 
-<!-- Trade history -->
+<!-- Trade history — scrollable -->
 <div class="card" style="margin-bottom:10px">
   <div class="lbl" style="margin-bottom:8px">TRADE HISTORIE</div>
-  <table>
-    <thead><tr><th>SYMBOL</th><th>GRUND</th><th>%</th><th>P&amp;L $</th><th>ZEIT</th></tr></thead>
-    <tbody id="trades-body"></tbody>
-  </table>
-</div>
-
-<!-- Countdown -->
-<div class="card" style="text-align:center">
-  <div class="lbl" style="margin-bottom:6px">AUTO REFRESH</div>
-  <div class="cd-ring" id="cd">30</div>
-  <div class="cd-bar"><div class="cd-fill" id="cd-fill" style="width:100%"></div></div>
+  <div style="max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#0a3020 #060d0a">
+    <table style="width:100%">
+      <thead style="position:sticky;top:0;background:#080f0c;z-index:1">
+        <tr><th>SYMBOL</th><th>GRUND</th><th>%</th><th>P&amp;L $</th><th>ZEIT</th></tr>
+      </thead>
+      <tbody id="trades-body"></tbody>
+    </table>
+  </div>
 </div>
 
 <script>
