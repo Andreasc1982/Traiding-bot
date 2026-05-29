@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from datetime import datetime, timedelta
 import time, requests, os, json, re, threading, socket
+import yfinance as yf
 
 # Global socket timeout — prevents feedparser.parse() and any urllib call from
 # blocking the main thread indefinitely when an RSS/Nitter/Bloomberg server hangs.
@@ -327,18 +328,20 @@ class SuperTradingBot:
 
     def get_indicators(self, symbol):
         try:
-            url = ALPACA_BASE_URL + "/v2/stocks/" + symbol + "/bars"
-            params = {"timeframe": "1Day", "limit": 100}
-            r = requests.get(url, headers=self.alpaca_headers, params=params, timeout=5)
-            if r.status_code != 200:
+            # yfinance for daily ETF bars — Alpaca paper account returns null bars
+            df = yf.download(symbol, period="6mo", interval="1d",
+                             auto_adjust=True, progress=False)
+            if df is None or len(df) < 78:
                 return None
-            bars = r.json().get("bars", [])
-            if len(bars) < 78:
-                return None
-            closes  = [b["c"] for b in bars]
-            highs   = [b["h"] for b in bars]
-            lows    = [b["l"] for b in bars]
-            volumes = [b["v"] for b in bars]
+            # yfinance returns multi-level columns when auto_adjust=True
+            def _col(name):
+                if (name, symbol) in df.columns:
+                    return list(df[(name, symbol)].astype(float))
+                return list(df[name].astype(float))
+            closes  = _col("Close")
+            highs   = _col("High")
+            lows    = _col("Low")
+            volumes = _col("Volume")
             n = len(closes)
 
             ma20   = sum(closes[-20:]) / 20
@@ -551,7 +554,8 @@ class SuperTradingBot:
                 "stoch_k":     round(sk, 4),   # continuous %K for ML feature vector
                 "price":       closes[-1],
             }
-        except Exception:
+        except Exception as e:
+            print("[IND-ERR] " + str(e)[:120])
             return None
 
     # ── Correlation management ─────────────────────────────────────────────
