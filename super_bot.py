@@ -414,8 +414,8 @@ class SuperTradingBot:
             st_dir = [1] * n
             for i in range(6, n):
                 hl2  = (highs[i] + lows[i]) / 2
-                b_ub = hl2 + 4.0 * st_atr[i]   # optimized: 3.5 → 4.0
-                b_lb = hl2 - 4.0 * st_atr[i]   # optimized: 3.5 → 4.0
+                b_ub = hl2 + 3.5 * st_atr[i]   # optimized: 3.5 → 4.0
+                b_lb = hl2 - 3.5 * st_atr[i]   # optimized: 3.5 → 4.0
                 if i == 6:
                     ub[i], lb[i] = b_ub, b_lb
                 else:
@@ -1471,7 +1471,7 @@ class SuperTradingBot:
             vwap     = self._get_vwap(symbol)
             vwap_ok  = (vwap is None) or (ind["price"] <= vwap * 1.005)
 
-            rsi_ok  = ind["rsi"] < 65   # optimized: 70 → 65
+            rsi_ok  = ind["rsi"] < 75   # optimized: 70 → 65
             ma_ok   = ind["price"] > ind["ma20"]
             macd_ok = ind["macd"] > ind["macd_signal"]
             st_ok   = ind["supertrend"] == 1

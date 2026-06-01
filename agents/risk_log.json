@@ -1,7 +1,7 @@
 {
   "peak_value": 115229.40258006439,
-  "day_start_value": 115195.36790259,
-  "day_start_date": "2026-05-31",
+  "day_start_value": 105526.07812099252,
+  "day_start_date": "2026-06-01",
   "halted": false,
   "resume_at": null,
   "events": [
@@ -294,6 +294,28 @@
       "type": "DAY_START",
       "date": "2026-05-31",
       "value": 115195.37
+    },
+    {
+      "time": "2026-05-31 15:22:19",
+      "type": "HALT",
+      "reason": "DAILY_LOSS -8.37% (limit -5.0%)",
+      "daily_pct": -8.37,
+      "drawdown_pct": -8.4,
+      "portfolio_value": 105552.04,
+      "peak_value": 115229.4,
+      "resume_at": "2026-05-31 19:22"
+    },
+    {
+      "time": "2026-05-31 19:22:21",
+      "type": "RESUME",
+      "portfolio_value": 105552.04,
+      "new_day_start": 105552.04
+    },
+    {
+      "time": "2026-06-01 00:00:23",
+      "type": "DAY_START",
+      "date": "2026-06-01",
+      "value": 105526.08
     }
   ]
 }

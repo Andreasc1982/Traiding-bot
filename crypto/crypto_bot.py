@@ -162,7 +162,7 @@ class CryptoBot:
         self.balance   = 10000.0
         self.positions = {}
         self.trades    = []
-        self.stop_loss    = 4.0   # main coins — 4% hard stop
+        self.stop_loss    = 3.0   # main coins — 4% hard stop
         self.take_profit  = 8.0
         self.max_pos      = 8     # 6→8: bigger universe (20 coins) needs more slots
         self.pos_size     = 0.06  # 8%→6%: smaller per position, more positions active
