@@ -1,7 +1,7 @@
 {
   "peak_value": 115229.40258006439,
-  "day_start_value": 105526.07812099252,
-  "day_start_date": "2026-06-01",
+  "day_start_value": 105510.68444453018,
+  "day_start_date": "2026-06-02",
   "halted": false,
   "resume_at": null,
   "events": [
@@ -316,6 +316,12 @@
       "type": "DAY_START",
       "date": "2026-06-01",
       "value": 105526.08
+    },
+    {
+      "time": "2026-06-02 00:00:28",
+      "type": "DAY_START",
+      "date": "2026-06-02",
+      "value": 105510.68
     }
   ]
 }
