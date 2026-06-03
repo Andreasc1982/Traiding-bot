@@ -171,9 +171,21 @@ def check_bots():
 
     # If risk agent has halted trading, skip restart of trading bots only.
     # Dashboard, monitor, and risk agent itself still get restarted if they crash.
-    risk_halted = os.path.exists(RISK_HALT_FILE)
+    # Read per-bot halt targets from halt file (v2 format)
+    # halted_sessions = set of screen session names that are risk-halted
+    halted_sessions = set()
+    if os.path.exists(RISK_HALT_FILE):
+        try:
+            with open(RISK_HALT_FILE) as _hf:
+                _hd = json.load(_hf)
+            _bots = _hd.get("halted_bots", ["super", "crypto"])
+            _map  = {"super": "trading", "crypto": "crypto"}
+            halted_sessions = {_map[b] for b in _bots if b in _map}
+        except Exception:
+            halted_sessions = {"trading", "crypto"}  # safe fallback
+    risk_halted = bool(halted_sessions)
     if risk_halted:
-        print("[MONITOR] Risk halt aktiv -- trading/crypto-Restart uebersprungen")
+        print("[MONITOR] Risk halt aktiv fuer: " + str(halted_sessions))
 
     for session, bot in BOTS.items():
         name  = bot["name"]
@@ -190,7 +202,7 @@ def check_bots():
         # -- Bot is down -----------------------------------------------------
         # Don't restart trading/crypto during a risk halt -- risk agent owns them.
         # Infrastructure services (dashboards, router, agents) always restart.
-        if risk_halted and bot.get("trading_only", False):
+        if session in halted_sessions:
             print("[MONITOR] " + name + " ist gestoppt (Risk Halt aktiv -- kein Restart)")
             continue
 

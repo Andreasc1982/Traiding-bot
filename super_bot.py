@@ -414,8 +414,8 @@ class SuperTradingBot:
             st_dir = [1] * n
             for i in range(6, n):
                 hl2  = (highs[i] + lows[i]) / 2
-                b_ub = hl2 + 3.5 * st_atr[i]   # optimized: 3.5 → 4.0
-                b_lb = hl2 - 3.5 * st_atr[i]   # optimized: 3.5 → 4.0
+                b_ub = hl2 + 4.0 * st_atr[i]   # optimized: 3.5 → 4.0
+                b_lb = hl2 - 4.0 * st_atr[i]   # optimized: 3.5 → 4.0
                 if i == 6:
                     ub[i], lb[i] = b_ub, b_lb
                 else:
@@ -823,17 +823,19 @@ class SuperTradingBot:
                     return stock, None   # unavailable or parse error — skip silently
 
             done = 0
-            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-                futs = {pool.submit(_fetch_one, s): s for s in sorted(all_stocks)}
-                try:
-                    for fut in concurrent.futures.as_completed(futs, timeout=45):
-                        stock, ed = fut.result()
-                        if ed:
-                            cache[stock] = ed
-                        done += 1
-                except concurrent.futures.TimeoutError:
-                    print("[EARNINGS] Timeout nach 45s — " + str(done) + "/" +
-                          str(len(all_stocks)) + " Stocks abgerufen")
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=6)
+            futs = {pool.submit(_fetch_one, s): s for s in sorted(all_stocks)}
+            try:
+                for fut in concurrent.futures.as_completed(futs, timeout=45):
+                    stock, ed = fut.result()
+                    if ed:
+                        cache[stock] = ed
+                    done += 1
+            except concurrent.futures.TimeoutError:
+                print("[EARNINGS] Timeout nach 45s — " + str(done) + "/" +
+                      str(len(all_stocks)) + " Stocks abgerufen")
+            finally:
+                pool.shutdown(wait=False, cancel_futures=True)  # don't block on hung yf calls
 
         except ImportError:
             print("[EARNINGS] yfinance nicht installiert — Earnings-Check deaktiviert")
@@ -1124,13 +1126,18 @@ class SuperTradingBot:
             except Exception:
                 return []
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            futures = {pool.submit(_fetch_vip, url): url for url in feeds}
+        pool = ThreadPoolExecutor(max_workers=4)
+        futures = {pool.submit(_fetch_vip, url): url for url in feeds}
+        try:
             for fut in as_completed(futures, timeout=15):
                 try:
                     articles.extend(fut.result())
                 except Exception:
                     pass
+        except Exception:
+            pass
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
         print("[VIP-NEWS] " + str(len(articles)) + " Artikel (Trump/Musk/POTUS via Google News)")
         return articles
 
@@ -1165,13 +1172,18 @@ class SuperTradingBot:
             except Exception:
                 return []
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        with ThreadPoolExecutor(max_workers=10) as pool:
-            futures = {pool.submit(_fetch_feed, url): url for url in feeds}
+        pool = ThreadPoolExecutor(max_workers=10)
+        futures = {pool.submit(_fetch_feed, url): url for url in feeds}
+        try:
             for fut in as_completed(futures, timeout=15):
                 try:
                     articles.extend(fut.result())
                 except Exception:
                     pass
+        except Exception:
+            pass
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
         print("[NEWS] " + str(len(articles)) + " Artikel via RSS")
         return articles
 
@@ -1471,7 +1483,7 @@ class SuperTradingBot:
             vwap     = self._get_vwap(symbol)
             vwap_ok  = (vwap is None) or (ind["price"] <= vwap * 1.005)
 
-            rsi_ok  = ind["rsi"] < 75   # optimized: 70 → 65
+            rsi_ok  = ind["rsi"] < 75   # optimized: 70 → 75
             ma_ok   = ind["price"] > ind["ma20"]
             macd_ok = ind["macd"] > ind["macd_signal"]
             st_ok   = ind["supertrend"] == 1

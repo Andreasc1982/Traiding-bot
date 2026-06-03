@@ -1,29 +1,18 @@
 #!/usr/bin/env python3
 """
-Risk Agent — monitors combined portfolio risk across both bots every 30 seconds.
+Risk Agent v2 — per-bot daily limits + combined drawdown brake.
 
-Thresholds:
-  * Combined daily loss   > 5%   -> halt both bots
-  * Combined drawdown     > 15%  -> halt both bots (from all-time peak)
+Per-bot independent limits:
+  Super Bot  daily loss > -8%  -> halt Super Bot ONLY, Crypto continues
+  Crypto Bot daily loss > -8%  -> halt Crypto Bot ONLY, Super continues
 
-Halt mechanism:
-  1. Writes agents/risk_halt.json        (monitor_agent respects this, skips restart)
-  2. Writes bot_control.json {"command":"stop"}  (super_bot graceful exit)
-  3. screen -S crypto -X quit            (crypto_bot hard stop)
-  4. screen -S trading -X quit after 15s (super_bot hard kill if still alive)
+Combined emergency brake:
+  Combined drawdown > -15%     -> halt BOTH bots
 
-Resume:
-  Automatically resumes after RESUME_HOURS (4h cooldown). No fixed clock time --
-  crypto trades 24/7 and a next-day 09:30 wait is unnecessarily long.
-  Daily P&L counter resets automatically at midnight.
+Resume: each bot resumes independently after 4h cooldown.
 
-State is persisted in agents/risk_log.json (survives restarts, tracks all events).
-
-Launch:
-  screen -dmS risk bash -c '
-    cd /home/trading2025/trading_bot/agents &&
-    source /home/trading2025/trading_bot_env/bin/activate &&
-    PYTHONUNBUFFERED=1 python3 -u risk_agent.py > /tmp/risk.log 2>&1'
+halt file format (read by monitor_agent):
+  { "halted_bots": ["super"] | ["crypto"] | ["super","crypto"], ... }
 """
 
 import os, sys, json, time, subprocess, requests
@@ -35,51 +24,42 @@ try:
 except ImportError:
     config = {}
 
-# -- Config -------------------------------------------------------------------
+TELEGRAM_TOKEN     = config.get("telegram_bot_token", "")
+TELEGRAM_CHAT_ID   = config.get("telegram_chat_id", "")
 
-TELEGRAM_TOKEN   = config.get("telegram_bot_token", "")
-TELEGRAM_CHAT_ID = config.get("telegram_chat_id", "")
+BASE_DIR           = "/home/trading2025/trading_bot"
+AGENTS_DIR         = os.path.join(BASE_DIR, "agents")
+SUPER_JSON         = os.path.join(BASE_DIR, "dashboard.json")
+CRYPTO_JSON        = os.path.join(BASE_DIR, "crypto", "crypto_dashboard.json")
+CONTROL_FILE       = os.path.join(BASE_DIR, "bot_control.json")
+HALT_FILE          = os.path.join(AGENTS_DIR, "risk_halt.json")
+LOG_FILE           = os.path.join(AGENTS_DIR, "risk_log.json")
 
-BASE_DIR     = "/home/trading2025/trading_bot"
-AGENTS_DIR   = os.path.join(BASE_DIR, "agents")
-SUPER_JSON   = os.path.join(BASE_DIR, "dashboard.json")
-CRYPTO_JSON  = os.path.join(BASE_DIR, "crypto", "crypto_dashboard.json")
-CONTROL_FILE = os.path.join(BASE_DIR, "bot_control.json")
-HALT_FILE    = os.path.join(AGENTS_DIR, "risk_halt.json")
-LOG_FILE     = os.path.join(AGENTS_DIR, "risk_log.json")
-
-CHECK_INTERVAL   = 30       # seconds between risk checks
-DAILY_LOSS_LIMIT = -5.0     # % -- halt if combined daily loss hits this
-DRAWDOWN_LIMIT   = -15.0    # % -- halt if combined drawdown from peak hits this
-RESUME_HOURS     = 4        # hours to wait before auto-resuming after a halt
-STALE_MINUTES    = 10       # warn if dashboard JSON not updated in this many minutes
-
-# -- Telegram -----------------------------------------------------------------
+CHECK_INTERVAL        = 30
+SUPER_DAILY_LIMIT     = -8.0
+CRYPTO_DAILY_LIMIT    = -8.0
+DRAWDOWN_LIMIT        = -15.0
+RESUME_HOURS_BOT      = 2    # per-bot daily loss halt — 2h cooldown
+RESUME_HOURS_DRAWDOWN = 4    # combined drawdown halt — 4h cooldown (serious event)
+STALE_MINUTES         = 10
 
 def tg(msg):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print("[TG] " + msg)
-        return
+        print("[TG] " + msg); return
     try:
-        requests.post(
-            "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage",
-            json={"chat_id": TELEGRAM_CHAT_ID, "text": msg},
-            timeout=10,
-        )
+        requests.post("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage",
+                      json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"},
+                      timeout=10)
     except Exception as e:
         print("[TG ERROR] " + str(e))
 
-# -- State persistence --------------------------------------------------------
-
 def _default_state():
-    return {
-        "peak_value":      None,   # highest combined portfolio value ever seen
-        "day_start_value": None,   # combined value at start of current day
-        "day_start_date":  None,   # ISO date string "YYYY-MM-DD"
-        "halted":          False,
-        "resume_at":       None,   # ISO datetime "YYYY-MM-DD HH:MM" or None
-        "events":          [],     # list of risk event records (capped at 500)
-    }
+    return {"peak_value": None, "halted": False, "resume_at": None,
+            "super_day_start": None, "super_day_date": None,
+            "super_halted": False, "super_resume_at": None,
+            "crypto_day_start": None, "crypto_day_date": None,
+            "crypto_halted": False, "crypto_resume_at": None,
+            "events": []}
 
 def load_state():
     default = _default_state()
@@ -94,329 +74,225 @@ def load_state():
         print("[STATE] Load error: " + str(e))
     return default
 
-def save_state(state):
+def save_state(s):
     try:
-        state["events"] = state["events"][-500:]
+        s["events"] = s["events"][-500:]
         with open(LOG_FILE, "w") as f:
-            json.dump(state, f, indent=2)
+            json.dump(s, f, indent=2)
     except Exception as e:
         print("[STATE] Save error: " + str(e))
 
-def log_event(state, event_type, **kwargs):
-    event = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-             "type": event_type, **kwargs}
-    state["events"].append(event)
-    print("[EVENT] " + event_type + ": " + str(kwargs))
-    return event
+def log_event(s, t, **kw):
+    ev = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "type": t, **kw}
+    s["events"].append(ev)
+    print("[EVENT] " + t + ": " + str(kw))
 
-# -- Portfolio reader ----------------------------------------------------------
-
-def read_dashboard(path):
-    """
-    Returns (total_value, age_minutes) or (None, None) on failure.
-    total_value = cash balance + market value of all open positions.
-    """
-    try:
-        if not os.path.exists(path):
-            return None, None
-        age_min = (time.time() - os.path.getmtime(path)) / 60
-        with open(path) as f:
-            d = json.load(f)
-        cash = float(d.get("balance", 0))
-        pos_value = sum(
-            float(p.get("shares", 0)) * float(p.get("current_price", p.get("entry", 0)))
-            for p in d.get("positions", {}).values()
-        )
-        return cash + pos_value, round(age_min, 1)
-    except Exception as e:
-        print("[READ] " + path + ": " + str(e))
-        return None, None
-
-def read_combined():
-    """
-    Returns (combined, super_val, crypto_val, stale_warnings).
-    combined is None if either dashboard is unreadable.
-    """
-    sv, sa = read_dashboard(SUPER_JSON)
-    cv, ca = read_dashboard(CRYPTO_JSON)
-
-    stale = []
-    if sa is not None and sa > STALE_MINUTES:
-        stale.append("SuperBot(" + str(sa) + "m)")
-    if ca is not None and ca > STALE_MINUTES:
-        stale.append("CryptoBot(" + str(ca) + "m)")
-
-    if sv is None or cv is None:
-        missing = (["SuperBot"] if sv is None else []) + \
-                  (["CryptoBot"] if cv is None else [])
-        print("[READ] No data from: " + ", ".join(missing))
-        return None, sv, cv, stale
-
-    return sv + cv, sv, cv, stale
-
-# -- Halt / resume ------------------------------------------------------------
-
-def _write_halt_file(reason, resume_at_str):
+def _update_halt_file(s):
+    sh = s.get("super_halted"); ch = s.get("crypto_halted"); bh = s.get("halted")
+    if not sh and not ch and not bh:
+        try:
+            if os.path.exists(HALT_FILE): os.remove(HALT_FILE)
+        except Exception as e:
+            print("[HALT] Remove error: " + str(e))
+        return
+    bots = []
+    if bh or sh: bots.append("super")
+    if bh or ch: bots.append("crypto")
+    times = [t for t in [s.get("super_resume_at"), s.get("crypto_resume_at"), s.get("resume_at")] if t]
     with open(HALT_FILE, "w") as f:
-        json.dump({
-            "halted":    True,
-            "reason":    reason,
-            "halted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "resume_at": resume_at_str,
-        }, f, indent=2)
+        json.dump({"halted": True, "halted_bots": bots,
+                   "halted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                   "resume_at": min(times) if times else None}, f, indent=2)
 
-def _remove_halt_file():
-    try:
-        if os.path.exists(HALT_FILE):
-            os.remove(HALT_FILE)
-    except Exception as e:
-        print("[HALT] Remove error: " + str(e))
-
-def halt_file_exists():
-    return os.path.exists(HALT_FILE)
-
-def _stop_super_bot():
-    """Write stop command, then hard-kill after 15s if session still alive."""
+def _stop_super():
     try:
         with open(CONTROL_FILE, "w") as f:
             json.dump({"command": "stop"}, f)
-        print("[HALT] Wrote stop command -> bot_control.json")
+        print("[HALT] Wrote stop -> bot_control.json")
     except Exception as e:
-        print("[HALT] Control file error: " + str(e))
-    # Grace period -- give super_bot time to exit cleanly
+        print("[HALT] Control file: " + str(e))
     time.sleep(15)
     r = subprocess.run(["screen", "-ls"], capture_output=True, text=True)
     if ".trading\t" in r.stdout:
         subprocess.run(["screen", "-S", "trading", "-X", "quit"])
-        print("[HALT] Hard-killed screen:trading (still alive after 15s)")
+        print("[HALT] Hard-killed screen:trading")
 
-def _stop_crypto_bot():
-    """Hard-kill crypto screen session immediately."""
+def _stop_crypto():
     subprocess.run(["screen", "-S", "crypto", "-X", "quit"])
     print("[HALT] Killed screen:crypto")
 
-def halt_bots(state, reason, daily_pct, drawdown_pct, combined):
-    """Full halt sequence: files -> stop bots -> Telegram -> log."""
-    now        = datetime.now()
-    resume_dt  = now + timedelta(hours=RESUME_HOURS)
-    resume_str = resume_dt.strftime("%Y-%m-%d %H:%M")
-    peak       = state.get("peak_value") or combined
+def halt_super(s, reason, pct, sv):
+    resume = (datetime.now() + timedelta(hours=RESUME_HOURS_BOT)).strftime("%Y-%m-%d %H:%M")
+    print("\n" + "!"*55 + "\n  SUPER BOT HALT -- " + reason +
+          "\n  Tagesverlust: " + "{:+.2f}".format(pct) + "%" +
+          "\n  Resume: " + resume + "  |  Crypto Bot: aktiv\n" + "!"*55)
+    s["super_halted"] = True; s["super_resume_at"] = resume
+    _update_halt_file(s); _stop_super()
+    log_event(s, "HALT_SUPER", reason=reason, daily_pct=round(pct,2), sv=round(sv,2), resume=resume)
+    save_state(s)
+    tg("🛑 <b>SUPER BOT HALT</b>\n" + reason +
+       "\nTagesverlust: " + "{:+.2f}".format(pct) + "% (Limit " + str(SUPER_DAILY_LIMIT) + "%)" +
+       "\nWert: $" + "{:,.2f}".format(sv) +
+       "\n✅ Crypto Bot läuft weiter\nResume: " + resume + " (+" + str(RESUME_HOURS_BOT) + "h)")
 
-    print("\n" + "!" * 55)
-    print("  RISK HALT -- " + reason)
-    print("  Daily P&L : " + "{:+.2f}".format(daily_pct) + "%  (limit " + str(DAILY_LOSS_LIMIT) + "%)")
-    print("  Drawdown  : " + "{:+.2f}".format(drawdown_pct) + "%  (limit " + str(DRAWDOWN_LIMIT) + "%)")
-    print("  Portfolio : $" + "{:,.2f}".format(combined))
-    print("  Resume at : " + resume_str + "  (+" + str(RESUME_HOURS) + "h cooldown)")
-    print("!" * 55 + "\n")
+def halt_crypto(s, reason, pct, cv):
+    resume = (datetime.now() + timedelta(hours=RESUME_HOURS_BOT)).strftime("%Y-%m-%d %H:%M")
+    print("\n" + "!"*55 + "\n  CRYPTO BOT HALT -- " + reason +
+          "\n  Tagesverlust: " + "{:+.2f}".format(pct) + "%" +
+          "\n  Resume: " + resume + "  |  Super Bot: aktiv\n" + "!"*55)
+    s["crypto_halted"] = True; s["crypto_resume_at"] = resume
+    _update_halt_file(s); _stop_crypto()
+    log_event(s, "HALT_CRYPTO", reason=reason, daily_pct=round(pct,2), cv=round(cv,2), resume=resume)
+    save_state(s)
+    tg("🛑 <b>CRYPTO BOT HALT</b>\n" + reason +
+       "\nTagesverlust: " + "{:+.2f}".format(pct) + "% (Limit " + str(CRYPTO_DAILY_LIMIT) + "%)" +
+       "\nWert: $" + "{:,.2f}".format(cv) +
+       "\n✅ Super Bot läuft weiter\nResume: " + resume + " (+" + str(RESUME_HOURS_BOT) + "h)")
 
-    # 1. Write halt file first so monitor_agent skips restart during the stop window
-    _write_halt_file(reason, resume_str)
+def halt_both(s, reason, spct, ddpct, combined):
+    resume = (datetime.now() + timedelta(hours=RESUME_HOURS_DRAWDOWN)).strftime("%Y-%m-%d %H:%M")
+    peak   = s.get("peak_value") or combined
+    print("\n" + "!"*55 + "\n  BEIDE BOTS HALT (DRAWDOWN) -- " + reason +
+          "\n  Drawdown: " + "{:+.2f}".format(ddpct) + "%" +
+          "\n  Portfolio: $" + "{:,.2f}".format(combined) +
+          "\n  Resume: " + resume + "\n" + "!"*55)
+    s["halted"] = True; s["resume_at"] = resume
+    s["super_halted"] = True; s["super_resume_at"] = resume
+    s["crypto_halted"] = True; s["crypto_resume_at"] = resume
+    _update_halt_file(s); _stop_crypto(); _stop_super()
+    log_event(s, "HALT_BOTH", reason=reason, drawdown_pct=round(ddpct,2),
+              combined=round(combined,2), peak=round(peak,2), resume=resume)
+    save_state(s)
+    tg("🚨 <b>BEIDE BOTS GESTOPPT — DRAWDOWN</b>\n" + reason +
+       "\nPortfolio: $" + "{:,.2f}".format(combined) +
+       "\nDrawdown: " + "{:+.2f}".format(ddpct) + "% (Limit " + str(DRAWDOWN_LIMIT) + "%)" +
+       "\nPeak war: $" + "{:,.2f}".format(peak) +
+       "\nResume: " + resume + " (+" + str(RESUME_HOURS_DRAWDOWN) + "h)")
 
-    # 2. Stop both bots (crypto fast, super_bot graceful then hard)
-    _stop_crypto_bot()
-    _stop_super_bot()
+def resume_bot(s, bot, value):
+    today = date.today().isoformat()
+    name  = "Super Bot" if bot == "super" else "Crypto Bot"
+    print("\n" + "="*55 + "\n  RESUME " + name.upper() + " | $" + "{:,.2f}".format(value) + "\n" + "="*55)
+    s[bot + "_halted"] = False; s[bot + "_resume_at"] = None
+    s[bot + "_day_start"] = value; s[bot + "_day_date"] = today
+    if not s.get("super_halted") and not s.get("crypto_halted"):
+        s["halted"] = False; s["resume_at"] = None
+    _update_halt_file(s)
+    log_event(s, "RESUME_" + bot.upper(), value=round(value,2))
+    save_state(s)
+    tg("✅ <b>" + name + " RESUME</b>\nMonitor startet Bot neu.\n"
+       "Tagesverlust-Zähler zurückgesetzt.\nWert: $" + "{:,.2f}".format(value))
 
-    # 3. Update state and persist
-    state["halted"]    = True
-    state["resume_at"] = resume_str
-    log_event(state, "HALT",
-              reason=reason,
-              daily_pct=round(daily_pct, 2),
-              drawdown_pct=round(drawdown_pct, 2),
-              portfolio_value=round(combined, 2),
-              peak_value=round(peak, 2),
-              resume_at=resume_str)
-    save_state(state)
-
-    # 4. Telegram alert
-    tg(
-        "\U0001f6d1 RISK HALT -- " + reason + "\n"
-        "Portfolio : $" + "{:,.2f}".format(combined) + "\n"
-        "Daily P&L : " + "{:+.2f}".format(daily_pct) + "%  (limit " + str(DAILY_LOSS_LIMIT) + "%)\n"
-        "Drawdown  : " + "{:+.2f}".format(drawdown_pct) + "%  (limit " + str(DRAWDOWN_LIMIT) + "%)\n"
-        "Peak was  : $" + "{:,.2f}".format(peak) + "\n"
-        "Both bots stopped.\n"
-        "Resuming  : " + resume_str + "  (+" + str(RESUME_HOURS) + "h)"
-    )
-
-def resume_bots(state, combined):
-    """Remove halt file, reset day counter, alert. Monitor restarts bots on next cycle."""
-    now_str = datetime.now().strftime("%H:%M")
-    today   = date.today().isoformat()
-
-    print("\n" + "=" * 55)
-    print("  RISK RESUME -- " + now_str)
-    print("  Portfolio : $" + "{:,.2f}".format(combined))
-    print("=" * 55 + "\n")
-
-    _remove_halt_file()
-
-    state["halted"]          = False
-    state["resume_at"]       = None
-    state["day_start_value"] = combined
-    state["day_start_date"]  = today
-    log_event(state, "RESUME",
-              portfolio_value=round(combined, 2),
-              new_day_start=round(combined, 2))
-    save_state(state)
-
-    tg(
-        "✅ RISK RESUME -- " + now_str + "\n"
-        "Trading resumed. Monitor will restart both bots.\n"
-        "Portfolio : $" + "{:,.2f}".format(combined) + "\n"
-        "Daily loss counter reset."
-    )
-
-# -- Main loop ----------------------------------------------------------------
+def read_dashboard(path):
+    try:
+        if not os.path.exists(path): return None, None
+        age = (time.time() - os.path.getmtime(path)) / 60
+        with open(path) as f: d = json.load(f)
+        cash = float(d.get("balance", 0))
+        pos  = sum(float(p.get("shares",0)) * float(p.get("current_price", p.get("entry",0)))
+                   for p in d.get("positions",{}).values())
+        return cash + pos, round(age, 1)
+    except Exception as e:
+        print("[READ] " + str(e)); return None, None
 
 def run():
-    state = load_state()
+    s = load_state()
 
-    # Sync state if halt file exists but state doesn't reflect it (e.g. manual halt)
-    if halt_file_exists() and not state["halted"]:
-        print("[INIT] Halt file found -- syncing state to halted=True")
-        state["halted"] = True
+    if os.path.exists(HALT_FILE) and not s.get("super_halted") and not s.get("crypto_halted"):
+        try:
+            with open(HALT_FILE) as f: hf = json.load(f)
+            bots = hf.get("halted_bots", ["super", "crypto"])
+            if "super"  in bots: s["super_halted"]  = True
+            if "crypto" in bots: s["crypto_halted"] = True
+            print("[INIT] Halt synced: " + str(bots))
+        except Exception: pass
 
     print("=" * 55)
-    print("  RISK AGENT gestartet")
-    print("  Daily loss limit : " + str(DAILY_LOSS_LIMIT) + "%")
-    print("  Drawdown limit   : " + str(DRAWDOWN_LIMIT) + "%")
-    print("  Check interval   : " + str(CHECK_INTERVAL) + "s")
-    print("  Cooldown         : +" + str(RESUME_HOURS) + "h after halt")
-    print("  Log file         : " + LOG_FILE)
+    print("  RISK AGENT v2 — getrennte Bot-Limits")
+    print("  Super Bot  daily : " + str(SUPER_DAILY_LIMIT)  + "% (nur Super stoppt)")
+    print("  Crypto Bot daily : " + str(CRYPTO_DAILY_LIMIT) + "% (nur Crypto stoppt)")
+    print("  Drawdown (beide) : " + str(DRAWDOWN_LIMIT)     + "% (Notbremse)")
+    print("  Cooldown Bot     : +" + str(RESUME_HOURS_BOT) + "h (pro Bot)")
+    print("  Cooldown Drawdown: +" + str(RESUME_HOURS_DRAWDOWN) + "h (beide)")
     print("=" * 55)
 
-    log_event(state, "START",
-              daily_loss_limit=DAILY_LOSS_LIMIT,
-              drawdown_limit=DRAWDOWN_LIMIT)
-    save_state(state)
-    tg("\U0001f7e2 Risk Agent gestartet\n"
-       "Limits: daily=" + str(DAILY_LOSS_LIMIT) + "% / drawdown=" + str(DRAWDOWN_LIMIT) + "%\n"
-       "Cooldown: +" + str(RESUME_HOURS) + "h nach Halt")
+    log_event(s, "START", super_limit=SUPER_DAILY_LIMIT,
+              crypto_limit=CRYPTO_DAILY_LIMIT, drawdown_limit=DRAWDOWN_LIMIT)
+    save_state(s)
+    tg("🟢 <b>Risk Agent v2 gestartet</b>\n"
+       "Super: " + str(SUPER_DAILY_LIMIT) + "%/Tag | Crypto: " + str(CRYPTO_DAILY_LIMIT) + "%/Tag\n"
+       "Drawdown Notbremse: " + str(DRAWDOWN_LIMIT) + "% (beide)\n"
+       "Cooldown: Bot=" + str(RESUME_HOURS_BOT) + "h | Drawdown=" + str(RESUME_HOURS_DRAWDOWN) + "h")
 
-    cycle         = 0
-    last_stale_tg = 0.0    # timestamp of last stale-data Telegram
+    cycle = 0; last_stale_tg = 0.0
 
     while True:
         try:
-            now   = datetime.now()
-            today = date.today().isoformat()
-            cycle += 1
+            now = datetime.now(); today = date.today().isoformat(); cycle += 1
+            sv, sa = read_dashboard(SUPER_JSON)
+            cv, ca = read_dashboard(CRYPTO_JSON)
 
-            # -- Read portfolio -----------------------------------------------
-            combined, sv, cv, stale = read_combined()
+            stale = []
+            if sa and sa > STALE_MINUTES: stale.append("S(" + str(sa) + "m)")
+            if ca and ca > STALE_MINUTES: stale.append("C(" + str(ca) + "m)")
+            if stale and time.time() - last_stale_tg > 3600:
+                tg("⚠️ Stale: " + ",".join(stale)); last_stale_tg = time.time()
 
-            if combined is None:
-                print("[" + now.strftime("%H:%M:%S") + "] No data -- skipping cycle")
-                time.sleep(CHECK_INTERVAL)
-                continue
+            if sv is None and cv is None:
+                print("[" + now.strftime("%H:%M:%S") + "] Keine Daten"); time.sleep(CHECK_INTERVAL); continue
 
-            # -- Initialise peak on very first successful read ----------------
-            if state["peak_value"] is None:
-                state["peak_value"] = combined
-                print("[INIT] Peak initialised to $" + "{:,.2f}".format(combined))
+            combined = (sv or 0) + (cv or 0)
+            if s["peak_value"] is None and combined > 0:
+                s["peak_value"] = combined
+                print("[INIT] Peak: $" + "{:,.2f}".format(combined))
+            if combined > (s["peak_value"] or 0): s["peak_value"] = combined
 
-            # -- Reset daily counter at midnight / new day -------------------
-            if state["day_start_date"] != today or state["day_start_value"] is None:
-                state["day_start_date"]  = today
-                state["day_start_value"] = combined
-                log_event(state, "DAY_START",
-                          date=today, value=round(combined, 2))
-                save_state(state)
-                print("[DAY] New trading day -- start $" + "{:,.2f}".format(combined))
+            if sv and (s["super_day_date"] != today or not s["super_day_start"]):
+                s["super_day_start"] = sv; s["super_day_date"] = today
+                print("[DAY] Super Basis: $" + "{:,.2f}".format(sv))
+            if cv and (s["crypto_day_date"] != today or not s["crypto_day_start"]):
+                s["crypto_day_start"] = cv; s["crypto_day_date"] = today
+                print("[DAY] Crypto Basis: $" + "{:,.2f}".format(cv))
 
-            # -- Ratchet peak upward -----------------------------------------
-            if combined > state["peak_value"]:
-                state["peak_value"] = combined
+            peak  = s["peak_value"] or combined
+            ddpct = (combined - peak) / peak * 100 if peak > 0 else 0.0
+            spct  = (sv - s["super_day_start"])  / s["super_day_start"]  * 100 if sv and s["super_day_start"]  else 0.0
+            cpct  = (cv - s["crypto_day_start"]) / s["crypto_day_start"] * 100 if cv and s["crypto_day_start"] else 0.0
 
-            # -- Risk metrics ------------------------------------------------
-            day_start    = state["day_start_value"]
-            peak         = state["peak_value"]
-            daily_pct    = (combined - day_start) / day_start * 100
-            drawdown_pct = (combined - peak)       / peak       * 100
+            st = "[HALT]" if s.get("super_halted")  else "OK"
+            ct = "[HALT]" if s.get("crypto_halted") else "OK"
+            print("[" + now.strftime("%H:%M:%S") + "] "
+                  "S=$" + "{:,.0f}".format(sv or 0) + " " + "{:+.1f}".format(spct) + "% " + st + "  "
+                  "C=$" + "{:,.0f}".format(cv or 0) + " " + "{:+.1f}".format(cpct) + "% " + ct + "  "
+                  "DD=" + "{:+.1f}".format(ddpct) + "% Peak=$" + "{:,.0f}".format(peak)
+                  + ("  STALE:" + ",".join(stale) if stale else ""))
 
-            # -- Status line -------------------------------------------------
-            halted_tag = " [HALTED]" if state["halted"] else ""
-            stale_tag  = " STALE:" + ",".join(stale) if stale else ""
-            sv_str = "$" + "{:,.2f}".format(sv) if sv is not None else "N/A"
-            cv_str = "$" + "{:,.2f}".format(cv) if cv is not None else "N/A"
-            print(
-                "[" + now.strftime("%H:%M:%S") + "] "
-                "Total=$" + "{:,.2f}".format(combined) + " "
-                "(S=" + sv_str + " C=" + cv_str + ") "
-                "Day=" + "{:+.2f}".format(daily_pct) + "% "
-                "DD=" + "{:+.2f}".format(drawdown_pct) + "% "
-                "Peak=$" + "{:,.2f}".format(peak) +
-                halted_tag + stale_tag
-            )
+            for bot, val in [("super", sv), ("crypto", cv)]:
+                if s.get(bot + "_halted") and val:
+                    ra = s.get(bot + "_resume_at")
+                    if ra:
+                        try:
+                            rdt = datetime.strptime(ra, "%Y-%m-%d %H:%M")
+                            if now >= rdt:
+                                resume_bot(s, bot, val)
+                            elif cycle % 20 == 0:
+                                print("[HALT] " + bot + " resume in " + str(int((rdt-now).total_seconds()/60)) + " min")
+                        except Exception: pass
 
-            # -- Stale data Telegram (max once per hour) ---------------------
-            if stale and (time.time() - last_stale_tg) > 3600:
-                tg("⚠️ RISK AGENT: Stale data from " + ", ".join(stale))
-                last_stale_tg = time.time()
+            if sv and not s.get("super_halted") and spct <= SUPER_DAILY_LIMIT:
+                halt_super(s, "SUPER_DAILY_LOSS " + "{:+.2f}".format(spct) + "% (Limit " + str(SUPER_DAILY_LIMIT) + "%)", spct, sv)
+            if cv and not s.get("crypto_halted") and cpct <= CRYPTO_DAILY_LIMIT:
+                halt_crypto(s, "CRYPTO_DAILY_LOSS " + "{:+.2f}".format(cpct) + "% (Limit " + str(CRYPTO_DAILY_LIMIT) + "%)", cpct, cv)
+            if not s.get("halted") and not (s.get("super_halted") and s.get("crypto_halted")) and ddpct <= DRAWDOWN_LIMIT:
+                halt_both(s, "DRAWDOWN " + "{:+.2f}".format(ddpct) + "% (Limit " + str(DRAWDOWN_LIMIT) + "%)", spct, ddpct, combined)
 
-            # -- Halted: check resume time -----------------------------------
-            if state["halted"]:
-                resume_at = state.get("resume_at")
-                if resume_at:
-                    resume_dt = datetime.strptime(resume_at, "%Y-%m-%d %H:%M")
-                    if now >= resume_dt:
-                        # If drawdown still > -30% after cooldown, peak was wrong -- reset it
-                        if drawdown_pct <= -30.0:
-                            old_peak = state["peak_value"]
-                            state["peak_value"] = combined
-                            state["day_start_value"] = combined
-                            msg = ("[RISK] Peak-Reset: $" + "{:,.2f}".format(old_peak) +
-                                   " -> $" + "{:,.2f}".format(combined) +
-                                   " (DD=" + "{:.1f}".format(drawdown_pct) + "% war Datenfehler)")
-                            print(msg)
-                            tg("Peak-Reset: $" + "{:,.2f}".format(old_peak) +
-                               " korrigiert auf $" + "{:,.2f}".format(combined) +
-                               " (DD > 30% nach Cooldown = falscher Peak)")
-                            log_event(state, "PEAK_RESET",
-                                      old_peak=round(old_peak, 2),
-                                      new_peak=round(combined, 2),
-                                      reason="DD > 30pct nach 4h Cooldown")
-                            save_state(state)
-                        resume_bots(state, combined)
-                    elif cycle % 20 == 0:
-                        mins_left = int((resume_dt - now).total_seconds() / 60)
-                        print("[HALT] Resuming in " + str(mins_left) + " min at " + resume_at)
-                time.sleep(CHECK_INTERVAL)
-                continue
-
-            # -- Risk gate checks --------------------------------------------
-            halt_reason = None
-
-            if daily_pct <= DAILY_LOSS_LIMIT:
-                halt_reason = (
-                    "DAILY_LOSS " + "{:+.2f}".format(daily_pct) + "% "
-                    "(limit " + str(DAILY_LOSS_LIMIT) + "%)"
-                )
-            elif drawdown_pct <= DRAWDOWN_LIMIT:
-                halt_reason = (
-                    "DRAWDOWN " + "{:+.2f}".format(drawdown_pct) + "% from peak "
-                    "$" + "{:,.2f}".format(peak) + " (limit " + str(DRAWDOWN_LIMIT) + "%)"
-                )
-
-            if halt_reason:
-                halt_bots(state, halt_reason, daily_pct, drawdown_pct, combined)
-
-            # -- Periodic save -----------------------------------------------
-            if cycle % 20 == 0:   # every ~10 minutes
-                save_state(state)
+            if cycle % 20 == 0: save_state(s)
 
         except KeyboardInterrupt:
-            print("[RISK] Gestoppt")
-            tg("\U0001f534 Risk Agent gestoppt")
-            save_state(state)
-            break
+            print("[RISK] Gestoppt"); tg("🔴 Risk Agent gestoppt"); save_state(s); break
         except Exception as e:
             print("[RISK ERROR] " + str(e))
-
         time.sleep(CHECK_INTERVAL)
-
 
 if __name__ == "__main__":
     run()

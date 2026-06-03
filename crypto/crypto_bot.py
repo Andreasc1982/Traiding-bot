@@ -162,12 +162,13 @@ class CryptoBot:
         self.balance   = 10000.0
         self.positions = {}
         self.trades    = []
-        self.stop_loss    = 3.0   # main coins — 4% hard stop
-        self.take_profit  = 8.0
+        self.stop_loss    = 2.0   # optimized: 3.0→2.0 (tighter, R:R 2.5:1)
+        self.take_profit  = 5.0   # optimized: 8.0→5.0 (more achievable target)
         self.max_pos      = 8     # 6→8: bigger universe (20 coins) needs more slots
         self.pos_size     = 0.06  # 8%→6%: smaller per position, more positions active
         self.meme_size    = 0.03  # meme coins stay at 3%
         self.running      = True
+        self._sl_cooldown = {}   # symbol -> timestamp of last hard SL — blocks re-entry for 3h
         self.last_skips   = []
         self.last_fg      = {"value": 50, "label": "N/A"}
         self.start_balance = self.balance
@@ -2090,6 +2091,11 @@ class CryptoBot:
 
         self._save_state()   # persist balance after every close
 
+        # 1.5h cooling period after hard stop-loss — prevents re-buying into downtrend
+        if reason in ("WS-STOP-LOSS", "STOP-LOSS"):
+            self._sl_cooldown[symbol] = time.time()
+            print("[COOLING] " + symbol + " — 1.5h Sperre nach Hard-Stop")
+
         msg = ("CRYPTO " + reason + ": " + symbol + " " +
                str(round(pnl_pct, 1)) + "% | P&L: $" + str(round(profit, 0)))
         print(msg)
@@ -2164,6 +2170,13 @@ class CryptoBot:
             with self.positions_lock:
                 if symbol in self.positions or len(self.positions) >= self.max_pos:
                     continue
+
+            # 1.5h cooling period after hard stop-loss — no re-entry into downtrend
+            sl_age = time.time() - self._sl_cooldown.get(symbol, 0)
+            if sl_age < 5400:
+                mins_left = int((5400 - sl_age) / 60)
+                print("[SKIP] " + symbol + " SL-COOLING " + str(mins_left) + "min")
+                continue
 
             ind = self.get_indicators(symbol)
             if ind is None:
