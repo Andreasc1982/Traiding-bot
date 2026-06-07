@@ -135,6 +135,11 @@ _crash_alerted    = {k: False for k in BOTS}   # True while bot is down (prevent
 _last_daily       = None                         # date of last daily report
 _last_sys_alert   = 0.0                          # timestamp of last sys-health alert
 _last_no_trades   = 0.0                          # timestamp of last no-trades alert
+_last_update_alert = None                        # date of last apt update notification
+_auth_log_pos      = 0                              # byte offset -- only read new lines
+_last_sec_alert    = 0.0                             # timestamp of last security alert
+_sec_fail_counts   = {}                              # ip -> (count, first_seen)
+SEC_ALERT_COOLDOWN = 1800                            # 30 min between repeated security alerts
 
 # -- Telegram -----------------------------------------------------------------
 
@@ -400,6 +405,168 @@ def system_health(force_print=False):
         print("[SYS ERROR] " + str(e))
         return None, None, None, None
 
+
+
+# -- Log monitoring ----------------------------------------------------------
+
+def check_auth_log():
+    """
+    Read new SSH/auth journal entries via journalctl --cursor-file.
+    Alerts: brute-force (>=10 fails from one IP), SSH logins, unexpected sudo.
+    """
+    global _last_sec_alert, _sec_fail_counts
+    import re as _re
+    CURSOR = '/tmp/ssh_journal_cursor'
+    try:
+        import os as _os
+        if not _os.path.exists(CURSOR):
+            # First run: initialize cursor to NOW so we skip historical entries
+            subprocess.run(['journalctl', '-u', 'ssh', '--no-pager',
+                            '--cursor-file', CURSOR, '-n', '0'], capture_output=True)
+        cmd = ['journalctl', '-u', 'ssh', '--no-pager', '-o', 'short',
+               '--cursor-file', CURSOR]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        lines  = result.stdout.splitlines()
+        now    = time.time()
+        alerts = []
+        for line in lines:
+            ll = line.lower()
+            # Failed auth attempt
+            if 'failed' in ll or 'invalid user' in ll or 'connection closed' in ll:
+                m = _re.search(r'from ([0-9.]+)', line)
+                if m:
+                    ip = m.group(1)
+                    cnt, first = _sec_fail_counts.get(ip, (0, now))
+                    if now - first > 3600:
+                        cnt = 0; first = now
+                    cnt += 1
+                    _sec_fail_counts[ip] = (cnt, first)
+                    if cnt == 10:
+                        alerts.append(chr(128680) + ' Brute-Force: ' + str(cnt) +
+                                      ' SSH-Versuche von ' + ip)
+                    elif cnt > 10 and cnt % 20 == 0:
+                        alerts.append(chr(9888)+chr(65039) + ' Brute-Force weiter: ' +
+                                      str(cnt) + ' Versuche von ' + ip)
+            # Successful SSH login -- only alert for non-LAN IPs
+            if 'accepted publickey' in ll or 'accepted password' in ll:
+                m = _re.search(r'for (\S+) from ([0-9.]+)', line)
+                if m:
+                    ip2 = m.group(2)
+                    is_lan = (ip2.startswith('192.168.') or
+                              ip2.startswith('10.') or
+                              ip2.startswith('172.') or
+                              ip2 == '127.0.0.1')
+                    if not is_lan:
+                        alerts.append(chr(128680) + ' SSH-Login von FREMDER IP: ' + m.group(1) +
+                                      ' von ' + ip2)
+        # Also check sudo
+        cmd2 = ['journalctl', '_COMM=sudo', '--no-pager', '-o', 'short',
+                '--cursor-file', '/tmp/sudo_journal_cursor',
+                '--since', '2 minutes ago']
+        r2 = subprocess.run(cmd2, capture_output=True, text=True, timeout=10)
+        for line in r2.stdout.splitlines():
+            if 'command' in line.lower() and 'trading2025' not in line and 'root' not in line:
+                alerts.append(chr(9888)+chr(65039) + ' Unerwartetes sudo: ' + line[:100])
+        if alerts and (now - _last_sec_alert) > SEC_ALERT_COOLDOWN:
+            msg = chr(10).join([chr(128737)+chr(65039) + ' SECURITY ALERT'] + alerts)
+            print('[SEC] ' + chr(10).join(alerts))
+            tg(msg)
+            _last_sec_alert = now
+    except Exception as e:
+        print('[AUTH LOG ERROR] ' + str(e))
+
+
+def check_suspicious_procs():
+    """
+    Look for processes from /tmp or /dev/shm (malware/miners).
+    Also alerts if an unknown process uses >80% CPU.
+    """
+    global _last_sec_alert
+    try:
+        result = subprocess.run(['ps', 'aux'], capture_output=True, text=True, timeout=10)
+        alerts = []
+        known = {
+            'python3', 'python', 'bash', 'screen', 'sshd', 'systemd',
+            'ps', 'grep', 'top', 'htop', 'apt', 'dpkg', 'sh', 'sudo',
+            'cron', 'rsyslog', 'dbus', 'avahi', 'ntpd', 'syslog',
+            'init', 'agetty', 'login', 'su', 'ufw', 'fail2ban',
+        }
+        for line in result.stdout.splitlines()[1:]:
+            parts = line.split(None, 10)
+            if len(parts) < 11:
+                continue
+            user, cpu_s, cmd_full = parts[0], parts[2], parts[10]
+            cmd = cmd_full.split()[0].split('/')[-1] if cmd_full.split() else ''
+            if cmd_full.startswith('/tmp/') or cmd_full.startswith('/dev/shm/'):
+                alerts.append(chr(128680) + ' Verdaechtiger Prozess: ' + cmd_full[:80])
+            try:
+                if float(cpu_s) > 80 and cmd not in known:
+                    alerts.append(chr(9888)+chr(65039) + ' Hohe CPU von unbekanntem Prozess: '
+                                  + cmd + ' (' + cpu_s + '%) User=' + user)
+            except ValueError:
+                pass
+        if alerts:
+            now = time.time()
+            if (now - _last_sec_alert) > SEC_ALERT_COOLDOWN:
+                msg = chr(10).join([chr(128737)+chr(65039) + ' SECURITY ALERT'] + alerts)
+                print('[SEC] ' + chr(10).join(alerts))
+                tg(msg)
+                _last_sec_alert = now
+    except Exception as e:
+        print('[PROC CHECK ERROR] ' + str(e))
+
+# -- Update check -------------------------------------------------------------
+
+def check_updates():
+    """
+    Once per day: check apt for upgradable packages and notify via Telegram.
+    Distinguishes security updates from normal updates.
+    """
+    global _last_update_alert
+    today = date.today()
+    if _last_update_alert == today:
+        return
+    _last_update_alert = today
+
+    try:
+        result = subprocess.run(
+            ["apt", "list", "--upgradable"],
+            capture_output=True, text=True, timeout=30
+        )
+        # Skip 'Listing... Done' header; keep only lines containing '/'
+        pkgs = [l.strip() for l in result.stdout.splitlines()
+                if "/" in l and l.strip()]
+
+        if not pkgs:
+            print("[UPDATE] System ist aktuell -- keine Updates ausstehend.")
+            return
+
+        # Security packages have '-security' in their suite field (after '/')
+        sec  = [l for l in pkgs if "-security" in l.split("/")[1].split()[0]]
+        norm = [l for l in pkgs if l not in sec]
+
+        icon  = chr(9888) + chr(65039) if sec else chr(128260)
+        parts = [
+            icon + " System-Updates verfuegbar: " + str(len(pkgs)) + " Pakete",
+            "  " + chr(128274) + " Sicherheits-Updates: " + str(len(sec)),
+            "  " + chr(128230) + " Normale Updates:     " + str(len(norm)),
+            "",
+            "Bots kurz pausieren empfohlen:",
+            "sudo apt update && sudo apt upgrade",
+        ]
+        if sec:
+            parts.append("")
+            parts.append("Sicherheits-Pakete:")
+            for p in sec[:8]:
+                parts.append("  " + p.split("/")[0])
+
+        msg = chr(10).join(parts)
+        print("[UPDATE] " + str(len(pkgs)) + " Updates (" + str(len(sec)) + " Security)")
+        tg(msg)
+
+    except Exception as e:
+        print("[UPDATE ERROR] " + str(e))
+
 # -- Dashboard reader ---------------------------------------------------------
 
 def read_json(path):
@@ -509,6 +676,8 @@ def run():
     print("  MONITOR AGENT gestartet")
     print("  Check-Interval: " + str(CHECK_INTERVAL) + "s")
     print("  No-trades alert: >" + str(NO_TRADES_HOURS) + "h Stille")
+    print("  Update-Check:    taeglich 08:00")
+    print("  Log-Monitoring:  jedes Zyklus (auth.log + procs)")
     print("  Ueberwacht: " + ", ".join(BOTS.keys()))
     print("=" * 55)
     tg("🟢 Monitor Agent gestartet\nUeberwacht: " + ", ".join(b["name"] for b in BOTS.values()))
@@ -532,12 +701,18 @@ def run():
             # 4) System health -- prints every cycle; Telegram only on threshold breach + cooldown
             system_health()
 
-            # 5) Daily report at 08:00 (fires once per day)
+            # 5) Security: auth log + suspicious processes
+            check_auth_log()
+            if cycle % 5 == 0:   # every 5 min
+                check_suspicious_procs()
+
+            # 6) Daily report at 08:00 (fires once per day)
             today = now.date()
             if now.hour == 8 and now.minute == 0 and _last_daily != today:
                 _last_daily = today
                 print("[REPORT] Sende Tagesbericht...")
                 daily_report()
+                check_updates()   # einmal taeglich: apt-Updates pruefen
 
         except KeyboardInterrupt:
             print("[MONITOR] Gestoppt")

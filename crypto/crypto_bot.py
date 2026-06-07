@@ -162,7 +162,7 @@ class CryptoBot:
         self.balance   = 10000.0
         self.positions = {}
         self.trades    = []
-        self.stop_loss    = 2.0   # optimized: 3.0→2.0 (tighter, R:R 2.5:1)
+        self.stop_loss    = 2.5   # optimized: 3.0→2.5 (balance between tight SL and volatility room)
         self.take_profit  = 5.0   # optimized: 8.0→5.0 (more achievable target)
         self.max_pos      = 8     # 6→8: bigger universe (20 coins) needs more slots
         self.pos_size     = 0.06  # 8%→6%: smaller per position, more positions active
@@ -384,6 +384,18 @@ class CryptoBot:
                 # New day — start_balance = current balance (daily counter starts fresh)
                 self.start_balance = self.balance
 
+            # Restore SL cooling periods — only if still active
+            saved_cooldowns = st.get("sl_cooldown", {})
+            now = time.time()
+            active_cooldowns = {sym: ts for sym, ts in saved_cooldowns.items()
+                                if now - ts < 5400}
+            if active_cooldowns:
+                self._sl_cooldown = active_cooldowns
+                for sym, ts in active_cooldowns.items():
+                    mins_left = int((5400 - (now - ts)) / 60)
+                    print("[STATE] SL-Cooling wiederhergestellt: " + sym +
+                          " noch " + str(mins_left) + "min")
+
             # Restore open positions — always, regardless of day
             # (positions live until explicitly closed; stop/take still fire after restart)
             saved_pos = st.get("positions", {})
@@ -420,11 +432,16 @@ class CryptoBot:
                 bal       = self.balance
                 start     = self.start_balance
                 positions = dict(self.positions)   # snapshot under lock
+            # Only persist cooldowns that are still active (< 5400s = 1.5h)
+            now = time.time()
+            active_cooldowns = {sym: ts for sym, ts in self._sl_cooldown.items()
+                                if now - ts < 5400}
             st = {
                 "balance":           round(bal, 2),
                 "day_start_balance": round(start, 2),
                 "day_date":          datetime.now().strftime("%Y-%m-%d"),
                 "positions":         positions,     # full position dicts, restored on startup
+                "sl_cooldown":       active_cooldowns,  # persisted SL cooling periods
             }
             with open(STATE_PATH, "w") as f:
                 json.dump(st, f)

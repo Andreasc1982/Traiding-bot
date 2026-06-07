@@ -133,6 +133,66 @@ def backup():
     print(msg); send(msg)
 
 
+
+# ── Encrypted config backup ───────────────────────────────────────────────
+
+def encrypted_config_backup():
+    """
+    Encrypt config.py with AES-256 GPG and send to Telegram.
+    Passphrase is read from /home/trading2025/.backup_key (chmod 600).
+    Runs every Sunday alongside the git backup.
+    """
+    key_file = '/home/trading2025/.backup_key'
+    src      = os.path.join(REPO_DIR, 'config.py')
+    dst      = '/home/trading2025/config_backup.gpg'
+
+    if not os.path.exists(key_file):
+        print('[ENCRYPTED-BACKUP] Kein ~/.backup_key -- Setup:')
+        print('[ENCRYPTED-BACKUP] echo DEINPASSWORT > ~/.backup_key && chmod 600 ~/.backup_key')
+        return
+    if not os.path.exists(src):
+        print('[ENCRYPTED-BACKUP] config.py nicht gefunden')
+        return
+    try:
+        with open(key_file) as kf:
+            passphrase = kf.read().strip()
+        if not passphrase:
+            print('[ENCRYPTED-BACKUP] .backup_key ist leer')
+            return
+        result = subprocess.run([
+            'gpg', '--symmetric', '--cipher-algo', 'AES256',
+            '--batch', '--yes',
+            '--passphrase', passphrase,
+            '--output', dst, src
+        ], capture_output=True, text=True)
+        if result.returncode != 0:
+            msg = chr(10060) + ' Encrypted Backup FEHLER: ' + result.stderr[:200]
+            print('[ENCRYPTED-BACKUP] GPG Fehler: ' + result.stderr)
+            send(msg)
+            return
+        size_kb = round(os.path.getsize(dst) / 1024, 1)
+        print('[ENCRYPTED-BACKUP] Verschluesselt: ' + str(size_kb) + ' KB -> ' + dst)
+        if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
+            import requests as _req
+            now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+            caption = (chr(128272) + ' config.py Backup (AES-256) ' + now_str +
+                       chr(10) + 'Entschluesseln: gpg --decrypt config_backup.gpg')
+            with open(dst, 'rb') as fh:
+                resp = _req.post(
+                    'https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendDocument',
+                    data={'chat_id': TELEGRAM_CHAT_ID, 'caption': caption},
+                    files={'document': ('config_backup.gpg', fh, 'application/octet-stream')},
+                    timeout=30
+                )
+            if resp.status_code == 200:
+                print('[ENCRYPTED-BACKUP] An Telegram gesendet')
+            else:
+                print('[ENCRYPTED-BACKUP] Telegram Fehler: ' + str(resp.status_code))
+    except Exception as e:
+        msg = chr(10060) + ' Encrypted Backup Fehler: ' + str(e)[:200]
+        print('[ENCRYPTED-BACKUP] ' + str(e))
+        send(msg)
+
 # ── Main loop ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -153,6 +213,13 @@ if __name__ == "__main__":
         except Exception as e:
             msg = "❌ GitHub Backup Ausnahme: " + str(e)[:200]
             print(msg); send(msg)
+
+        # Every Sunday: encrypted config.py backup to Telegram
+        if datetime.now().weekday() == 6:   # 6 = Sonntag
+            try:
+                encrypted_config_backup()
+            except Exception as e:
+                print('[ENCRYPTED-BACKUP] Ausnahme: ' + str(e))
 
         # Sleep 90 s to prevent double-firing if wake-up lands exactly on the hour
         time.sleep(90)

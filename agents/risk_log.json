@@ -2,8 +2,8 @@
   "peak_value": 115229.40258006439,
   "day_start_value": 105341.43559023943,
   "day_start_date": "2026-06-03",
-  "halted": true,
-  "resume_at": "2026-06-03 04:18",
+  "halted": false,
+  "resume_at": null,
   "events": [
     {
       "time": "2026-05-18 22:55:09",
@@ -352,14 +352,21 @@
       "super_limit": -8.0,
       "crypto_limit": -8.0,
       "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-06 23:39:20",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
     }
   ],
   "super_day_start": 83641.44,
-  "super_day_date": "2026-06-06",
-  "super_halted": true,
+  "super_day_date": "2026-06-07",
+  "super_halted": false,
   "super_resume_at": null,
-  "crypto_day_start": 14457.862075842564,
-  "crypto_day_date": "2026-06-06",
-  "crypto_halted": true,
+  "crypto_day_start": 14427.0938788842,
+  "crypto_day_date": "2026-06-07",
+  "crypto_halted": false,
   "crypto_resume_at": null
 }

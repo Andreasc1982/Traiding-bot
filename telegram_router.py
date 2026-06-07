@@ -65,6 +65,32 @@ API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 _pending_apply = {}
 APPLY_TIMEOUT  = 300   # seconds before /apply expires
 
+# ── PIN Authentication ────────────────────────────────────────────────────────
+TELEGRAM_PIN   = str(config.get("telegram_pin", ""))   # set in config.py
+_auth_until    = 0      # epoch seconds — authed while time.time() < _auth_until
+AUTH_DURATION  = 1800   # 30 minutes per /auth session
+PROTECTED_CMDS = {      # commands that require PIN authentication
+    "/stop", "/start", "/stop_super", "/start_super",
+    "/stop_crypto", "/start_crypto", "/apply", "/confirm",
+    "/restart", "/restart_super", "/restart_crypto",
+}
+
+def _is_authed():
+    return not TELEGRAM_PIN or time.time() < _auth_until
+
+def cmd_auth(pin_provided):
+    global _auth_until
+    if not TELEGRAM_PIN:
+        send("ℹ️ Kein PIN konfiguriert — alle Befehle ohne Auth.")
+        return
+    if pin_provided == TELEGRAM_PIN:
+        _auth_until = time.time() + AUTH_DURATION
+        send("✅ <b>Authentifiziert</b> — Befehle freigegeben für 30 Minuten.")
+        log("AUTH: OK")
+    else:
+        send("❌ <b>Falscher PIN</b> — Zugriff verweigert.")
+        log("AUTH: FEHLGESCHLAGEN")
+
 
 # ── Utilities ────────────────────────────────────────────────────────────────
 
@@ -763,8 +789,21 @@ def poll_loop():
                 raw  = msg.get("text", "").strip()
                 word = raw.split()[0].split("@")[0].lower() if raw else ""
 
+                # Handle /auth PIN inline
+                if word == "/auth":
+                    parts = raw.split()
+                    pin_provided = parts[1] if len(parts) > 1 else ""
+                    cmd_auth(pin_provided)
+                    continue
+
                 handler = DISPATCH.get(word)
                 if handler:
+                    # Check PIN for protected commands
+                    if word in PROTECTED_CMDS and not _is_authed():
+                        mins = int(AUTH_DURATION / 60)
+                        send("🔒 <b>PIN erforderlich</b> — /auth DEINPIN (gilt " + str(mins) + " Min.)")
+                        log(f"CMD BLOCKED (no auth): {word}")
+                        continue
                     log(f"CMD: {word}")
                     try:
                         handler()
