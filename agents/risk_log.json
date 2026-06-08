@@ -361,12 +361,12 @@
       "drawdown_limit": -15.0
     }
   ],
-  "super_day_start": 83641.44,
-  "super_day_date": "2026-06-07",
+  "super_day_start": 83641.29,
+  "super_day_date": "2026-06-08",
   "super_halted": false,
   "super_resume_at": null,
-  "crypto_day_start": 14427.0938788842,
-  "crypto_day_date": "2026-06-07",
+  "crypto_day_start": 14478.805849406828,
+  "crypto_day_date": "2026-06-08",
   "crypto_halted": false,
   "crypto_resume_at": null
 }
