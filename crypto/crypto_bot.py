@@ -2407,6 +2407,28 @@ class CryptoBot:
                     ctrl = json.load(f)
                 if ctrl.get("command") == "stop":
                     self.running = False
+                elif ctrl.get("command") == "close_all":
+                    with self.positions_lock:
+                        syms = list(self.positions.keys())
+                    print("[CTRL] close_all: Schliesse " + str(len(syms)) + " Positionen vor Halt...")
+                    if syms:
+                        self.send("Schliesse " + str(len(syms)) + " Positionen vor Halt (RISK-CLOSE-ALL)...")
+                    for sym in syms:
+                        price = self.get_price(sym)
+                        with self.positions_lock:
+                            pos = self.positions.get(sym)
+                        if not pos:
+                            continue
+                        if not price:
+                            price = pos.get("entry", 1)
+                        entry = pos.get("entry") or price
+                        pnl = round((price - entry) / entry * 100, 2) if entry else 0.0
+                        self.close_position(sym, price, "RISK-CLOSE-ALL", pnl)
+                    self.running = False
+                    try:
+                        os.remove(ctrl_path)
+                    except Exception:
+                        pass
                 # Soft-pause: only blocks new trade entries, stops still fire
                 if "paused" in ctrl:
                     self.tg_paused = bool(ctrl["paused"])
@@ -2490,6 +2512,9 @@ class CryptoBot:
                 # Polling stop-check every 30s as fallback when WS is down
                 for _ in range(4):
                     self._last_heartbeat = time.time()   # watchdog: inner loop alive
+                    self.check_control()      # allow close_all to fire mid-cycle
+                    if not self.running:
+                        break
                     if not self.ws_connected:
                         self.check_stops()
                     self.save_dashboard(scores)

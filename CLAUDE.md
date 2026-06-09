@@ -897,7 +897,7 @@ No other config keys needed — reads dashboard JSON directly from disk.
 
 ## Risk Agent (`agents/risk_agent.py`)
 
-Runs as its own `risk` screen session. Reads both dashboard JSONs every 30 seconds and halts both bots if combined portfolio risk exceeds configured thresholds. Resumes automatically next day.
+Runs as its own `risk` screen session. Reads both dashboard JSONs every 30 seconds. Per-bot independent daily limits + combined drawdown emergency brake. Market-based resume.
 
 ### Start the risk agent
 
@@ -917,48 +917,73 @@ screen -r risk   # attach; Ctrl+A D to detach
 
 ### Thresholds
 
-| Trigger               | Threshold | Scope                                    |
-|-----------------------|-----------|------------------------------------------|
-| Daily loss            | −5%       | Combined portfolio (both bots), resets midnight |
-| Drawdown from peak    | −15%      | Combined all-time high, never resets     |
+| Trigger                  | Threshold | Scope                                              |
+|--------------------------|-----------|----------------------------------------------------|
+| Super Bot daily loss     | −8%       | Super Bot only — Crypto keeps running              |
+| Crypto Bot daily loss    | −8%       | Crypto Bot only — Super keeps running              |
+| Combined drawdown        | −15%      | Both bots stopped (emergency brake, never resets)  |
 
-### Halt sequence (when threshold breached)
+### Halt sequence
 
-1. Writes `agents/risk_halt.json` → monitor_agent sees this and skips bot restarts
-2. Kills `screen:crypto` immediately (hard stop)
-3. Writes `{"command":"stop"}` to `bot_control.json` → super_bot graceful exit
-4. Hard-kills `screen:trading` after 15 seconds if still alive
-5. Sends Telegram alert with portfolio value, daily P&L %, drawdown %, peak value, resume time
+**Per-bot daily halt** (`halt_super` / `halt_crypto`):
+1. Writes `close_all` to the affected bot's control file → bot closes all positions, then stops
+2. Polls up to 45s for control file removal (position drain confirmation)
+3. Hard-kills screen session if still alive
+4. Writes `risk_halt.json` with `halted_bots: ["super"]` or `["crypto"]`
+5. Telegram alert. Resume: time-based +2h
 
-### Resume (automatic, 4-hour cooldown)
+**Combined drawdown halt** (`halt_both`):
+1. Records `halt_btc_price` + `halt_spy_price` + `halt_time` in `risk_log.json`
+2. Writes `close_all` to both control files; polls both for drain
+3. Hard-kills both screen sessions
+4. Writes `risk_halt.json` with `halted_bots: ["super","crypto"]`
+5. Telegram alert with BTC/SPY baseline prices. Resume: market-based (see below)
 
-1. `resume_at` is set to `now + 4 hours` at halt time (not a fixed clock time — crypto trades 24/7)
-2. Deletes `risk_halt.json`
-3. monitor_agent detects sessions dead on next 60s cycle and restarts both bots normally
-4. Daily P&L counter resets; all-time peak preserved
-5. Sends Telegram confirmation
+### Resume
+
+**Per-bot daily loss halt** — time-based:
+- `RESUME_HOURS_BOT = 2` — bot restarts 2h after halt
+- monitor_agent detects dead session, checks halt file, restarts only the affected bot
+
+**Combined drawdown halt** — market-based (per bot):
+
+| Bot        | Indicator | Recovery target | Safety net | Min wait |
+|------------|-----------|-----------------|------------|----------|
+| Crypto Bot | BTC/USD   | +5% from halt low | 48h max  | 2h       |
+| Super Bot  | SPY       | +2% from halt low | 24h max  | 2h       |
+
+- BTC price: `https://data.alpaca.markets/v1beta3/crypto/us/latest/quotes`
+- SPY price: `https://data.alpaca.markets/v2/stocks/trades/latest?feed=iex`
+- Prices at halt stored in `risk_log.json` as `halt_btc_price` / `halt_spy_price`
+- If agent restarts mid-halt and baseline missing → filled on next cycle (current price used, conservative)
+- On resume: `risk_halt.json` deleted, day counters reset, monitor_agent restarts bot
 
 ### State files
 
 | File                    | Purpose                                                      |
 |-------------------------|--------------------------------------------------------------|
-| `agents/risk_halt.json` | Exists while halted; deleted on resume. Read by monitor_agent. |
-| `agents/risk_log.json`  | Persisted state: peak value, day-start value, full event history (capped 500 entries). Survives restarts. |
+| `agents/risk_halt.json` | Exists while halted; deleted on resume. Read by monitor_agent. Contains `halted_bots` list. |
+| `agents/risk_log.json`  | Persisted state: peak value, per-bot day-start values, halt prices, full event history (capped 500). |
 
 ### Event types logged to `risk_log.json`
 
-| Type        | When                                             |
-|-------------|--------------------------------------------------|
-| `START`     | Agent process starts                             |
-| `DAY_START` | Midnight rollover — new day-start value recorded |
-| `HALT`      | Threshold breached — bots stopped                |
-| `RESUME`    | Resume time reached — halt file removed          |
+| Type           | When                                             |
+|----------------|--------------------------------------------------|
+| `START`        | Agent process starts                             |
+| `DAY_START`    | Midnight rollover — new day-start value recorded |
+| `HALT_SUPER`   | Super Bot daily limit breached                   |
+| `HALT_CRYPTO`  | Crypto Bot daily limit breached                  |
+| `HALT_BOTH`    | Combined drawdown limit breached                 |
+| `RESUME_SUPER` | Super Bot resumed                                |
+| `RESUME_CRYPTO`| Crypto Bot resumed                               |
 
 ### Config keys used
 
 ```python
 config["telegram_bot_token"]
 config["telegram_chat_id"]
+config["alpaca_api_key"]      # for BTC/SPY price fetches during resume check
+config["alpaca_secret_key"]
 ```
 
 Portfolio values read directly from `dashboard.json` and `crypto/crypto_dashboard.json`.
@@ -986,22 +1011,39 @@ super_bot.py    → check_control() every cycle  → reads bot_control.json
 crypto_bot.py   → check_control() every cycle  → reads crypto/crypto_control.json
 ```
 
+### Authentication
+
+Destructive commands require a PIN session. Flow:
+```
+/auth 1982          ← send PIN first (configured in config["telegram_pin"])
+✅ Authenticated for 30 minutes
+/restart            ← now allowed
+```
+- `AUTH_DURATION = 1800s` (30 min) — after expiry, send `/auth` again
+- If no `telegram_pin` set in config.py → all commands unlocked without auth
+- Wrong PIN → "Falscher PIN" message, blocked
+
 ### Commands
 
-| Command        | Action |
-|----------------|--------|
-| `/status`      | Both bots: balance, P&L, trades, win rate, positions count, F&G, WS status, pause state |
-| `/positions`   | All open positions (Super + Crypto combined) with entry→current price and P&L |
-| `/risk`        | Daily P&L %, all-time drawdown %, peak equity, halt status from `risk_log.json` |
-| `/stop`        | Pause new trades on BOTH bots (writes `{"paused":true}` to both control files) |
-| `/start`       | Resume new trades on BOTH bots |
-| `/stop_super`  | Pause Super Bot only |
-| `/start_super` | Resume Super Bot only |
-| `/stop_crypto` | Pause Crypto Bot only |
-| `/start_crypto`| Resume Crypto Bot only |
-| `/apply`       | Show pending optimisation suggestions from `agents/optimize_results.json` — diffs current vs best params, lists expected improvement, warns about open positions |
-| `/confirm`     | Apply the shown suggestions: regex-patches both bot source files in-place, restarts `trading` + `crypto` screen sessions, confirms new values. Expires after 5 min. |
-| `/help`        | Show command list |
+| Command           | Auth? | Action |
+|-------------------|-------|--------|
+| `/status`         | —     | Both bots: balance, P&L, trades, win rate, positions count, F&G, WS status, pause state |
+| `/positions`      | —     | All open positions (Super + Crypto combined) with entry→current price and P&L |
+| `/risk`           | —     | Daily P&L %, all-time drawdown %, peak equity, halt status from `risk_log.json` |
+| `/stop`           | —     | Pause new trades on BOTH bots |
+| `/start`          | —     | Resume new trades on BOTH bots |
+| `/stop_super`     | —     | Pause Super Bot only |
+| `/start_super`    | —     | Resume Super Bot only |
+| `/stop_crypto`    | —     | Pause Crypto Bot only |
+| `/start_crypto`   | —     | Resume Crypto Bot only |
+| `/apply`          | —     | Show pending optimisation suggestions, diffs current vs best params |
+| `/confirm`        | —     | Apply optimisation suggestions, patch + restart bots (5-min TTL) |
+| `/restart`        | ✅    | Restart both bots (close_all + screen restart) |
+| `/restart_super`  | ✅    | Restart Super Bot only |
+| `/restart_crypto` | ✅    | Restart Crypto Bot only |
+| `/logs`           | ✅    | Show last 20 lines of super_bot and crypto_bot logs |
+| `/auth <PIN>`     | —     | Authenticate for protected commands (30-min session) |
+| `/help`           | —     | Show command list |
 
 ### `/apply` + `/confirm` — parameter update flow
 
@@ -1031,10 +1073,11 @@ crypto_bot.py   → check_control() every cycle  → reads crypto/crypto_control
 
 `bot_control.json` and `crypto/crypto_control.json` are the IPC mechanism. The router reads the existing file before writing so it preserves any other fields (e.g. `{"command":"stop"}`).
 
-Both bots call `self.check_control()` at the top of each main loop iteration:
+Both bots call `self.check_control()` at the top of each main loop iteration **and** inside the intra-cycle for-loop (max response: 2 min super_bot, 30s crypto_bot):
 - `"paused": true` → sets `tg_paused = True` — blocks `trade()` entry scanning; stop-loss and take-profit still fire via WebSocket and REST polling.
 - `"paused": false` → clears `tg_paused`.
-- `"command": "stop"` → sets `running = False` (hard stop, existing behaviour).
+- `"command": "stop"` → sets `running = False` (hard stop).
+- `"command": "close_all"` → closes all open positions via `get_price()` + `close_position()` (reason: `RISK-CLOSE-ALL`), sets `running = False`, **removes the control file** (signals risk agent that drain is complete). Used by risk agent instead of `stop` so positions are never left unmonitored during a halt.
 
 ### Start the router
 
@@ -1190,7 +1233,7 @@ screen -r backup   # attach; Ctrl+A D to detach
    "github_repo": "https://<token>@github.com/<user>/<repo>.git",
    ```
 
-3. The agent reads `github_repo` from `config.py` at each 02:00 run and calls `git remote set-url origin` automatically — rotate tokens by editing `config.py` alone, no git commands needed.
+3. The agent imports `config` once at startup. If you change `github_repo` in `config.py` while the agent is running, **restart the `backup` screen session** — otherwise the old (empty) value stays in memory. After restart it picks up the current config automatically.
 
 4. **First push** — on the first night with `github_repo` set, the agent will push the existing initial commit plus all accumulated changes since setup.
 
@@ -1209,7 +1252,7 @@ screen -r backup   # attach; Ctrl+A D to detach
 ### Behaviour
 
 - **No changes**: if `git status --porcelain` is empty, no commit is created (silent skip).
-- **Push skipped**: if `github_repo` is not yet in `config.py`, the agent commits locally but skips the push and logs a reminder.
+- **Push skipped**: if `github_repo` is empty in `config.py` **at agent startup**, the agent commits locally but skips the push. Restart the `backup` screen after setting the key.
 - **Branch**: `main` (renamed from `master` on initialisation).
 - **Telegram**: `✅ GitHub Backup OK — 2026-05-20 02:00` on success; `❌ GitHub Backup FEHLER` with details on any failure.
 
@@ -1257,6 +1300,9 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 
 ## TODO / Planned Improvements
 
+### Beim Live-Start (Kraken) zu implementieren
+- [ ] **Dollar-basiertes Risk Management** — statt %-SL: `max_loss_per_trade = kapital × 0.5%`; `sl_pct = max_loss / position_value`; Positionsgröße entsprechend anpassen; Demo-Daten (Win-Rate, optimales SL%) als Basis für die Umrechnung nutzen; aktuell werden mit 2.5% SL und 6% Positionsgröße ca. 0.15% des Kapitals pro Trade riskiert — dieses Verhältnis beim Live-Start beibehalten
+
 - [x] **Backtesting Agent** — `agents/backtest_agent.py` — 2024 full-year results: +18.5% ETFs, +280% crypto
 - [x] **Risk Agent** — `agents/risk_agent.py` — daily −5% / drawdown −15% halt, auto-resume after 4h cooldown (not fixed 09:30 — crypto trades 24/7)
 - [x] **Optimierung Agent** — `agents/optimize_agent.py` — 81-combo weekly grid search (RSI · ST-mult · SL · TP) on live Alpaca data; indicator block analysis; Telegram report every Sunday 00:00
@@ -1275,7 +1321,7 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **Korrelations-Management** — `_pearson(a, b)` static method computes Pearson correlation of daily/hourly returns; `_check_correlation(symbol)` compares candidate vs all open positions using `_bar_cache` (last 20 closes cached by `get_indicators()` — zero extra API calls); in `trade()` after HTF check: if max correlation > 0.85 → skip with `[SKIP] XOP Korrelation=0.92 zu XLE`; applies to both bots; threshold 0.85 allows moderate correlation (e.g. BTC+ETH≈0.80) but blocks near-duplicate exposures (e.g. XLE+XOP≈0.95)
 - [x] **Stochastic RSI** — computed in `get_indicators()` from full Wilder RSI series (replaces single-value RSI calc); `StochRSI=(RSI−min14)/(max14−min14)`, `%K=SMA3(StochRSI)`, `%D=SMA3(%K)`; gate: `stoch_ok = %K > %D and %K < 0.8` (momentum up, not overbought); weight `×0.5` in gate score; max score increases from 7.5→8.0 (divisor updated in both bots); shown as `StRSI=ok/no` in BUY/SKIP logs; neutral `True` fallback if insufficient bars; `stoch_k` (continuous 0–1) also returned in `ind` dict as ML feature
 - [x] **Random Forest ML Meta-Filter** — super_bot only; `_ml_train()` called on startup + daily midnight from main loop; loads `trades_history.json`, filters trades with `"features"` key (stored at entry time), trains `sklearn.RandomForestClassifier(n_estimators=100, max_depth=5, min_samples_leaf=5)` on last 200 labeled samples; deactivated (pass-through) when < 30 labeled trades available; 10 features: `rsi, adx, cmf, macd_hist, stoch_k, ma_dist_pct, vwap_dist_pct, fg_value, pc_ratio, score_pct`; `_ml_predict()` returns win probability [0–1]; gate in `trade()` after score check: `ml_prob < 0.55` → `[SKIP] XLK ML=48%<55%`; features stored in `positions[symbol]["ml_features"]` at buy, copied to `trades_history.json` at close so each trade self-labels the next training run; `scikit-learn` installed in venv; neutral 1.0 on ImportError or model crash
-- [x] **Risk Agent 4h Cooldown** — replaced fixed `RESUME_TIME = "09:30"` (next-day stock-market thinking) with `RESUME_HOURS = 4`; `halt_bots()` now sets `resume_dt = now + timedelta(hours=4)`; works correctly for crypto 24/7 — a halt at 22:00 resumes at 02:00, not 09:30 next day; Telegram halt alert shows `Resuming: 2026-05-23 06:30 (+4h)`
+- [x] **Risk Agent 4h Cooldown** *(superseded by Risk Agent v2)* — replaced fixed `RESUME_TIME = "09:30"` with `RESUME_HOURS = 4`; works correctly for crypto 24/7; later split into `RESUME_HOURS_BOT=2h` (pro Bot) und `RESUME_HOURS_DRAWDOWN=4h` (Notbremse) in Risk Agent v2
 - [x] **Monitor Agent No-Trades Alert** — `check_no_trades()` runs every 60s cycle with 2h cooldown (`NO_TRADES_COOLDOWN=7200`); reads `trades` arrays from both dashboard JSONs; parses most recent trade timestamp; if silence ≥ `NO_TRADES_HOURS` (8h) and bots are running + not risk-halted + ≥3 trades in history → Telegram alert listing silence duration, last trade time, and possible causes; guards against false positives on fresh start and crash states
 - [x] **Feedparser hang fix** — all `feedparser.parse(url)` calls replaced with `requests.get(url, timeout=10)` + `feedparser.parse(r.content)` in both bots; hard 10s timeout prevents RSS servers from hanging the main thread indefinitely (global `socket.setdefaulttimeout(15)` alone was insufficient for slow servers that bypass socket-level timeouts)
 - [x] **Nitter removed — VIP feeds replaced** — all Nitter instances dead (403); super_bot now uses 4 Google News VIP RSS feeds (Trump economy, Trump tariff, Musk market, White House EO) with same 1.5× weight; crypto_bot Whale Alert Nitter RSS replaced with official REST API (`whale_alert_key` in config.py — graceful skip if absent; free tier available)
@@ -1287,6 +1333,22 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **Tiered Exit-System via Live-WebSocket-Daten** — `_exit_trigger()` Methode ersetzt hardcodierte Stop-Logik in `_ws_check_price()` und `check_stops()`; 5 Zonen basierend auf `best_pnl` (persönlichem Hoch): ≥tp%→Trailing 1.5%, ≥6%→Profit-Lock (peak−2%), ≥4%→min +2% sichern, ≥2%→Break-Even (kein Verlust mehr möglich), <2%→normaler Hard-Stop; neue Trigger-Namen: `WS-PROFIT-LOCK`, `WS-BREAKEVEN`
 - [x] **Micro-Preis Rounding Bug gefixt** — `get_indicators()` rundet PSAR, Tenkan, Kijun jetzt auf 8 Dezimalstellen statt 4; `save_dashboard()` rundet Entry/CurrentPrice auf 8 Stellen; verhindert dass Micro-Preise (SHIB $0.00000563, PEPE, BONK) auf 0.0 zusammenbrechen und PSAR/Stop nie feuert
 - [x] **Dashboard No-Cache Headers** — `<meta http-equiv="Cache-Control" content="no-cache">` in dashboard_crypto.html; verhindert dass Browser alte HTML-Version mit falschen Parametern cached
+- [x] **Gradual Drawdown Protection** — crypto_bot only; `_get_drawdown_mult()` berechnet Drawdown vom Peak (`crypto_state.json`); 4 Zonen: HEALTHY(>-5%)→1.0×, CAUTION(-5% bis -10%)→0.7×, WARNING(-10% bis -15%)→0.4× + keine Meme-Coins, DANGER(>-15%)→0.0× (keine neuen Käufe); Telegram-Alert einmalig pro Zone; `dd_mult` als dritter Multiplikator: `size_mult = ADX_mult × vol_mult × dd_mult`; BUY-Log zeigt `DD=HEALTHY/CAUTION/...`
+- [x] **BTC Lead Indicator** — crypto_bot only; zwei Mechanismen parallel: (1) `_btc_crash_check(price)` läuft auf jedem WS-Tick für BTC/USD — 5-min Rolling-Window, triggert bei ≥2% Drop → `btc_crash_mode=True` → alle offenen Positionen bekommen 1.5% Trailing-Stop, neue Käufe blockiert; Reset wenn Drop <0.5%; (2) 10-min Trend-Referenz (`_btc_10min_ref`) — alle 600s aktualisiert, blockiert neue Käufe wenn BTC >1% gefallen; stale `btc_crash_mode=True` wird in `_load_state()` aus wiederhergestellten Positionen entfernt
+- [x] **PSAR-Stop Threshold** — crypto_bot: PSAR-Stop feuert nur wenn `pnl_pct >= 1.5%`; darunter zu sensitiv auf 1h-Bars und stoppt Positionen vor Gewinnzone aus; verhindert dass PSAR 80% aller Exits auslöst wie zuvor beobachtet
+- [x] **BTC Realized Volatility Regime** — crypto_bot; `_get_vol_regime()` berechnet annualisierte Volatilität aus letzten 20 Stunden-Bars; LOW(<50%)→1.2×, NORMAL(50-80%)→1.0×, HIGH(80-120%)→0.5×, EXTREME(>120%)→0.3×; stacked als zweiter Multiplikator mit ADX-Regime; BUY-Log zeigt `VOL=LOW/NORMAL/HIGH/EXTREME`
+- [x] **super_bot get_indicators auf yfinance umgestellt** — Alpaca paper-account liefert `{"bars": null}` für historische Tagesbars (kein Daten-Abo); `get_indicators()` nutzt jetzt `yf.download(symbol, period="6mo", interval="1d")` statt Alpaca REST; yfinance ist bereits installiert (für Earnings-Calendar); multi-level columns (`(name, symbol)`) werden via `_col()` helper behandelt; `import yfinance as yf` zu super_bot.py Imports hinzugefügt; **Bug war Ursache dass super_bot 6 Wochen lang keine Trades gemacht hat**
+- [x] **ThreadPoolExecutor Hang-Bug (3 Stellen)** — super_bot: `with ThreadPoolExecutor as pool:` blockiert beim Exit auf ALLE Threads auch nach `as_completed(timeout=X)` → Bot hängt nach jedem `TimeoutError`; betrifft `_fetch_earnings()`, `fetch_twitter()`, `fetch_news()`; Fix: `pool = ThreadPoolExecutor(...)` ohne `with`, dann `finally: pool.shutdown(wait=False, cancel_futures=True)`; verhindert dass hängende yfinance/RSS-Calls den Hauptloop blockieren
+- [x] **RSI super_bot korrigiert** — stand fälschlicherweise auf `< 65` statt `< 75` (Optimizer-Empfehlung); verursachte zu wenig Käufe; korrigiert auf `ind["rsi"] < 75`
+- [x] **Risk Agent v2 — getrennte Bot-Limits** — `risk_agent.py` komplett neu geschrieben; vorher: kombiniertes -5% Tageslimit → beide Bots stoppen; jetzt: `SUPER_DAILY_LIMIT=-8%` (nur Super stoppt), `CRYPTO_DAILY_LIMIT=-8%` (nur Crypto stoppt), `DRAWDOWN_LIMIT=-15%` kombiniert (Notbremse, beide stoppen); Cooldown: `RESUME_HOURS_BOT=2h` (pro Bot), `RESUME_HOURS_DRAWDOWN=4h` (Notbremse); halt file enthält `halted_bots: ["super"|"crypto"|both]`; monitor_agent liest dieses Feld und stoppt nur den betroffenen Bot
+- [x] **BTC Drawdown Cooldown-Analyse** — 12 Monate BTC/USD Stundenbars (8758 Bars); 5 Trigger-Events bei -15% Drawdown; Ergebnis: 4h Dead-Zone (40% positiv, Median -0.67%), 24h optimal (60% positiv, Median +0.08%); RESUME_HOURS_DRAWDOWN wurde von 4h auf 24h geändert
+- [x] **Monitor Agent per-Bot Halt** — liest `halted_bots` Feld aus `risk_halt.json`; mapping `{"super":"trading", "crypto":"crypto"}`; nur die spezifisch gehaltenen Screen-Sessions werden beim Crash nicht neugestartet; Rückwärtskompatibel: fehlendes Feld → beide stoppen (wie vorher)
+- [x] **Crypto Bot Trading-Parameter optimiert** — SL 3%→**2.5%** (nach Test: 2% zu eng → 61% Hard-SL Rate), TP 8%→**5%** (öfter erreichbar); Wild-Meme SL bleibt 5%, Spike SL/TP (1.5%/3%) unverändert; Analyse zeigte R:R=0.85 als Kern-Problem (Verluste > Gewinne pro Trade)
+- [x] **SL Cooling Period** — crypto_bot: nach hartem Stop-Loss (`WS-STOP-LOSS`/`STOP-LOSS`) wird Symbol für **1.5h** (5400s) gesperrt; verhindert Wiederkauf in laufenden Downtrend; `self._sl_cooldown = {}` in `__init__`, gesetzt in `close_position()`, geprüft in `trade()` vor Indicator-Fetch; Log: `[COOLING] BTC/USD — 1.5h Sperre nach Hard-Stop` / `[SKIP] BTC/USD SL-COOLING 87min`
+- [x] **SL Cooling Persistence** — `_sl_cooldown` wird jetzt in `crypto_state.json` persistiert; `_save_state()` speichert nur noch aktive Cooldowns (`now - ts < 5400`); `_load_state()` stellt aktive Cooldowns wieder her und loggt verbleibende Sperrzeit: `[STATE] SL-Cooling wiederhergestellt: BTC/USD noch 47min`; verhindert Wiederkauf nach Restart während aktiver Sperre
+- [x] **Market-based Resume (Risk Agent)** — ersetzt fixen Timer; Crypto Bot wartet auf BTC +5% vom Halt-Tief (max 48h); Super Bot wartet auf SPY +2% vom Halt-Tief (max 24h); beide mit min 2h Wartezeit; Preise beim Halt in `risk_log.json` gespeichert (`halt_btc_price`, `halt_spy_price`, `halt_time`); Safety-Net nach max_h: automatischer Resume unabhängig vom Markt; BTC-Preis: Alpaca `/v1beta3/crypto/us/latest/quotes`; SPY-Preis: Alpaca `/v2/stocks/trades/latest?feed=iex`; BTC für Crypto (24/7), SPY für Super Bot (ETFs); Baseline-Fallback: wenn Agent nach Halt neugestartet, werden fehlende Preise beim nächsten Cycle nachgefüllt
+- [x] **Monitor Agent Skip-Analyse** — `check_skip_analysis()` liest `skips[]` aus `dashboard.json`; zählt wie oft jeder Indikator (`_ok=False`) blockiert; sendet Telegram-Report mit ASCII-Balkendiagramm alle 4h (`SKIP_ANALYSIS_COOLDOWN=14400`); Warning wenn ein Indikator >60% aller Entries blockiert; min. 10 Skips nötig; nicht wenn Risk Halt aktiv oder Super Bot tot
+- [x] **close_all Command (beide Bots + Risk Agent)** — `{"command":"close_all"}` in `bot_control.json` / `crypto_control.json`; `check_control()` schließt alle offenen Positionen via `get_price()` + `close_position()` mit Reason `RISK-CLOSE-ALL`; setzt `running=False`; entfernt Control-File (Signal für Risk Agent); beide Bots prüfen `check_control()` auch im Intra-Cycle Loop (max 2 min Reaktionszeit bei super_bot, max 30s bei crypto_bot); Risk Agent `_stop_super()` und `_stop_crypto()` schreiben jetzt `close_all` statt `stop`; pollen max 45s auf Control-File-Entfernung bevor Hard-Kill; live getestet mit 4 offenen Positionen: alle 4 korrekt geschlossen, Control-File entfernt, Bot gestoppt
 
 ---
 
@@ -1326,3 +1388,23 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 **BONK/TRUMP/PEPE/WIF wider stop**: These wild meme coins get `"stop_loss": 5.0` stored in the position dict at buy time. `_ws_check_price` and `check_stops` both read `pos.get("stop_loss", self.stop_loss)` so the override is automatic. Positions opened before this change use the default `self.stop_loss`.
 
 **Tiered exit only protects profit once reached**: `_exit_trigger()` break-even zone (≥2%) only activates after the position has actually been +2% in profit. A position that drifts between -1% and +1% for days stays open until the hard stop-loss fires at -4% (or -5% for wild memes). Solution: monitor stale positions via time-based stop tightening (not yet implemented).
+
+**super_bot `except Exception` schluckt alle Fehler silent**: `get_indicators()` endet mit `except Exception: return None` — jeder Bug (NameError, TypeError, etc.) wird als "keine Indikatoren" geloggt ohne Hinweis auf die echte Ursache. Debugging: temporär `except Exception as e: print("[IND-ERR] " + str(e))` einfügen um den echten Fehler zu sehen.
+
+**Alpaca paper-account liefert keine historischen Tagesbars**: `GET /v2/stocks/{symbol}/bars` ohne `start`-Parameter gibt `{"bars": null}` zurück — kein API-Fehler, Status 200. Auch mit `start`/`end` und `feed=sip` liefert der Paper-Account keine aktuellen Bars. Fix: yfinance verwenden (`yf.download(symbol, period="6mo", interval="1d")`). super_bot.py wurde entsprechend geändert.
+
+**yfinance multi-level columns**: `yf.download()` mit einzelnem Symbol gibt DataFrame mit multi-level columns zurück: `('Close', 'SYMBOL')` statt `'Close'`. Zugriff via `df[('Close', symbol)]` oder helper `_col(name)` der beide Formate unterstützt.
+
+**stale `btc_crash_mode` nach Restart**: Positionen werden mit `"btc_crash_mode": True` in `crypto_state.json` gespeichert wenn ein Crash beim Speichern aktiv war. Nach Neustart ist `_btc_crash_mode=False` (Instanz-Variable), aber die einzelnen Positionen haben noch das Flag — führt zu dauerhaft engem Stop. Fix: `pos.pop("btc_crash_mode", None)` in `_load_state()` für jede wiederhergestellte Position.
+
+**`ThreadPoolExecutor` mit `with` blockiert nach Timeout**: `with ThreadPoolExecutor() as pool:` ruft beim Verlassen `shutdown(wait=True)` auf — wartet auf ALLE Threads auch wenn `as_completed(timeout=X)` bereits `TimeoutError` geworfen hat. Hängende yfinance/RSS-Calls blockieren so den Hauptloop minutenlang. Fix immer: `pool = ThreadPoolExecutor(...); try: ...; except TimeoutError: ...; finally: pool.shutdown(wait=False, cancel_futures=True)`.
+
+**Risk Agent feuert Halt nur einmal**: `halt_super()`/`halt_crypto()` werden nur aufgerufen wenn `not s.get("super_halted")`. Nach einem manuellen Bot-Neustart während eines Halts erkennt der Risk Agent den laufenden Bot nicht und stoppt ihn nicht erneut — der Bot läuft trotz aktivem Halt weiter. Resume um `resume_at` sendet Telegram-Nachricht und resettet Tageszähler, auch wenn Bot nie wirklich gestoppt war.
+
+**SL Cooling wird bei Restart wiederhergestellt** ✅: `_sl_cooldown` wird in `crypto_state.json` persistiert. Nur noch aktive Cooldowns (< 1.5h alt) werden gespeichert und beim Startup wiederhergestellt.
+
+**`close_all` vs `stop` timing**: `check_control()` wird in beiden Bots auch im Intra-Cycle-Loop aufgerufen — max Reaktionszeit 2 min (super_bot) bzw. 30s (crypto_bot). Danach entfernt der Bot selbst das Control-File — der Risk Agent erkennt die Bestätigung am Verschwinden der Datei (max 45s polling). Danach Hard-Kill. Wenn Positionen ≥ max_h warten müssen (z.B. kein WS, kein Internet), feuert Hard-Kill trotzdem nach 45s und verliert die Positions-Tracking-Info.
+
+**close_all bei 0 Positionen**: Wenn beim Halt keine offenen Positionen existieren, schreibt das Bot nur `[CTRL] close_all: Schliesse 0 Positionen vor Halt...`, setzt `running=False` und entfernt das Control-File. Risk Agent sieht Datei verschwunden → OK. Super Bot bleibt in der `while True:` Loop (hält paused), Crypto Bot beendet die `while self.running:` Loop und terminiert selbst.
+
+**Market-based Resume Baseline nach Agent-Restart**: Wenn `risk_agent.py` während eines Drawdown-Halts neu gestartet wird und `halt_btc_price` / `halt_spy_price` in `risk_log.json` fehlen, werden sie beim nächsten Cycle-Durchlauf automatisch befüllt (aktueller Preis als Baseline). Das ist konservativ: der neue Baseline ist höher als der eigentliche Halt-Tief, was die Erholungs-Schwelle höher setzt.

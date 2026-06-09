@@ -48,6 +48,7 @@ SYS_ALERT_COOLDOWN = 3600   # seconds between repeated system-health alerts
 NO_TRADES_HOURS        = 8      # hours of silence before alerting
 NO_TRADES_MIN_HISTORY  = 3      # don't alert if combined trade history < this (fresh start)
 NO_TRADES_COOLDOWN     = 7200   # seconds (2h) between repeated no-trades alerts
+SKIP_ANALYSIS_COOLDOWN = 14400  # seconds (4h) between skip-analysis reports
 
 # -- Bot / service definitions ------------------------------------------------
 #
@@ -135,6 +136,7 @@ _crash_alerted    = {k: False for k in BOTS}   # True while bot is down (prevent
 _last_daily       = None                         # date of last daily report
 _last_sys_alert   = 0.0                          # timestamp of last sys-health alert
 _last_no_trades   = 0.0                          # timestamp of last no-trades alert
+_last_skip_report = 0.0                          # timestamp of last skip-analysis report
 _last_update_alert = None                        # date of last apt update notification
 _auth_log_pos      = 0                              # byte offset -- only read new lines
 _last_sec_alert    = 0.0                             # timestamp of last security alert
@@ -236,6 +238,9 @@ def check_bots():
 # -- Stale dashboard check ----------------------------------------------------
 
 def check_stale():
+    # Skip stale alert when risk halt is active -- bots are intentionally stopped
+    if os.path.exists(RISK_HALT_FILE):
+        return
     for path, name in [(SUPER_JSON, "Super Bot"), (CRYPTO_JSON, "Crypto Bot")]:
         if not os.path.exists(path):
             continue
@@ -271,6 +276,79 @@ def _latest_trade_time(trades):
         except Exception:
             continue
     return latest
+
+def check_skip_analysis():
+    """
+    Analyse welche Indikatoren den Super Bot am meisten blockieren.
+    Liest das skips-Array aus dashboard.json und sendet Telegram-Report.
+    Nur wenn Super Bot laeuft, nicht halted, min. 10 Skips vorhanden.
+    """
+    global _last_skip_report
+
+    if os.path.exists(RISK_HALT_FILE):
+        return
+    if not screen_alive("trading"):
+        return
+    if (time.time() - _last_skip_report) < SKIP_ANALYSIS_COOLDOWN:
+        return
+
+    try:
+        super_d = read_json(SUPER_JSON)
+        if not super_d:
+            return
+        skips = super_d.get("skips", [])
+        if len(skips) < 10:
+            return  # Nicht genug Daten
+
+        total = len(skips)
+        # Indicator field -> display name
+        ind_fields = [
+            ("rsi_ok",   "RSI"),
+            ("macd_ok",  "MACD"),
+            ("st_ok",    "Supertrend"),
+            ("ichi_ok",  "Ichimoku"),
+            ("ma_ok",    "MA20"),
+            ("cmf_ok",   "CMF"),
+            ("obv_ok",   "OBV"),
+            ("psar_ok",  "PSAR"),
+            ("stoch_ok", "StochRSI"),
+            ("vwap_ok",  "VWAP"),
+        ]
+        blocked = []
+        for field, name in ind_fields:
+            count = sum(1 for s in skips if s.get(field) is False)
+            if count > 0:
+                blocked.append((name, count, round(count / total * 100)))
+        if not blocked:
+            return
+
+        blocked.sort(key=lambda x: -x[1])
+
+        # Recent symbols being skipped
+        recent_syms = list(dict.fromkeys([s.get("symbol","?") for s in skips[-10:]]))
+
+        lines = [chr(128269) + " <b>Super Bot Skip-Analyse</b> (" + str(total) + " Skips):"]
+        for name, count, pct in blocked:
+            bar = chr(9608) * (pct // 10) + chr(9617) * (10 - pct // 10)
+            lines.append(name.ljust(12) + " " + bar + " " + str(pct) + "%")
+        lines.append("")
+        lines.append("Zuletzt geblockt: " + ", ".join(recent_syms[-6:]))
+
+        # Warn if one indicator blocks > 60%
+        top_name, top_count, top_pct = blocked[0]
+        if top_pct >= 60:
+            lines.append("")
+            lines.append(chr(9888) + chr(65039) + " <b>" + top_name + "</b> blockiert " +
+                         str(top_pct) + "% aller Entries -- Schwellwert evtl. zu streng?")
+
+        msg = chr(10).join(lines)
+        print("[SKIP-ANALYSIS] " + top_name + " " + str(top_pct) + "% (top blocker)")
+        tg(msg)
+        _last_skip_report = time.time()
+
+    except Exception as e:
+        print("[SKIP-ANALYSIS ERROR] " + str(e))
+
 
 def check_no_trades():
     """
@@ -695,8 +773,9 @@ def run():
             # 2) Stale dashboard check
             check_stale()
 
-            # 3) No-trades alert (runs every cycle, has its own cooldown)
+            # 3) No-trades alert + skip analysis (each has own cooldown)
             check_no_trades()
+            check_skip_analysis()
 
             # 4) System health -- prints every cycle; Telegram only on threshold breach + cooldown
             system_health()

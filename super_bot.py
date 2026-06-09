@@ -1756,6 +1756,28 @@ class SuperTradingBot:
                 elif ctrl.get("command") == "start":
                     self.running = True
                     os.remove(ctrl_path)
+                elif ctrl.get("command") == "close_all":
+                    with self.positions_lock:
+                        syms = list(self.positions.keys())
+                    print("[CTRL] close_all: Schliesse " + str(len(syms)) + " Positionen vor Halt...")
+                    if syms:
+                        self.send("Schliesse " + str(len(syms)) + " Positionen vor Halt (RISK-CLOSE-ALL)...")
+                    for sym in syms:
+                        price = self.get_price(sym)
+                        with self.positions_lock:
+                            pos = self.positions.get(sym)
+                        if not pos:
+                            continue
+                        if not price:
+                            price = pos.get("entry", 1)
+                        entry = pos.get("entry") or price
+                        pnl = round((price - entry) / entry * 100, 2) if entry else 0.0
+                        self.close_position(sym, price, "RISK-CLOSE-ALL", pnl)
+                    self.running = False
+                    try:
+                        os.remove(ctrl_path)
+                    except Exception:
+                        pass
                 # Soft-pause written by telegram_router.py
                 if "paused" in ctrl:
                     self.tg_paused = bool(ctrl["paused"])
@@ -1859,6 +1881,9 @@ class SuperTradingBot:
                 # Intra-cycle momentum + stop polling every 2 min
                 for _ in range(interval // 120):
                     self._last_heartbeat = time.time()   # watchdog: inner loop alive
+                    self.check_control()      # allow close_all to fire mid-cycle
+                    if not self.running:
+                        break
                     time.sleep(120)
                     import datetime as dt
                     utc_hour = dt.datetime.now(dt.timezone.utc).hour

@@ -2,8 +2,8 @@
   "peak_value": 115229.40258006439,
   "day_start_value": 105341.43559023943,
   "day_start_date": "2026-06-03",
-  "halted": false,
-  "resume_at": null,
+  "halted": true,
+  "resume_at": "2026-06-09 01:36",
   "events": [
     {
       "time": "2026-05-18 22:55:09",
@@ -359,14 +359,94 @@
       "super_limit": -8.0,
       "crypto_limit": -8.0,
       "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-08 17:36:45",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -27.42% (Limit -15.0%)",
+      "drawdown_pct": -27.42,
+      "combined": 83637.94,
+      "peak": 115229.4,
+      "resume": "2026-06-08 21:36"
+    },
+    {
+      "time": "2026-06-08 20:47:49",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-08 21:36:00",
+      "type": "RESUME_SUPER",
+      "value": 83637.94
+    },
+    {
+      "time": "2026-06-08 21:36:06",
+      "type": "RESUME_CRYPTO",
+      "value": 14552.37
+    },
+    {
+      "time": "2026-06-08 21:36:57",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -17.57% (Limit -15.0%)",
+      "drawdown_pct": -17.57,
+      "combined": 94978.05,
+      "peak": 115229.4,
+      "resume": "2026-06-09 01:36"
+    },
+    {
+      "time": "2026-06-08 23:20:37",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:09:16",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:10:20",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:11:59",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:19:38",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:21:01",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
     }
   ],
-  "super_day_start": 83641.29,
-  "super_day_date": "2026-06-08",
-  "super_halted": false,
-  "super_resume_at": null,
-  "crypto_day_start": 14478.805849406828,
-  "crypto_day_date": "2026-06-08",
-  "crypto_halted": false,
-  "crypto_resume_at": null
+  "super_day_start": 80432.98,
+  "super_day_date": "2026-06-09",
+  "super_halted": true,
+  "super_resume_at": "2026-06-09 01:36",
+  "crypto_day_start": 14545.067919666286,
+  "crypto_day_date": "2026-06-09",
+  "crypto_halted": true,
+  "crypto_resume_at": "2026-06-09 01:36",
+  "halt_btc_price": 63448.9,
+  "halt_time": "2026-06-09 00:12",
+  "halt_spy_price": 739.235
 }
