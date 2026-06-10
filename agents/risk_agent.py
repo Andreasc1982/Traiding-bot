@@ -38,6 +38,7 @@ CRYPTO_JSON        = os.path.join(BASE_DIR, "crypto", "crypto_dashboard.json")
 CONTROL_FILE       = os.path.join(BASE_DIR, "bot_control.json")
 HALT_FILE          = os.path.join(AGENTS_DIR, "risk_halt.json")
 LOG_FILE           = os.path.join(AGENTS_DIR, "risk_log.json")
+EQUITY_CSV         = os.path.join(AGENTS_DIR, "equity_history.csv")
 
 CHECK_INTERVAL            = 30
 SUPER_DAILY_LIMIT         = -8.0
@@ -149,16 +150,16 @@ def log_event(s, t, **kw):
     print("[EVENT] " + t + ": " + str(kw))
 
 def _update_halt_file(s):
-    sh = s.get("super_halted"); ch = s.get("crypto_halted"); bh = s.get("halted")
-    if not sh and not ch and not bh:
+    sh = s.get("super_halted"); ch = s.get("crypto_halted")
+    if not sh and not ch:
         try:
             if os.path.exists(HALT_FILE): os.remove(HALT_FILE)
         except Exception as e:
             print("[HALT] Remove error: " + str(e))
         return
     bots = []
-    if bh or sh: bots.append("super")
-    if bh or ch: bots.append("crypto")
+    if sh: bots.append("super")
+    if ch: bots.append("crypto")
     times = [t for t in [s.get("super_resume_at"), s.get("crypto_resume_at"), s.get("resume_at")] if t]
     with open(HALT_FILE, "w") as f:
         json.dump({"halted": True, "halted_bots": bots,
@@ -332,6 +333,9 @@ def run():
             print("[INIT] Halt synced: " + str(bots))
         except Exception: pass
 
+    # Halt-File beim Start neu schreiben/loeschen -- korrigiert veraltete Eintraege
+    _update_halt_file(s)
+
     print("=" * 55)
     print("  RISK AGENT v2 -- getrennte Bot-Limits")
     print("  Super Bot  daily : " + str(SUPER_DAILY_LIMIT)  + "% (nur Super stoppt)")
@@ -353,7 +357,7 @@ def run():
        "Resume: Bot=" + str(RESUME_HOURS_BOT) + "h | Crypto=BTC+" +
        str(RESUME_RECOVERY_BTC) + "% Super=SPY+" + str(RESUME_RECOVERY_SPY) + "%")
 
-    cycle = 0; last_stale_tg = 0.0
+    cycle = 0; last_stale_tg = 0.0; last_equity = 0.0
 
     while True:
         try:
@@ -364,8 +368,14 @@ def run():
             stale = []
             if sa and sa > STALE_MINUTES: stale.append("S(" + str(sa) + "m)")
             if ca and ca > STALE_MINUTES: stale.append("C(" + str(ca) + "m)")
-            if stale and time.time() - last_stale_tg > 3600:
-                tg("WARN Stale: " + ",".join(stale)); last_stale_tg = time.time()
+            # Gehaltene Bots sind erwartet stale -- kein Telegram-Spam waehrend Halt
+            stale_tg = []
+            if sa and sa > STALE_MINUTES and not s.get("super_halted"):
+                stale_tg.append("S(" + str(sa) + "m)")
+            if ca and ca > STALE_MINUTES and not s.get("crypto_halted"):
+                stale_tg.append("C(" + str(ca) + "m)")
+            if stale_tg and time.time() - last_stale_tg > 3600:
+                tg("WARN Stale: " + ",".join(stale_tg)); last_stale_tg = time.time()
 
             if sv is None and cv is None:
                 print("[" + now.strftime("%H:%M:%S") + "] Keine Daten"); time.sleep(CHECK_INTERVAL); continue
@@ -387,6 +397,21 @@ def run():
             ddpct = (combined - peak) / peak * 100 if peak > 0 else 0.0
             spct  = (sv - s["super_day_start"])  / s["super_day_start"]  * 100 if sv and s["super_day_start"]  else 0.0
             cpct  = (cv - s["crypto_day_start"]) / s["crypto_day_start"] * 100 if cv and s["crypto_day_start"] else 0.0
+
+            # Equity-Kurve: stuendlich eine Zeile (Basis fuer Sharpe/MaxDD-Analytik)
+            if time.time() - last_equity >= 3600:
+                try:
+                    newfile = not os.path.exists(EQUITY_CSV)
+                    with open(EQUITY_CSV, "a") as ef:
+                        if newfile:
+                            ef.write("time,super,crypto,combined\n")
+                        ef.write(now.strftime("%Y-%m-%d %H:%M") + "," +
+                                 str(round(sv or 0, 2)) + "," +
+                                 str(round(cv or 0, 2)) + "," +
+                                 str(round(combined, 2)) + "\n")
+                    last_equity = time.time()
+                except Exception as e:
+                    print("[EQUITY] " + str(e))
 
             st = "[HALT]" if s.get("super_halted")  else "OK"
             ct = "[HALT]" if s.get("crypto_halted") else "OK"

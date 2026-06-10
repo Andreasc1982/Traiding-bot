@@ -186,8 +186,18 @@ class CryptoBot:
         # Telegram command flag — set True by /stop command, False by /start
         self.tg_paused    = False
 
-        # Spike trading
-        self.spike_size = 0.04      # 4% of balance per spike trade
+        # Spike trading (gedrosselt 2026-06-10: 31% Win-Rate bei 266 Spikes)
+        self.spike_size      = 0.04    # 4% of balance per spike trade
+        self.spike_threshold = 20.0    # Volumen-Schwelle (war 10.0 -- Overtrading)
+        self.spike_max_day   = 3       # max Spike-Trades pro Tag
+        self.spike_cooldown  = 7200    # 2h Sperre pro Symbol nach Spike
+        self._spike_count      = 0
+        self._spike_count_date = ""
+        self._spike_last       = {}    # symbol -> letzter Spike-Timestamp
+
+        # Demo Fee/Slippage-Simulation (Kraken Taker 0.26% + Market-Slippage)
+        self.sim_fee  = 0.0026   # pro Seite
+        self.sim_slip = 0.0005   # pro Seite
         self.avg_vol    = {}        # symbol → (avg_vol_per_min, timestamp) — main thread populates
         self.ws_volume  = {}        # symbol → {"vol": float, "start": float} — 60s rolling window
 
@@ -1095,11 +1105,14 @@ class CryptoBot:
 
                         ok = self.place_order(symbol, shares, "buy")
                         if ok:
+                            fill   = price * (1 + self.sim_slip) if self.demo else price
+                            fee_in = shares * fill * self.sim_fee if self.demo else 0.0
                             with self.positions_lock:
-                                self.balance -= cost
+                                self.balance -= (shares * fill + fee_in) if self.demo else cost
                                 self.positions[symbol] = {
                                     "shares":      shares,
-                                    "entry":       price,
+                                    "entry":       fill,
+                                    "fee_in":      round(fee_in, 6),
                                     "highest":     price,
                                     "time":        datetime.now().strftime("%Y-%m-%d %H:%M"),
                                     "stop_loss":   WHALE_SL,
@@ -1250,11 +1263,21 @@ class CryptoBot:
         # Extrapolate accumulated volume to a full 60s rate
         vol_rate = v["vol"] / elapsed * 60
         ratio    = vol_rate / avg_per_min
-        if ratio < 10.0:
+        if ratio < self.spike_threshold:
             return   # not a spike (threshold: 10× hourly average)
 
         # Avoid re-triggering on the same spike — reset window immediately
         self.ws_volume[symbol] = {"vol": 0.0, "start": time.time()}
+
+        # Spike-Drosselung: Tageslimit + 2h Cooldown pro Symbol
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self._spike_count_date != today:
+            self._spike_count_date = today
+            self._spike_count = 0
+        if self._spike_count >= self.spike_max_day:
+            return
+        if time.time() - self._spike_last.get(symbol, 0) < self.spike_cooldown:
+            return
 
         with self.positions_lock:
             if symbol in self.positions or len(self.positions) >= self.max_pos:
@@ -1263,13 +1286,18 @@ class CryptoBot:
             shares = (bal * self.spike_size) / price
             if shares * price < 1:
                 return
+            fill   = price * (1 + self.sim_slip) if self.demo else price
+            fee_in = shares * fill * self.sim_fee if self.demo else 0.0
             if self.demo or not self.exchange_ok:
-                self.balance -= shares * price
+                self.balance -= shares * fill + fee_in
+            self._spike_count += 1
+            self._spike_last[symbol] = time.time()
             self.positions[symbol] = {
                 "shares":      shares,
-                "entry":       price,
+                "entry":       fill,
+                "fee_in":      round(fee_in, 6),
                 "time":        datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "highest":     price,
+                "highest":     fill,
                 "stop_loss":   1.5,   # tight spike stop
                 "take_profit": 3.0,   # tight spike target
                 "spike":       True,
@@ -1284,7 +1312,7 @@ class CryptoBot:
 
         msg = ("SPIKE-BUY " + symbol +
                " $" + str(round(price, 4)) +
-               " vol=" + str(round(ratio, 1)) + "x avg (threshold: 10x)" +
+               " vol=" + str(round(ratio, 1)) + "x avg (Schwelle " + str(int(self.spike_threshold)) + "x, " + str(self._spike_count) + "/" + str(self.spike_max_day) + " heute)" +
                " SL=1.5% TP=3% | Bal: $" + str(round(self.balance, 0)))
         print(msg)
         self.send(msg)
@@ -2079,7 +2107,9 @@ class CryptoBot:
         if pos is None:
             return   # already closed by the other thread
 
-        profit = pos["shares"] * (price - pos["entry"])
+        fill_out = price * (1 - self.sim_slip) if self.demo else price
+        fee_out  = pos["shares"] * fill_out * self.sim_fee if self.demo else 0.0
+        profit   = pos["shares"] * (fill_out - pos["entry"]) - fee_out - pos.get("fee_in", 0.0)
 
         # Network calls outside lock — slow operations shouldn't block other threads
         if not self.demo and self.exchange_ok:
@@ -2087,7 +2117,7 @@ class CryptoBot:
             self._sync_balance()
         else:
             with self.positions_lock:
-                self.balance += pos["shares"] * price
+                self.balance += pos["shares"] * fill_out - fee_out
 
         trade_record = {
             "symbol":    symbol,
@@ -2306,13 +2336,16 @@ class CryptoBot:
             with self.positions_lock:
                 if symbol in self.positions or len(self.positions) >= self.max_pos:
                     continue
+                fill   = price * (1 + self.sim_slip) if self.demo else price
+                fee_in = shares * fill * self.sim_fee if self.demo else 0.0
                 if self.demo or not self.exchange_ok:
-                    self.balance -= shares * price
+                    self.balance -= shares * fill + fee_in
                 pos_entry = {
                     "shares":    shares,
-                    "entry":     price,
+                    "entry":     fill,
+                    "fee_in":    round(fee_in, 6),
                     "time":      datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    "highest":   price,
+                    "highest":   fill,
                     "psar_stop": ind.get("psar"),   # dynamic stop — updated each cycle
                 }
                 # Wild meme coins get a wider per-position stop (5%) stored explicitly
@@ -2486,6 +2519,11 @@ class CryptoBot:
         # On-chain background thread — updates scores every 120s without blocking main loop
         oc = threading.Thread(target=self._onchain_refresh_run, daemon=True, name="onchain-bg")
         oc.start()
+
+        print("[SPIKE] Drossel: >=" + str(int(self.spike_threshold)) + "x Vol, max " +
+              str(self.spike_max_day) + "/Tag, " + str(int(self.spike_cooldown / 3600)) + "h Cooldown/Symbol")
+        print("[FEE-SIM] Demo: " + str(round(self.sim_fee * 100, 2)) + "% Fee + " +
+              str(round(self.sim_slip * 100, 2)) + "% Slippage pro Seite")
 
         print("[WATCHDOG] Aktiv — Neustart wenn Hauptloop > 5 min haengt")
 

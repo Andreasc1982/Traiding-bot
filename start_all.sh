@@ -23,16 +23,24 @@ fuser -k 8081/tcp 2>/dev/null || true
 sleep 1
 
 # ── Super Bot ─────────────────────────────────────────────────────────────────
-screen -dmS trading bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u super_bot.py > /tmp/super_bot.log 2>&1'
+if grep -q '"super"' /home/trading2025/trading_bot/agents/risk_halt.json 2>/dev/null; then
+  echo "[start_all] Super Bot uebersprungen -- Risk-Halt aktiv"
+else
+  screen -dmS trading bash -c '
+    cd /home/trading2025/trading_bot &&
+    source /home/trading2025/trading_bot_env/bin/activate &&
+    PYTHONUNBUFFERED=1 python3 -u super_bot.py > /tmp/super_bot.log 2>&1'
+fi
 
 # ── Crypto Bot ────────────────────────────────────────────────────────────────
-screen -dmS crypto bash -c '
-  cd /home/trading2025/trading_bot/crypto &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u crypto_bot.py > /tmp/crypto_bot.log 2>&1'
+if grep -q '"crypto"' /home/trading2025/trading_bot/agents/risk_halt.json 2>/dev/null; then
+  echo "[start_all] Crypto Bot uebersprungen -- Risk-Halt aktiv"
+else
+  screen -dmS crypto bash -c '
+    cd /home/trading2025/trading_bot/crypto &&
+    source /home/trading2025/trading_bot_env/bin/activate &&
+    PYTHONUNBUFFERED=1 python3 -u crypto_bot.py > /tmp/crypto_bot.log 2>&1'
+fi
 
 # ── Super Bot Dashboard HTTP server (port 8080, serves trading_bot/ root) ─────
 screen -dmS dashboard bash -c '

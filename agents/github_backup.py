@@ -29,9 +29,11 @@ Log: /tmp/backup.log
 
 import os
 import subprocess
+import sys
 import time
 from datetime import datetime, timedelta
 
+sys.path.insert(0, "/home/trading2025/trading_bot")
 try:
     from config import config
 except ImportError:

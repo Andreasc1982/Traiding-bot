@@ -933,7 +933,8 @@ class SuperTradingBot:
         if pos is None:
             return   # already closed by the other thread
 
-        profit = pos["shares"] * (price - pos["entry"])
+        fill_out = price * (1 - getattr(self, "sim_slip", 0.0002)) if self.demo else price
+        profit = pos["shares"] * (fill_out - pos["entry"])
 
         # Network calls outside lock
         if not self.demo and self.alpaca_ok:
@@ -941,7 +942,7 @@ class SuperTradingBot:
             self._sync_balance()
         else:
             with self.positions_lock:
-                self.balance += pos["shares"] * price
+                self.balance += pos["shares"] * fill_out
 
         trade_record = {
             "symbol":   symbol,
@@ -1594,14 +1595,15 @@ class SuperTradingBot:
             if shares < 1:
                 continue
 
+            fill = price * (1 + getattr(self, "sim_slip", 0.0002)) if self.demo else price
             with self.positions_lock:
                 if symbol in self.positions or len(self.positions) >= self.max_pos:
                     continue
                 if self.demo or not self.alpaca_ok:
-                    self.balance -= shares * price
+                    self.balance -= shares * fill
                 self.positions[symbol] = {
                     "shares":      shares,
-                    "entry":       price,
+                    "entry":       fill,
                     "sector":      sector,
                     "time":        datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "highest":     price,

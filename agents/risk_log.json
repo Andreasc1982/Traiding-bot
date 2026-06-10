@@ -436,14 +436,34 @@
       "super_limit": -8.0,
       "crypto_limit": -8.0,
       "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-10 00:12:15",
+      "type": "RESUME_SUPER",
+      "value": 80432.98,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-10 01:09:17",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-10 01:33:45",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
     }
   ],
   "super_day_start": 80432.98,
-  "super_day_date": "2026-06-09",
-  "super_halted": true,
-  "super_resume_at": "2026-06-09 01:36",
-  "crypto_day_start": 14545.067919666286,
-  "crypto_day_date": "2026-06-09",
+  "super_day_date": "2026-06-10",
+  "super_halted": false,
+  "super_resume_at": null,
+  "crypto_day_start": 14535.273125022712,
+  "crypto_day_date": "2026-06-10",
   "crypto_halted": true,
   "crypto_resume_at": "2026-06-09 01:36",
   "halt_btc_price": 63448.9,

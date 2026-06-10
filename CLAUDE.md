@@ -230,6 +230,7 @@ Trades 10 sector ETFs using NLP sentiment from news/Twitter/SEC/Fed/Congress fee
 | `max_day_loss`  | 10%     | Pause new trades; process stays alive (no restart loop) |
 | Cycle interval  | 600s    | Full sentiment re-analysis every 10 min |
 | Intra-cycle     | every 120s | Momentum check + stop poll (if WS down) |
+| `sim_slip`      | 0.02%   | Demo-only: simulierte Slippage pro Seite (Alpaca Stocks kommissionsfrei, Fee=0) |
 
 ### Balance persistence (`super_state.json`)
 
@@ -313,6 +314,10 @@ Trades 20 cryptocurrencies (14 main + 6 meme) using sentiment from crypto RSS, R
 | `meme_size`     | 3%     | Meme coins per trade            |
 | `max_day_loss`  | 10%    | Daily drawdown limit — resets counter and continues immediately (no sleep, crypto is 24/7) |
 | Cycle interval  | ~120s  | 4 × 30s checks per full cycle   |
+| `sim_fee`       | 0.26%  | Demo-only: simulierte Exchange-Fee pro Seite (Kraken Taker) |
+| `sim_slip`      | 0.05%  | Demo-only: simulierte Market-Order-Slippage pro Seite |
+
+**Fee-Simulation (Demo)**: Alle 3 Kauf-Pfade (normal/spike/whale) speichern `entry` als Fill-Preis inkl. Slippage und `fee_in` im Position-Dict; `close_position()` zieht Verkaufs-Fee + Slippage ab. Der `profit` im Trade-Record ist **netto** (komplette Roundtrip-Kosten). Live-Modus unverändert — echte Abrechnung kommt von der Exchange.
 
 ### Balance persistence (`crypto_state.json`)
 
@@ -727,7 +732,9 @@ Fires an immediate buy from inside the WebSocket thread — no indicator gate, n
 | `spike_size`  | 4%    | Smaller than normal trades (riskier entry)  |
 | `stop_loss`   | 1.5%  | Tight — spike can reverse fast              |
 | `take_profit` | 3.0%  | Quick target — 2:1 risk/reward              |
-| Threshold     | 10.0× | 1000% above 20-bar avg per-minute volume    |
+| Threshold     | 20.0× | War 10× — gedrosselt 2026-06-10 (266 Spikes, 31% Win-Rate = Hauptverlustquelle) |
+| Max/Tag       | 3     | `spike_max_day` — Tageslimit, Reset um Mitternacht |
+| Cooldown      | 2h    | `spike_cooldown` — Sperre pro Symbol nach jedem Spike |
 | Min window    | 10s   | Won't fire on <10s of accumulated data      |
 | Window length | 60s   | Rolling window, resets after 60s or trigger |
 
@@ -964,6 +971,7 @@ screen -r risk   # attach; Ctrl+A D to detach
 |-------------------------|--------------------------------------------------------------|
 | `agents/risk_halt.json` | Exists while halted; deleted on resume. Read by monitor_agent. Contains `halted_bots` list. |
 | `agents/risk_log.json`  | Persisted state: peak value, per-bot day-start values, halt prices, full event history (capped 500). |
+| `agents/equity_history.csv` | Stündliche Equity-Kurve (`time,super,crypto,combined`) — geschrieben vom Risk Agent, läuft auch während Halts. Wird vom GitHub-Backup mitgesichert. |
 
 ### Event types logged to `risk_log.json`
 
@@ -1348,6 +1356,10 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **SL Cooling Persistence** — `_sl_cooldown` wird jetzt in `crypto_state.json` persistiert; `_save_state()` speichert nur noch aktive Cooldowns (`now - ts < 5400`); `_load_state()` stellt aktive Cooldowns wieder her und loggt verbleibende Sperrzeit: `[STATE] SL-Cooling wiederhergestellt: BTC/USD noch 47min`; verhindert Wiederkauf nach Restart während aktiver Sperre
 - [x] **Market-based Resume (Risk Agent)** — ersetzt fixen Timer; Crypto Bot wartet auf BTC +5% vom Halt-Tief (max 48h); Super Bot wartet auf SPY +2% vom Halt-Tief (max 24h); beide mit min 2h Wartezeit; Preise beim Halt in `risk_log.json` gespeichert (`halt_btc_price`, `halt_spy_price`, `halt_time`); Safety-Net nach max_h: automatischer Resume unabhängig vom Markt; BTC-Preis: Alpaca `/v1beta3/crypto/us/latest/quotes`; SPY-Preis: Alpaca `/v2/stocks/trades/latest?feed=iex`; BTC für Crypto (24/7), SPY für Super Bot (ETFs); Baseline-Fallback: wenn Agent nach Halt neugestartet, werden fehlende Preise beim nächsten Cycle nachgefüllt
 - [x] **Monitor Agent Skip-Analyse** — `check_skip_analysis()` liest `skips[]` aus `dashboard.json`; zählt wie oft jeder Indikator (`_ok=False`) blockiert; sendet Telegram-Report mit ASCII-Balkendiagramm alle 4h (`SKIP_ANALYSIS_COOLDOWN=14400`); Warning wenn ein Indikator >60% aller Entries blockiert; min. 10 Skips nötig; nicht wenn Risk Halt aktiv oder Super Bot tot
+- [x] **Stresstest-Fixes (2026-06-10)** — Volltest aller Komponenten (Syntax, JSON-Integrität, 10 externe APIs, Dashboard-Lasttest 30 Requests parallel, Watchdog-Kill-Tests, Bot-Lebenstest). 4 Bugs gefunden + gefixt: (1) `_update_halt_file()` listete resumed Bots weiter als halted (`if bh or sh` → `if sh`) — der per Safety-Net resumed Super Bot hatte dadurch keinen Monitor-Crash-Schutz; Halt-File wird jetzt zusätzlich bei jedem Risk-Agent-Start synchronisiert; (2) `github_backup.py` fehlte `sys.path.insert(0, BASE_DIR)` → config.py (liegt ein Verzeichnis höher) wurde nie gefunden → `config={}` → GitHub-Push wurde seit Einrichtung still übersprungen, Telegram-Bestätigungen kamen nie; (3) `start_all.sh` startete bei Reboot beide Bots trotz aktivem Risk-Halt — jetzt Guard: `grep -q '"super"'/'"crypto"' risk_halt.json` überspringt gehaltene Bots; (4) Risk Agent sendete stündliche "WARN Stale"-Telegrams während Halt (gehaltene Bots sind erwartet stale) — Telegram-Warnung jetzt nur für nicht-gehaltene Bots, Console-Log unverändert. Live verifiziert: market-based Resume feuerte Safety-Net exakt nach 24h (RESUME_SUPER 00:12), Monitor restartete gekilltes Dashboard in 10s und Risk Agent in 35s, crypto close_all Reaktionszeit 20s
+- [x] **P1: Fee/Slippage-Simulation im Demo-Modus (2026-06-10)** — Demo rechnete ohne Kosten: die 403 Crypto-Trades (3 Wochen) hätten bei Kraken ~$1.800 Fees gekostet — 4× der eigentliche Handelsverlust von −$487; crypto_bot: `sim_fee=0.26%` + `sim_slip=0.05%` pro Seite auf alle 3 Kauf-Pfade (normal/spike/whale) und den Verkauf; `entry` = Fill-Preis inkl. Slippage, `fee_in` im Position-Dict, `profit` im Trade-Record jetzt NETTO; super_bot: `sim_slip=0.02%` (Stocks kommissionsfrei); nur Demo — Live nutzt echte Exchange-Abrechnung
+- [x] **P1: Spike-Drosselung (2026-06-10)** — Datenanalyse: 266 von 403 Trades (66%) waren Spikes mit 31% Win-Rate und −$347 = Hauptverlustquelle; Schwelle 10×→20×, max 3 Spikes/Tag (Mitternacht-Reset), 2h Cooldown pro Symbol; Spike-BUY-Log zeigt Tageszähler; Startup-Log zeigt Drossel-Config
+- [x] **P1: Equity-Kurven-Logging (2026-06-10)** — risk_agent schreibt stündlich `agents/equity_history.csv` (time,super,crypto,combined); läuft auch während Halts weiter; Grundlage für Sharpe/MaxDD-Auswertung und die Live-Go-Entscheidung
 - [x] **close_all Command (beide Bots + Risk Agent)** — `{"command":"close_all"}` in `bot_control.json` / `crypto_control.json`; `check_control()` schließt alle offenen Positionen via `get_price()` + `close_position()` mit Reason `RISK-CLOSE-ALL`; setzt `running=False`; entfernt Control-File (Signal für Risk Agent); beide Bots prüfen `check_control()` auch im Intra-Cycle Loop (max 2 min Reaktionszeit bei super_bot, max 30s bei crypto_bot); Risk Agent `_stop_super()` und `_stop_crypto()` schreiben jetzt `close_all` statt `stop`; pollen max 45s auf Control-File-Entfernung bevor Hard-Kill; live getestet mit 4 offenen Positionen: alle 4 korrekt geschlossen, Control-File entfernt, Bot gestoppt
 
 ---
@@ -1408,3 +1420,7 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 **close_all bei 0 Positionen**: Wenn beim Halt keine offenen Positionen existieren, schreibt das Bot nur `[CTRL] close_all: Schliesse 0 Positionen vor Halt...`, setzt `running=False` und entfernt das Control-File. Risk Agent sieht Datei verschwunden → OK. Super Bot bleibt in der `while True:` Loop (hält paused), Crypto Bot beendet die `while self.running:` Loop und terminiert selbst.
 
 **Market-based Resume Baseline nach Agent-Restart**: Wenn `risk_agent.py` während eines Drawdown-Halts neu gestartet wird und `halt_btc_price` / `halt_spy_price` in `risk_log.json` fehlen, werden sie beim nächsten Cycle-Durchlauf automatisch befüllt (aktueller Preis als Baseline). Das ist konservativ: der neue Baseline ist höher als der eigentliche Halt-Tief, was die Erholungs-Schwelle höher setzt.
+
+**Agents in `agents/` brauchen `sys.path.insert`**: Jeder Agent der `from config import config` macht, braucht `sys.path.insert(0, "/home/trading2025/trading_bot")` VOR dem Import — config.py liegt ein Verzeichnis über agents/. Fehlt die Zeile, greift still der `except ImportError: config = {}` Fallback und alle Features die config-Keys brauchen (Telegram, GitHub-Push, API-Calls) sind deaktiviert ohne Fehlermeldung. Genau das war bei `github_backup.py` von Anfang an der Fall (gefixt 2026-06-10).
+
+**Partial Resume nach Drawdown-Halt**: Nach `halt_both` bleibt `s["halted"]` (kombinierter Flag) True bis BEIDE Bots resumed sind. `_update_halt_file()` darf `halted_bots` deshalb nur aus den per-Bot-Flags (`super_halted`/`crypto_halted`) ableiten — nicht aus dem kombinierten Flag, sonst verliert ein bereits resumed Bot seinen Monitor-Crash-Schutz (gefixt 2026-06-10; Halt-File wird seither auch bei jedem Agent-Start neu synchronisiert).
