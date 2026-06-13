@@ -478,17 +478,33 @@
       "type": "RESUME_SUPER",
       "value": 80425.16,
       "reason": "SPY +2.0% erholt ($724.73 -> $739.29)"
+    },
+    {
+      "time": "2026-06-12 17:13:31",
+      "type": "RESUME_CRYPTO",
+      "value": 14535.27,
+      "reason": "BTC +5.1% erholt ($61,202 -> $64,320)"
+    },
+    {
+      "time": "2026-06-12 17:14:08",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -20.27% (Limit -15.0%)",
+      "drawdown_pct": -20.27,
+      "combined": 91872.19,
+      "peak": 115229.4,
+      "halt_btc": 64337.6,
+      "halt_spy": 742.88
     }
   ],
-  "super_day_start": 77309.37000000001,
-  "super_day_date": "2026-06-12",
-  "super_halted": false,
+  "super_day_start": 77336.1,
+  "super_day_date": "2026-06-13",
+  "super_halted": true,
   "super_resume_at": null,
-  "crypto_day_start": 14535.27,
-  "crypto_day_date": "2026-06-12",
+  "crypto_day_start": 14534.186490647,
+  "crypto_day_date": "2026-06-13",
   "crypto_halted": true,
   "crypto_resume_at": null,
-  "halt_btc_price": 61202.18,
-  "halt_time": "2026-06-11 00:12",
-  "halt_spy_price": 724.73
+  "halt_btc_price": 64337.6,
+  "halt_time": "2026-06-12 17:13",
+  "halt_spy_price": 742.88
 }
