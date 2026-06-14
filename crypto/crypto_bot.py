@@ -162,6 +162,7 @@ class CryptoBot:
         self._dash_path    = dash_path    or "/home/trading2025/trading_bot/crypto/crypto_dashboard.json"
         self._trades_path  = trades_path  or "/home/trading2025/trading_bot/crypto/trades_history.json"
         self._control_path = control_path or "/home/trading2025/trading_bot/crypto/crypto_control.json"
+        self._entry_score_min = 0.1   # min sentiment score to consider entry (Clone C raises this)
         self.demo      = DEMO_MODE
         self.balance   = 10000.0
         self.positions = {}
@@ -2215,7 +2216,7 @@ class CryptoBot:
 
         ranked = sorted(scores.items(), key=lambda x: abs(x[1]), reverse=True)
         for symbol, score in ranked:
-            if score <= 0.1:
+            if score <= self._entry_score_min:
                 continue
             if symbol in self.excluded_symbols:
                 continue

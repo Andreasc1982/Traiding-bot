@@ -69,6 +69,36 @@ class Gateway(CryptoBot):
             "APCA-API-SECRET-KEY": crypto_bot.ALPACA_SECRET_KEY,
         }
 
+    # Override: detect spikes from the tick stream and PUBLISH them (don't trade).
+    # Only clone A consumes spikes.json; B/C/D ignore it. Active in WS mode only.
+    def _ws_spike_check(self, symbol, price):
+        avg_per_min = self._get_avg_vol(symbol)
+        if not avg_per_min:
+            return
+        v = self.ws_volume.get(symbol)
+        if not v:
+            return
+        elapsed = time.time() - v["start"]
+        if elapsed < 10:
+            return
+        vol_rate = v["vol"] / elapsed * 60
+        ratio    = vol_rate / avg_per_min
+        if ratio < self.spike_threshold:
+            return
+        self.ws_volume[symbol] = {"vol": 0.0, "start": time.time()}   # reset, no re-fire
+        spikes = {}
+        try:
+            with open(os.path.join(SHM, "spikes.json")) as f:
+                spikes = json.load(f)
+        except Exception:
+            pass
+        # drop stale entries (> 120s) so the file stays small
+        now = time.time()
+        spikes = {s: e for s, e in spikes.items() if now - e.get("ts", 0) < 120}
+        spikes[symbol] = {"ts": now, "price": price, "ratio": round(ratio, 2)}
+        _publish("spikes.json", spikes)
+        print("[GW-SPIKE] " + symbol + " " + str(round(ratio, 1)) + "x -> publiziert")
+
     def _publish_prices_loop(self):
         """Push the latest WS prices every second (high frequency, small file)."""
         while True:
