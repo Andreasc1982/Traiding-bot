@@ -55,15 +55,41 @@ CRYPTO_SYMBOLS = [
     "LINK/USD", "LTC/USD", "DOGE/USD", "SHIB/USD",
 ]  # PEPE/WIF excluded — often no Alpaca data for recent periods
 
-# Current live parameters (baseline for comparisons)
-SUPER_BASELINE = {
-    "rsi_threshold": 70, "st_mult": 3.5,
-    "stop_loss": 3.0, "take_profit": 15.0, "trailing_stop": 3.0,
-}
-CRYPTO_BASELINE = {
-    "rsi_threshold": 70, "st_mult": 3.5,
-    "stop_loss": 4.0, "take_profit": 10.0, "trailing_stop": 2.0,
-}
+# Current live parameters — READ DYNAMICALLY from the bot source so the
+# "current vs suggested" diffs are always correct (no more stale hardcodes).
+SUPER_BOT_PATH  = "/home/trading2025/trading_bot/super_bot.py"
+CRYPTO_BOT_PATH = "/home/trading2025/trading_bot/crypto/crypto_bot.py"
+
+def _read_current_params(path, defaults):
+    """Regex-read the live params from a bot file. Defaults = correct current
+    values, used as fallback if a pattern does not match."""
+    import re
+    p = dict(defaults)
+    try:
+        with open(path) as f:
+            src = f.read()
+        m = re.search(r"self\.stop_loss\s*=\s*([\d.]+)", src)
+        if m: p["stop_loss"] = float(m.group(1))
+        m = re.search(r"self\.take_profit\s*=\s*([\d.]+)", src)
+        if m: p["take_profit"] = float(m.group(1))
+        m = re.search(r'ind\["rsi"\]\s*<\s*(\d+)', src)
+        if m: p["rsi_threshold"] = int(m.group(1))
+        m = re.search(r"hl2\s*\+\s*([\d.]+)\s*\*\s*st_atr", src)
+        if m: p["st_mult"] = float(m.group(1))
+        m = re.search(r"self\.trailing_stop\s*=\s*([\d.]+)", src)
+        if m: p["trailing_stop"] = float(m.group(1))
+    except Exception as e:
+        print("[OPT] Parameter-Read fehlgeschlagen (" + path + "): " + str(e))
+    return p
+
+SUPER_BASELINE = _read_current_params(SUPER_BOT_PATH, {
+    "rsi_threshold": 75, "st_mult": 4.0,
+    "stop_loss": 2.0, "take_profit": 12.0, "trailing_stop": 3.0,
+})
+CRYPTO_BASELINE = _read_current_params(CRYPTO_BOT_PATH, {
+    "rsi_threshold": 65, "st_mult": 3.5,
+    "stop_loss": 2.5, "take_profit": 5.0, "trailing_stop": 1.5,
+})
 
 MIN_BARS = 78   # Ichimoku minimum (52 lookback + 26 displacement)
 
@@ -485,10 +511,12 @@ def run_grid_search(bars_by_sym, baseline, is_crypto, warmup=100):
     Fetch bars, pre-compute indicators, test all parameter combos.
     Returns {best_params, top5, baseline_result, improvement, full_grid}.
     """
-    rsi_vals = [65, 70, 75]
-    st_vals  = [3.0, 3.5, 4.0]
-    sl_vals  = [3.0, 4.0, 5.0] if is_crypto else [2.0, 3.0, 4.0]
-    tp_vals  = [8.0, 10.0, 15.0] if is_crypto else [12.0, 15.0, 20.0]
+    # Always include the live baseline values so baseline_result is found
+    # (fixes best_score=None) and the improvement diff is computable.
+    rsi_vals = sorted(set([65, 70, 75] + [baseline["rsi_threshold"]]))
+    st_vals  = sorted(set([3.0, 3.5, 4.0] + [baseline["st_mult"]]))
+    sl_vals  = sorted(set(([3.0, 4.0, 5.0] if is_crypto else [2.0, 3.0, 4.0]) + [baseline["stop_loss"]]))
+    tp_vals  = sorted(set(([8.0, 10.0, 15.0] if is_crypto else [12.0, 15.0, 20.0]) + [baseline["take_profit"]]))
 
     total_combos = len(rsi_vals) * len(st_vals) * len(sl_vals) * len(tp_vals)
     log(f"  Grid: {total_combos} combos × {len(bars_by_sym)} symbols")
