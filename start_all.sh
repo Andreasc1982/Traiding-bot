@@ -82,5 +82,22 @@ screen -dmS backup bash -c '
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u github_backup.py > /tmp/backup.log 2>&1'
 
+# ── Clone-Experiment: Gateway + 4 Clones + Dashboard ──────────────────────────
+screen -dmS gateway bash -c '
+  cd /home/trading2025/trading_bot/crypto &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1'
+sleep 3
+for V in A_baseline B_nospikes C_conservative D_contrarian; do
+  screen -dmS clone_$V bash -c "
+    cd /home/trading2025/trading_bot/crypto &&
+    source /home/trading2025/trading_bot_env/bin/activate &&
+    PYTHONUNBUFFERED=1 python3 -u clone.py $V > /tmp/clone_$V.log 2>&1"
+done
+screen -dmS clones_dashboard bash -c '
+  fuser -k 8090/tcp 2>/dev/null; sleep 1;
+  cd /home/trading2025/trading_bot/crypto/clones &&
+  python3 -m http.server 8090 > /tmp/clones_dashboard.log 2>&1'
+
 echo "[start_all] All screen sessions launched."
 screen -list

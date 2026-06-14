@@ -76,6 +76,66 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u crypto_bot.py > /tmp/crypto_bot.log 2>&1"
         ),
     },
+    "gateway": {
+        "name":         "Market-Data Gateway",
+        "session":      "gateway",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1"
+        ),
+    },
+    "clone_A_baseline": {
+        "name":         "Clone A (baseline)",
+        "session":      "clone_A_baseline",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py A_baseline > /tmp/clone_A_baseline.log 2>&1"
+        ),
+    },
+    "clone_B_nospikes": {
+        "name":         "Clone B (no-spikes)",
+        "session":      "clone_B_nospikes",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py B_nospikes > /tmp/clone_B_nospikes.log 2>&1"
+        ),
+    },
+    "clone_C_conservative": {
+        "name":         "Clone C (conservative)",
+        "session":      "clone_C_conservative",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py C_conservative > /tmp/clone_C_conservative.log 2>&1"
+        ),
+    },
+    "clone_D_contrarian": {
+        "name":         "Clone D (contrarian)",
+        "session":      "clone_D_contrarian",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py D_contrarian > /tmp/clone_D_contrarian.log 2>&1"
+        ),
+    },
+    "clones_dashboard": {
+        "name":         "Clones Dashboard HTTP :8090",
+        "session":      "clones_dashboard",
+        "trading_only": False,
+        "cmd": (
+            "fuser -k 8090/tcp 2>/dev/null; sleep 1; "
+            "cd /home/trading2025/trading_bot/crypto/clones && "
+            "python3 -m http.server 8090 > /tmp/clones_dashboard.log 2>&1"
+        ),
+    },
     "dashboard": {
         "name":         "Dashboard HTTP :8080",
         "session":      "dashboard",

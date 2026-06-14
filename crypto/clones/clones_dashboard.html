@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clone-Experiment — A/B/C/D</title>
+<style>
+  :root { --bg:#0e1116; --card:#171c24; --line:#262d38; --txt:#e6edf3; --dim:#8b949e;
+          --green:#3fb950; --red:#f85149; --gold:#d4a017; --blue:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+         font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--line);
+           display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  h1 { font-size:20px; margin:0; }
+  .sub { color:var(--dim); font-size:13px; }
+  #updated { margin-left:auto; color:var(--dim); font-size:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+          gap:16px; padding:22px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:18px; position:relative; }
+  .card.leader { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; }
+  .rank { position:absolute; top:14px; right:16px; font-size:12px; color:var(--dim); }
+  .leader .rank { color:var(--gold); font-weight:600; }
+  .vname { font-size:16px; font-weight:600; margin:0 0 2px; }
+  .vdesc { color:var(--dim); font-size:12px; margin-bottom:14px; }
+  .equity { font-size:30px; font-weight:700; letter-spacing:-.5px; }
+  .ret { font-size:16px; font-weight:600; margin-left:6px; }
+  .pos { color:var(--green); } .neg { color:var(--red); }
+  .row { display:flex; justify-content:space-between; font-size:13px;
+         padding:5px 0; border-top:1px solid var(--line); }
+  .row .k { color:var(--dim); }
+  .holdings { margin-top:12px; }
+  .htitle { font-size:11px; color:var(--dim); text-transform:uppercase;
+            letter-spacing:.5px; margin-bottom:6px; }
+  .hitem { display:flex; justify-content:space-between; font-size:12px; padding:2px 0;
+           font-variant-numeric:tabular-nums; }
+  .hsym { color:var(--blue); }
+  .stale { color:var(--red); font-size:11px; }
+  .empty { color:var(--dim); font-size:12px; font-style:italic; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧬 Clone-Experiment</h1>
+  <span class="sub">4 Strategien · identische Gateway-Daten · je $5.000 Start</span>
+  <span id="updated">lädt…</span>
+</header>
+<div class="grid" id="grid"></div>
+
+<script>
+const META = {
+  "A_baseline":     { label:"A · Baseline",     desc:"Momentum + Spikes + Memes" },
+  "B_nospikes":     { label:"B · No-Spikes",    desc:"Momentum, ohne Spikes" },
+  "C_conservative": { label:"C · Conservative", desc:"Streng + keine Memes/Spikes" },
+  "D_contrarian":   { label:"D · Contrarian",   desc:"Mean-Reversion (kauft oversold)" },
+};
+const START = 5000;
+const order = ["A_baseline","B_nospikes","C_conservative","D_contrarian"];
+
+function equityOf(d){
+  let eq = d.balance || 0;
+  const p = d.positions || {};
+  for (const s in p){ eq += (p[s].shares||0) * (p[s].current_price|| p[s].entry ||0); }
+  return eq;
+}
+function winRate(trades){
+  if(!trades || !trades.length) return null;
+  const w = trades.filter(t => (t.profit||0) > 0).length;
+  return Math.round(w / trades.length * 100);
+}
+function fmt(n){ return "$" + (n).toLocaleString("de-DE",{maximumFractionDigits:0}); }
+
+async function load(){
+  const cards = [];
+  for (const v of order){
+    try {
+      const r = await fetch(v + "_dashboard.json?_=" + Date.now());
+      const d = await r.json();
+      const eq = equityOf(d);
+      const ret = (eq - START) / START * 100;
+      const ageMin = d.time ? (Date.now() - new Date(d.time.replace(" ","T")).getTime())/60000 : 999;
+      cards.push({ v, d, eq, ret, age:ageMin });
+    } catch(e){
+      cards.push({ v, d:null, eq:0, ret:-9999, age:999 });
+    }
+  }
+  // rank by return desc (only those with data)
+  const ranked = [...cards].sort((a,b)=> b.ret - a.ret);
+  const leaderV = ranked[0] && ranked[0].d ? ranked[0].v : null;
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  for (const c of cards){
+    const m = META[c.v];
+    const el = document.createElement("div");
+    el.className = "card" + (c.v===leaderV ? " leader" : "");
+    if (!c.d){
+      el.innerHTML = `<div class="vname">${m.label}</div>
+        <div class="vdesc">${m.desc}</div><div class="stale">⚠ keine Daten / Clone offline</div>`;
+      grid.appendChild(el); continue;
+    }
+    const rankIdx = ranked.findIndex(x=>x.v===c.v)+1;
+    const pos = c.d.positions || {};
+    const posKeys = Object.keys(pos);
+    const wr = winRate(c.d.trades);
+    let holdings = `<div class="empty">keine offenen Positionen</div>`;
+    if (posKeys.length){
+      holdings = posKeys.map(s=>{
+        const pl = pos[s].pnl_pct||0;
+        const cls = pl>=0 ? "pos":"neg";
+        const tag = pos[s].spike ? " ⚡" : (pos[s].contrarian ? " ↩" : "");
+        return `<div class="hitem"><span class="hsym">${s}${tag}</span>
+                <span class="${cls}">${pl>=0?"+":""}${pl.toFixed(1)}%</span></div>`;
+      }).join("");
+    }
+    const retCls = c.ret>=0 ? "pos":"neg";
+    el.innerHTML = `
+      <div class="rank">#${rankIdx}${c.v===leaderV?" 👑":""}</div>
+      <div class="vname">${m.label}</div>
+      <div class="vdesc">${m.desc}</div>
+      <div><span class="equity">${fmt(c.eq)}</span>
+           <span class="ret ${retCls}">${c.ret>=0?"+":""}${c.ret.toFixed(2)}%</span></div>
+      ${c.age>10 ? `<div class="stale">⚠ Daten ${Math.round(c.age)} min alt</div>`:""}
+      <div class="row"><span class="k">Cash</span><span>${fmt(c.d.balance||0)}</span></div>
+      <div class="row"><span class="k">Offene Positionen</span><span>${posKeys.length}/8</span></div>
+      <div class="row"><span class="k">Trades gesamt</span><span>${c.d.total_trades||0}</span></div>
+      <div class="row"><span class="k">Win-Rate (letzte)</span><span>${wr===null?"–":wr+"%"}</span></div>
+      <div class="holdings"><div class="htitle">Positionen</div>${holdings}</div>`;
+    grid.appendChild(el);
+  }
+  const fg = cards.find(c=>c.d && c.d.fear_greed);
+  const fgStr = fg ? ` · F&G ${fg.d.fear_greed.value} ${fg.d.fear_greed.label}` : "";
+  document.getElementById("updated").textContent =
+    "Stand " + new Date().toLocaleTimeString("de-DE") + fgStr + " · Auto-Refresh 15s";
+}
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>
