@@ -27,7 +27,8 @@ SHM       = "/dev/shm/crypto_gw"
 CLONE_DIR = os.path.join(BASE, "crypto", "clones")
 os.makedirs(CLONE_DIR, exist_ok=True)
 
-START_BALANCE = 10000.0   # alle Clones starten gleich (fairer Return-Vergleich)
+START_BALANCE = 5000.0    # entspricht dem echten Kapital-Maximum -> realistische Zahlen
+                          # (alle Clones gleich -> fairer %-Vergleich bleibt erhalten)
 
 VARIANTS = {
     "A_baseline":     {"spikes": True,  "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8092},
