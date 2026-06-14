@@ -32,3 +32,4 @@ agents/risk_halt.json
 __pycache__/
 *.pyc
 *.pyo
+crypto/clones/
