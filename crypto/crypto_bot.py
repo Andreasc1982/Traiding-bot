@@ -186,6 +186,7 @@ class CryptoBot:
         # Telegram command flag — set True by /stop command, False by /start
         self.tg_paused    = False
 
+        self.excluded_symbols = {"DOGE/USD"}   # Optimizer-Flag 2026-06-14: >=50% SL-Exits (revidierbar)
         # Spike trading (gedrosselt 2026-06-10: 31% Win-Rate bei 266 Spikes)
         self.spike_size      = 0.04    # 4% of balance per spike trade
         self.spike_threshold = 20.0    # Volumen-Schwelle (war 10.0 -- Overtrading)
@@ -2211,6 +2212,8 @@ class CryptoBot:
         ranked = sorted(scores.items(), key=lambda x: abs(x[1]), reverse=True)
         for symbol, score in ranked:
             if score <= 0.1:
+                continue
+            if symbol in self.excluded_symbols:
                 continue
 
             # Quick check before doing slow indicator fetch

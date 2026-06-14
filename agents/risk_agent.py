@@ -39,6 +39,7 @@ CONTROL_FILE       = os.path.join(BASE_DIR, "bot_control.json")
 HALT_FILE          = os.path.join(AGENTS_DIR, "risk_halt.json")
 LOG_FILE           = os.path.join(AGENTS_DIR, "risk_log.json")
 EQUITY_CSV         = os.path.join(AGENTS_DIR, "equity_history.csv")
+MANUAL_RESUME_FLAG = os.path.join(AGENTS_DIR, "manual_resume.flag")
 
 CHECK_INTERVAL            = 30
 SUPER_DAILY_LIMIT         = -8.0
@@ -51,6 +52,9 @@ RESUME_MAX_HOURS_CRYPTO   = 48    # crypto bot: safety net after 48h
 RESUME_RECOVERY_SPY       = 2.0   # super bot:  SPY must recover +2% from low
 RESUME_MAX_HOURS_SUPER    = 24    # super bot:  safety net after 24h (1 trading day)
 STALE_MINUTES             = 10
+ESCALATE_HALTS            = 2     # >= N Drawdown-Halts im Fenster -> manueller Halt
+ESCALATE_WINDOW_H         = 48    # Stunden-Fenster fuer Eskalation
+ROLLING_PEAK_DAYS         = 30    # Drawdown-Referenz: rollendes N-Tage-Hoch statt Allzeithoch
 
 BOT_SESSION = {'super': 'trading', 'crypto': 'crypto'}
 BOT_CMD = {
@@ -114,6 +118,36 @@ def _get_spy_price():
         return None
 
 
+def _rolling_peak(days):
+    """Hoechster kombinierter Equity-Wert der letzten N Tage aus equity_history.csv."""
+    try:
+        if not os.path.exists(EQUITY_CSV):
+            return None
+        cutoff = datetime.now() - timedelta(days=days)
+        hi = 0.0
+        with open(EQUITY_CSV) as f:
+            next(f, None)
+            for line in f:
+                parts = line.strip().split(",")
+                if len(parts) < 4:
+                    continue
+                try:
+                    t = datetime.strptime(parts[0], "%Y-%m-%d %H:%M")
+                except Exception:
+                    continue
+                if t < cutoff:
+                    continue
+                try:
+                    val = float(parts[3])
+                except Exception:
+                    continue
+                if val > hi:
+                    hi = val
+        return hi if hi > 0 else None
+    except Exception as e:
+        print("[ROLLING-PEAK] " + str(e))
+        return None
+
 def _default_state():
     return {"peak_value": None, "halted": False, "resume_at": None,
             "halt_btc_price": None, "halt_spy_price": None, "halt_time": None,
@@ -121,6 +155,7 @@ def _default_state():
             "super_halted": False, "super_resume_at": None,
             "crypto_day_start": None, "crypto_day_date": None,
             "crypto_halted": False, "crypto_resume_at": None,
+            "manual_hold": False, "drawdown_halt_times": [], "rolling_peak": None,
             "events": []}
 
 def load_state():
@@ -164,6 +199,7 @@ def _update_halt_file(s):
     with open(HALT_FILE, "w") as f:
         json.dump({"halted": True, "halted_bots": bots,
                    "halted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                   "manual_hold": s.get("manual_hold", False),
                    "resume_at": min(times) if times else None}, f, indent=2)
 
 def _stop_super():
@@ -245,6 +281,22 @@ def halt_both(s, reason, spct, ddpct, combined):
     s["resume_at"]      = None
     s["super_halted"]   = True;  s["super_resume_at"]  = None
     s["crypto_halted"]  = True;  s["crypto_resume_at"] = None
+    # Eskalation: wiederholte Drawdown-Halts = strukturelles Problem -> manueller Halt
+    s.setdefault("drawdown_halt_times", [])
+    s["drawdown_halt_times"].append(now_str)
+    s["drawdown_halt_times"] = s["drawdown_halt_times"][-10:]
+    recent = []
+    for _t in s["drawdown_halt_times"]:
+        try:
+            if (datetime.now() - datetime.strptime(_t, "%Y-%m-%d %H:%M")).total_seconds() < ESCALATE_WINDOW_H * 3600:
+                recent.append(_t)
+        except Exception:
+            pass
+    if len(recent) >= ESCALATE_HALTS:
+        s["manual_hold"] = True
+        tg("STOP <b>MANUELLER HALT AKTIV</b>\n" + str(len(recent)) + " Drawdown-Halts in " +
+           str(ESCALATE_WINDOW_H) + "h -- Strategie verliert wiederholt.\n"
+           "Bots bleiben AUS bis manuelles /start. Bitte Strategie pruefen.")
     btc_str = ("$" + "{:,.0f}".format(btc)) if btc else "?"
     spy_str = ("$" + "{:.2f}".format(spy))  if spy else "?"
     resume_info = ("Crypto: BTC " + btc_str + " +" + str(RESUME_RECOVERY_BTC) +
@@ -299,6 +351,8 @@ def resume_bot(s, bot, value, reason=""):
     if not s.get("super_halted") and not s.get("crypto_halted"):
         s["halted"] = False; s["resume_at"] = None
         s["halt_btc_price"] = None; s["halt_spy_price"] = None; s["halt_time"] = None
+        s["peak_value"] = None   # Re-Baseline: Drawdown ab hier frisch messen (bricht Halt-Schleife)
+        print("[REBASELINE] Peak zurueckgesetzt -- Drawdown misst ab aktuellem kombinierten Wert")
     _update_halt_file(s)
     log_event(s, "RESUME_" + bot.upper(), value=round(value,2), reason=reason)
     save_state(s)
@@ -385,6 +439,9 @@ def run():
                 s["peak_value"] = combined
                 print("[INIT] Peak: $" + "{:,.2f}".format(combined))
             if combined > (s["peak_value"] or 0): s["peak_value"] = combined
+            _rp_cur = s.get("rolling_peak")
+            if _rp_cur and s["peak_value"] and _rp_cur < s["peak_value"]:
+                s["peak_value"] = max(_rp_cur, combined)   # altes Hoch altert aus 30-Tage-Fenster
 
             if sv and (s["super_day_date"] != today or not s["super_day_start"]):
                 s["super_day_start"] = sv; s["super_day_date"] = today
@@ -410,6 +467,8 @@ def run():
                                  str(round(cv or 0, 2)) + "," +
                                  str(round(combined, 2)) + "\n")
                     last_equity = time.time()
+                    _rp = _rolling_peak(ROLLING_PEAK_DAYS)
+                    if _rp: s["rolling_peak"] = _rp
                 except Exception as e:
                     print("[EQUITY] " + str(e))
 
@@ -421,8 +480,26 @@ def run():
                   "DD=" + "{:+.1f}".format(ddpct) + "% Peak=$" + "{:,.0f}".format(peak)
                   + ("  STALE:" + ",".join(stale) if stale else ""))
 
+            # Manueller Resume nach Eskalation -- raeumt manual_hold, re-baselined, startet beide
+            if s.get("manual_hold") and os.path.exists(MANUAL_RESUME_FLAG):
+                try: os.remove(MANUAL_RESUME_FLAG)
+                except Exception: pass
+                s["manual_hold"] = False
+                s["drawdown_halt_times"] = []
+                s["peak_value"] = None
+                print("[MANUAL] Manueller Resume bestaetigt -- Peak neu, beide Bots starten")
+                tg("OK <b>Manueller Resume</b>\nManueller Halt aufgehoben, Peak neu gesetzt, Bots starten neu.")
+                if s.get("super_halted"):
+                    resume_bot(s, "super", sv or s.get("super_day_start") or 0, "Manueller Resume")
+                if s.get("crypto_halted"):
+                    resume_bot(s, "crypto", cv or s.get("crypto_day_start") or 0, "Manueller Resume")
+
             for bot, val in [("super", sv), ("crypto", cv)]:
                 if not s.get(bot + "_halted") or not val:
+                    continue
+                if s.get("manual_hold"):
+                    if cycle % 40 == 0 and bot == "super":
+                        print("[MANUAL HOLD] Bots gehalten -- warte auf /start (manueller Eingriff)")
                     continue
 
                 if s.get("halted"):

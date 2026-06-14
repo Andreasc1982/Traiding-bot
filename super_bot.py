@@ -124,6 +124,7 @@ class SuperTradingBot:
         self.take_profit = 12.0  # optimized: 15.0 → 12.0
         self.max_pos     = 15
         self.pos_size    = 0.05
+        self.excluded_symbols = {"XLF"}   # Optimizer-Flag 2026-06-14: >=50% SL-Exits (revidierbar)
         self.tg_ok       = False
         self.alpaca_ok   = False
         self.alpaca_headers = {}
@@ -1448,6 +1449,8 @@ class SuperTradingBot:
             if abs(score) < 1.0:
                 continue
             symbol = ETFS[sector]
+            if symbol in self.excluded_symbols:
+                continue
             if score <= 0:
                 continue
 

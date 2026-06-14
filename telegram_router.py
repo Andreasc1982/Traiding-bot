@@ -307,6 +307,17 @@ def cmd_stop(super_only=False, crypto_only=False):
 
 
 def cmd_start(super_only=False, crypto_only=False):
+    # Manueller Halt nach Eskalation? -> Resume-Flag fuer den Risk Agent setzen
+    try:
+        rl = _load(RISK_LOG)
+        if rl.get("manual_hold"):
+            flag = os.path.join(BASE_DIR, "agents", "manual_resume.flag")
+            with open(flag, "w") as ff:
+                ff.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            send("\U0001F7E2 <b>Manueller Resume ausgeloest</b>\n"
+                 "Risk Agent hebt den Halt auf, setzt den Peak neu und startet die Bots (bis zu 30s).")
+    except Exception as e:
+        log("manual-resume flag error: " + str(e))
     sv = None if crypto_only else False
     cv = None if super_only  else False
     results = _set_paused(sv, cv)
