@@ -560,6 +560,16 @@ def cmd_apply():
 def cmd_confirm():
     global _pending_apply
 
+    # GESPERRT 2026-06-14: Optimizer liest veraltete Ist-Parameter (Regex matcht
+    # nach Handtuning nicht mehr) und rechnet ohne Fees -> Vorschlaege unzuverlaessig.
+    # Entsperren erst nach Optimizer-Fix A (Ist-Werte) + B (fee-aware Grid).
+    send("\U0001F512 <b>/confirm ist gesperrt</b>\n"
+         "Der Optimizer wird ueberarbeitet (veraltete Basiswerte, keine Fee-Rechnung). "
+         "Bis dahin werden keine Parameter automatisch angewendet. "
+         "Aenderungen bei Bedarf manuell im Code.")
+    log("CONFIRM BLOCKED -- Optimizer-Lock aktiv")
+    return
+
     if not _pending_apply:
         send("❌ Kein ausstehender /apply — zuerst /apply senden")
         return
