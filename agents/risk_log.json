@@ -500,17 +500,33 @@
       "type": "RESUME_SUPER",
       "value": 77336.1,
       "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-14 17:13:12",
+      "type": "RESUME_CRYPTO",
+      "value": 14534.19,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-06-14 17:14:29",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -20.27% (Limit -15.0%)",
+      "drawdown_pct": -20.27,
+      "combined": 91869.23,
+      "peak": 115229.4,
+      "halt_btc": 64103.45,
+      "halt_spy": 741.67
     }
   ],
   "super_day_start": 77335.04,
   "super_day_date": "2026-06-14",
-  "super_halted": false,
+  "super_halted": true,
   "super_resume_at": null,
   "crypto_day_start": 14534.186490647,
   "crypto_day_date": "2026-06-14",
   "crypto_halted": true,
   "crypto_resume_at": null,
-  "halt_btc_price": 64337.6,
-  "halt_time": "2026-06-12 17:13",
-  "halt_spy_price": 742.88
+  "halt_btc_price": 64103.45,
+  "halt_time": "2026-06-14 17:13",
+  "halt_spy_price": 741.67
 }
