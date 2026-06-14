@@ -157,7 +157,11 @@ STATE_PATH = "/home/trading2025/trading_bot/crypto/crypto_state.json"
 
 
 class CryptoBot:
-    def __init__(self):
+    def __init__(self, state_path=None, dash_path=None, trades_path=None, control_path=None):
+        self._state_path   = state_path   or STATE_PATH
+        self._dash_path    = dash_path    or "/home/trading2025/trading_bot/crypto/crypto_dashboard.json"
+        self._trades_path  = trades_path  or "/home/trading2025/trading_bot/crypto/trades_history.json"
+        self._control_path = control_path or "/home/trading2025/trading_bot/crypto/crypto_control.json"
         self.demo      = DEMO_MODE
         self.balance   = 10000.0
         self.positions = {}
@@ -239,7 +243,7 @@ class CryptoBot:
             "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY,
         }
 
-        trades_path = "/home/trading2025/trading_bot/crypto/trades_history.json"
+        trades_path = self._trades_path
         if os.path.exists(trades_path):
             import json as _j
             self.trades = _j.load(open(trades_path))
@@ -370,9 +374,9 @@ class CryptoBot:
     def _load_state(self):
         """Restore balance, daily-loss baseline, and open positions from disk."""
         try:
-            if not os.path.exists(STATE_PATH):
+            if not os.path.exists(self._state_path):
                 return
-            with open(STATE_PATH) as f:
+            with open(self._state_path) as f:
                 st = json.load(f)
             today = datetime.now().strftime("%Y-%m-%d")
 
@@ -454,9 +458,9 @@ class CryptoBot:
                 "positions":         positions,     # full position dicts, restored on startup
                 "sl_cooldown":       active_cooldowns,  # persisted SL cooling periods
             }
-            with open(STATE_PATH, "w") as f:
+            with open(self._state_path, "w") as f:
                 json.dump(st, f)
-            os.chmod(STATE_PATH, 0o600)   # owner read/write only — API keys adjacent
+            os.chmod(self._state_path, 0o600)   # owner read/write only — API keys adjacent
         except Exception as e:
             print("[STATE] Save error: " + str(e))
 
@@ -2133,7 +2137,7 @@ class CryptoBot:
         with self.positions_lock:
             self.trades.append(trade_record)
 
-        trades_path = "/home/trading2025/trading_bot/crypto/trades_history.json"
+        trades_path = self._trades_path
         with open(trades_path, "w") as f:
             json.dump(self.trades, f)
 
@@ -2429,7 +2433,7 @@ class CryptoBot:
             "skips":         skips_snap,
             "ws_connected":  self.ws_connected,
         }
-        with open("/home/trading2025/trading_bot/crypto/crypto_dashboard.json", "w") as f:
+        with open(self._dash_path, "w") as f:
             json.dump(data, f)
 
     # ── Safety ─────────────────────────────────────────────────────────────
@@ -2437,7 +2441,7 @@ class CryptoBot:
     def check_control(self):
         """Read crypto_control.json written by telegram_router.py for pause/stop commands."""
         try:
-            ctrl_path = "/home/trading2025/trading_bot/crypto/crypto_control.json"
+            ctrl_path = self._control_path
             if os.path.exists(ctrl_path):
                 with open(ctrl_path) as f:
                     ctrl = json.load(f)
