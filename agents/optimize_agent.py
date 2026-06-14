@@ -379,7 +379,7 @@ def precompute(bars, st_mult_list):
 
 # ── Mini simulator (uses pre-computed indicator arrays) ──────────────────────────
 
-def simulate(pc, params, warmup=100):
+def simulate(pc, params, warmup=100, cost=0.0):
     """
     Simulate a single symbol with given parameters on pre-computed indicators.
     Returns performance dict or None if insufficient data.
@@ -434,22 +434,22 @@ def simulate(pc, params, warmup=100):
 
             # Fixed stop-loss
             if price <= entry * (1 - sl_pct):
-                trades.append({"pnl": pnl, "reason": "STOP-LOSS"})
-                equity  *= (1 + pnl)
+                trades.append({"pnl": pnl - cost, "reason": "STOP-LOSS"})
+                equity  *= (1 + pnl - cost)
                 position = None
                 continue
 
             # PSAR stop (only triggers once position has moved up — PSAR ratchets)
             if price <= psar_stop and psar_stop > entry * (1 - sl_pct):
-                trades.append({"pnl": pnl, "reason": "PSAR-STOP"})
-                equity  *= (1 + pnl)
+                trades.append({"pnl": pnl - cost, "reason": "PSAR-STOP"})
+                equity  *= (1 + pnl - cost)
                 position = None
                 continue
 
             # Trailing stop (activates only after take-profit threshold reached)
             if pnl >= tp_pct and price <= peak * (1 - trail):
-                trades.append({"pnl": pnl, "reason": "TRAIL-STOP"})
-                equity  *= (1 + pnl)
+                trades.append({"pnl": pnl - cost, "reason": "TRAIL-STOP"})
+                equity  *= (1 + pnl - cost)
                 position = None
             continue   # still in position
 
@@ -470,8 +470,8 @@ def simulate(pc, params, warmup=100):
     # Close open position at last bar
     if position is not None:
         pnl = (closes[-1] - position["entry"]) / position["entry"]
-        trades.append({"pnl": pnl, "reason": "OPEN"})
-        equity *= (1 + pnl)
+        trades.append({"pnl": pnl - cost, "reason": "OPEN"})
+        equity *= (1 + pnl - cost)
 
     if not trades:
         return {"return_pct": 0.0, "win_rate": 0.0, "trades": 0,
@@ -518,6 +518,9 @@ def run_grid_search(bars_by_sym, baseline, is_crypto, warmup=100):
     sl_vals  = sorted(set(([3.0, 4.0, 5.0] if is_crypto else [2.0, 3.0, 4.0]) + [baseline["stop_loss"]]))
     tp_vals  = sorted(set(([8.0, 10.0, 15.0] if is_crypto else [12.0, 15.0, 20.0]) + [baseline["take_profit"]]))
 
+    # Fee-aware: Roundtrip-Kosten pro Trade (Crypto 2x(0.26%+0.05%), Stocks 2x0.02%)
+    cost = (0.0026 + 0.0005) * 2 if is_crypto else 0.0002 * 2
+
     total_combos = len(rsi_vals) * len(st_vals) * len(sl_vals) * len(tp_vals)
     log(f"  Grid: {total_combos} combos × {len(bars_by_sym)} symbols")
 
@@ -550,7 +553,7 @@ def run_grid_search(bars_by_sym, baseline, is_crypto, warmup=100):
                     }
                     sym_results = []
                     for sym, pc in precomps.items():
-                        r = simulate(pc, params, warmup=warmup)
+                        r = simulate(pc, params, warmup=warmup, cost=cost)
                         if r is not None:
                             sym_results.append(r)
 

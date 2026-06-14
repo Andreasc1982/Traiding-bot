@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-14T23:49:13.237786",
+  "generated_at": "2026-06-15T00:38:58.116288",
   "trade_analysis": {
     "super": {
       "bot": "Super Bot",
@@ -198,14 +198,14 @@
         "macd_ok": 100.0,
         "st_ok": 100.0,
         "psar_ok": 100.0,
-        "ma_ok": 50.0,
-        "obv_ok": 50.0,
-        "ichi_ok": 50.0,
+        "ma_ok": 70.0,
+        "obv_ok": 70.0,
+        "ichi_ok": 70.0,
         "rsi_ok": 0.0
       },
       "top_blocker": "macd_ok",
       "top_block_rate": 100.0,
-      "avg_rsi_at_skip": 45.5,
+      "avg_rsi_at_skip": 46.1,
       "rsi_near_threshold_pct": 0.0
     },
     "crypto": {
@@ -244,13 +244,13 @@
             "take_profit": 12.0,
             "trailing_stop": 3.0
           },
-          "avg_return_pct": -0.73,
-          "avg_win_rate": 33.0,
-          "avg_drawdown": 2.29,
-          "avg_pf": 1.27,
+          "avg_return_pct": -0.83,
+          "avg_win_rate": 31.6,
+          "avg_drawdown": 2.34,
+          "avg_pf": 1.16,
           "avg_sl_rate": 22.3,
           "total_trades": 26,
-          "score": 14.161
+          "score": 13.474
         },
         {
           "params": {
@@ -260,13 +260,13 @@
             "take_profit": 15.0,
             "trailing_stop": 3.0
           },
-          "avg_return_pct": -0.73,
-          "avg_win_rate": 33.0,
-          "avg_drawdown": 2.29,
-          "avg_pf": 1.27,
+          "avg_return_pct": -0.83,
+          "avg_win_rate": 31.6,
+          "avg_drawdown": 2.34,
+          "avg_pf": 1.16,
           "avg_sl_rate": 22.3,
           "total_trades": 26,
-          "score": 14.161
+          "score": 13.474
         },
         {
           "params": {
@@ -276,13 +276,13 @@
             "take_profit": 20.0,
             "trailing_stop": 3.0
           },
-          "avg_return_pct": -0.73,
-          "avg_win_rate": 33.0,
-          "avg_drawdown": 2.29,
-          "avg_pf": 1.27,
+          "avg_return_pct": -0.83,
+          "avg_win_rate": 31.6,
+          "avg_drawdown": 2.34,
+          "avg_pf": 1.16,
           "avg_sl_rate": 22.3,
           "total_trades": 26,
-          "score": 14.161
+          "score": 13.474
         },
         {
           "params": {
@@ -292,13 +292,13 @@
             "take_profit": 12.0,
             "trailing_stop": 3.0
           },
-          "avg_return_pct": -0.73,
-          "avg_win_rate": 33.0,
-          "avg_drawdown": 2.29,
-          "avg_pf": 1.27,
+          "avg_return_pct": -0.83,
+          "avg_win_rate": 31.6,
+          "avg_drawdown": 2.34,
+          "avg_pf": 1.16,
           "avg_sl_rate": 18.3,
           "total_trades": 26,
-          "score": 14.161
+          "score": 13.474
         },
         {
           "params": {
@@ -308,13 +308,13 @@
             "take_profit": 15.0,
             "trailing_stop": 3.0
           },
-          "avg_return_pct": -0.73,
-          "avg_win_rate": 33.0,
-          "avg_drawdown": 2.29,
-          "avg_pf": 1.27,
+          "avg_return_pct": -0.83,
+          "avg_win_rate": 31.6,
+          "avg_drawdown": 2.34,
+          "avg_pf": 1.16,
           "avg_sl_rate": 18.3,
           "total_trades": 26,
-          "score": 14.161
+          "score": 13.474
         }
       ],
       "baseline_result": {
@@ -325,30 +325,30 @@
           "take_profit": 12.0,
           "trailing_stop": 3.0
         },
-        "avg_return_pct": 0.28,
-        "avg_win_rate": 27.5,
-        "avg_drawdown": 3.5,
-        "avg_pf": 0.83,
+        "avg_return_pct": 0.14,
+        "avg_win_rate": 26.3,
+        "avg_drawdown": 3.59,
+        "avg_pf": 0.8,
         "avg_sl_rate": 25.9,
         "total_trades": 36,
-        "score": 11.783
+        "score": 11.152
       },
       "improvement": {
-        "return_delta": -1.01,
-        "wr_delta": 5.5,
-        "dd_delta": -1.21
+        "return_delta": -0.97,
+        "wr_delta": 5.3,
+        "dd_delta": -1.25
       },
       "symbols_tested": [
+        "SLX",
+        "XLE",
+        "XOP",
         "GLD",
         "IBIT",
         "XLF",
+        "XLI",
         "XLK",
-        "XOP",
         "ITA",
-        "PAVE",
-        "SLX",
-        "XLE",
-        "XLI"
+        "PAVE"
       ]
     },
     "crypto": {
@@ -368,13 +368,13 @@
             "take_profit": 5.0,
             "trailing_stop": 1.5
           },
-          "avg_return_pct": -0.19,
-          "avg_win_rate": 25.9,
-          "avg_drawdown": 1.03,
+          "avg_return_pct": -0.59,
+          "avg_win_rate": 22.2,
+          "avg_drawdown": 1.28,
           "avg_pf": 20.0,
           "avg_sl_rate": 18.5,
           "total_trades": 6,
-          "score": 3.418
+          "score": 2.861
         },
         {
           "params": {
@@ -384,13 +384,13 @@
             "take_profit": 5.0,
             "trailing_stop": 1.5
           },
-          "avg_return_pct": -0.19,
-          "avg_win_rate": 25.9,
-          "avg_drawdown": 1.03,
+          "avg_return_pct": -0.59,
+          "avg_win_rate": 22.2,
+          "avg_drawdown": 1.28,
           "avg_pf": 20.0,
           "avg_sl_rate": 14.8,
           "total_trades": 6,
-          "score": 3.418
+          "score": 2.861
         },
         {
           "params": {
@@ -400,13 +400,13 @@
             "take_profit": 5.0,
             "trailing_stop": 1.5
           },
-          "avg_return_pct": -0.19,
-          "avg_win_rate": 25.9,
-          "avg_drawdown": 1.03,
+          "avg_return_pct": -0.59,
+          "avg_win_rate": 22.2,
+          "avg_drawdown": 1.28,
           "avg_pf": 20.0,
           "avg_sl_rate": 0.0,
           "total_trades": 6,
-          "score": 3.418
+          "score": 2.861
         },
         {
           "params": {
@@ -416,13 +416,13 @@
             "take_profit": 5.0,
             "trailing_stop": 1.5
           },
-          "avg_return_pct": -0.19,
-          "avg_win_rate": 25.9,
-          "avg_drawdown": 1.03,
+          "avg_return_pct": -0.59,
+          "avg_win_rate": 22.2,
+          "avg_drawdown": 1.28,
           "avg_pf": 20.0,
           "avg_sl_rate": 0.0,
           "total_trades": 6,
-          "score": 3.418
+          "score": 2.861
         },
         {
           "params": {
@@ -432,13 +432,13 @@
             "take_profit": 5.0,
             "trailing_stop": 1.5
           },
-          "avg_return_pct": -0.9,
-          "avg_win_rate": 14.8,
-          "avg_drawdown": 1.03,
+          "avg_return_pct": -1.23,
+          "avg_win_rate": 11.1,
+          "avg_drawdown": 1.28,
           "avg_pf": 11.0,
           "avg_sl_rate": 18.5,
           "total_trades": 5,
-          "score": 1.843
+          "score": 1.293
         }
       ],
       "baseline_result": {
@@ -449,37 +449,37 @@
           "take_profit": 5.0,
           "trailing_stop": 1.5
         },
-        "avg_return_pct": -0.9,
-        "avg_win_rate": 14.8,
-        "avg_drawdown": 1.03,
+        "avg_return_pct": -1.23,
+        "avg_win_rate": 11.1,
+        "avg_drawdown": 1.28,
         "avg_pf": 11.0,
         "avg_sl_rate": 18.5,
         "total_trades": 5,
-        "score": 1.843
+        "score": 1.293
       },
       "improvement": {
-        "return_delta": 0.71,
+        "return_delta": 0.64,
         "wr_delta": 11.1,
         "dd_delta": 0.0
       },
       "symbols_tested": [
-        "AVAX/USD",
         "BTC/USD",
-        "ETH/USD",
-        "LINK/USD",
+        "LTC/USD",
         "SHIB/USD",
         "XRP/USD",
         "DOGE/USD",
-        "LTC/USD",
-        "SOL/USD"
+        "ETH/USD",
+        "LINK/USD",
+        "SOL/USD",
+        "AVAX/USD"
       ]
     }
   },
   "suggestions": [
-    "<b>Super Bot</b>: Empfohlene Parameter\u00e4nderungen \u2014 RSI-Threshold: 75 \u2192 65 \u2192 erwartete Verbesserung: Return -1.0% \u00b7 WR +5.5% \u00b7 DD -1.2%",
+    "<b>Super Bot</b>: Empfohlene Parameter\u00e4nderungen \u2014 RSI-Threshold: 75 \u2192 65 \u2192 erwartete Verbesserung: Return -1.0% \u00b7 WR +5.3% \u00b7 DD -1.2%",
     "<b>Super Bot</b>: MACD blockiert 100% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen",
     "<b>Super Bot</b>: Symbole mit \u226550% Stop-Loss-Exits: XLF \u2014 engere Stop-Levels oder manueller Ausschluss sinnvoll",
-    "<b>Crypto Bot</b>: Empfohlene Parameter\u00e4nderungen \u2014 Supertrend-Mult: 3.5 \u2192 3.0 \u2192 erwartete Verbesserung: Return +0.7% \u00b7 WR +11.1% \u00b7 DD +0.0%",
+    "<b>Crypto Bot</b>: Empfohlene Parameter\u00e4nderungen \u2014 Supertrend-Mult: 3.5 \u2192 3.0 \u2192 erwartete Verbesserung: Return +0.6% \u00b7 WR +11.1% \u00b7 DD +0.0%",
     "<b>Crypto Bot</b>: Stop-Loss-Rate 41% (>35% Schwelle) \u2014 Einstiegssignal zu schwach; strengere RSI/MA-Bedingung erw\u00e4gen",
     "<b>Crypto Bot</b>: OBV blockiert 100% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen",
     "<b>Crypto Bot</b>: Symbole mit \u226550% Stop-Loss-Exits: DOGE/USD \u2014 engere Stop-Levels oder manueller Ausschluss sinnvoll"

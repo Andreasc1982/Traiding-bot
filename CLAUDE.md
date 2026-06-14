@@ -1374,6 +1374,77 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **P1: Spike-Drosselung (2026-06-10)** — Datenanalyse: 266 von 403 Trades (66%) waren Spikes mit 31% Win-Rate und −$347 = Hauptverlustquelle; Schwelle 10×→20×, max 3 Spikes/Tag (Mitternacht-Reset), 2h Cooldown pro Symbol; Spike-BUY-Log zeigt Tageszähler; Startup-Log zeigt Drossel-Config
 - [x] **P1: Equity-Kurven-Logging (2026-06-10)** — risk_agent schreibt stündlich `agents/equity_history.csv` (time,super,crypto,combined); läuft auch während Halts weiter; Grundlage für Sharpe/MaxDD-Auswertung und die Live-Go-Entscheidung
 - [x] **close_all Command (beide Bots + Risk Agent)** — `{"command":"close_all"}` in `bot_control.json` / `crypto_control.json`; `check_control()` schließt alle offenen Positionen via `get_price()` + `close_position()` mit Reason `RISK-CLOSE-ALL`; setzt `running=False`; entfernt Control-File (Signal für Risk Agent); beide Bots prüfen `check_control()` auch im Intra-Cycle Loop (max 2 min Reaktionszeit bei super_bot, max 30s bei crypto_bot); Risk Agent `_stop_super()` und `_stop_crypto()` schreiben jetzt `close_all` statt `stop`; pollen max 45s auf Control-File-Entfernung bevor Hard-Kill; live getestet mit 4 offenen Positionen: alle 4 korrekt geschlossen, Control-File entfernt, Bot gestoppt
+- [x] **Optimizer-Fix A (2026-06-15)** — `optimize_agent.py` las Ist-Parameter aus hartcodierten, veralteten Baselines (Crypto SL=4/TP=10, real 2.5/5) → falsche „current vs suggested"-Diffs + `baseline_result=None` (aktuelle Werte lagen nicht im Grid). Fix: `_read_current_params()` liest SL/TP/RSI/ST-mult per Regex direkt aus `super_bot.py`/`crypto_bot.py` (korrekte Werte als Fallback-Default), Grid enthält immer die Baseline-Werte (`sorted(set([...]+[baseline[x]]))`). Selbstkorrigierend bei künftigen Param-Änderungen
+- [x] **Optimizer-Fix B (2026-06-15)** — `simulate()` rechnete gebührenfrei → empfahl Overtrading; jetzt `cost`-Parameter pro Trade abgezogen (Crypto 2×(0.26%+0.05%), Stocks 2×0.02%) → Netto-Rendite UND Win-Rate fee-aware. Folge: selbst beste Backtest-Params nach Kosten nur knapp break-even. `/confirm` nach A+B wieder entsperrt (Lock im `telegram_router.py` entfernt 2026-06-15)
+- [x] **Market-Data-Gateway + Clone-Experiment (2026-06-15)** — siehe eigene Sektion unten. Ein Gateway-Prozess (eigenes 2. Alpaca-Paper-Konto) zieht WS-Preise + Sentiment + Indikatoren einmal und publiziert nach `/dev/shm/crypto_gw`; 4 Clone-Bots (A/B/C/D) lesen identische Daten und traden je $5.000 demo mit eigenen State/Dashboards; Live-Bots unberührt; Monitor + start_all.sh integriert; kombiniertes Dashboard Port 8090
+
+---
+
+## Clone-Experiment (Market-Data-Gateway + A/B/C/D)
+
+Parallele Live-Messung von 4 Crypto-Strategie-Varianten auf identischen Daten, um datenbasiert die beste Strategie zu finden — ohne die Live-Bots zu stören. Der Edge des Bots liegt in **Live-Signalen** (Sentiment, Spikes, On-Chain), die ein Backtest nicht nachspielen kann → deshalb live statt Backtest.
+
+### Architektur
+
+```
+Konto #1 (config alpaca_api_key):    Super + Crypto  → eigene WS, laufen unberührt
+Konto #2 (config alpaca_gw_*):       Gateway          → 1 WS, /dev/shm/crypto_gw/
+
+   gateway.py (Subklasse von CryptoBot, tradet NICHT)
+   ├─ WS-Preise          → /dev/shm/crypto_gw/prices.json     (jede 1s)
+   ├─ Sentiment-Scores   → scores.json                         (jede ~2min)
+   ├─ Indikatoren (alle) → indicators.json                     (jede ~2min)
+   ├─ F&G                → fear_greed.json
+   └─ Spike-Signale      → spikes.json   (_ws_spike_check override: publish statt trade)
+         │
+   clone.py <variant> (Subklasse von CryptoBot)
+   ├─ start_websocket()  → liest prices.json statt eigenem WS (Stop-Checks 1s)
+   ├─ analyze()          → liest scores.json + fear_greed.json
+   ├─ get_indicators()   → liest indicators.json
+   ├─ _get_htf_trend/_check_correlation → neutral (alle Clones gleich → fair)
+   └─ eigene State/Dashboard/Trades/Control (Pfad-Parametrisierung in CryptoBot.__init__)
+```
+
+**Warum ein Gateway:** löst das Alpaca-WS-Connection-Limit (1 Verbindung statt N) UND garantiert identische Daten für alle Clones (fairer Vergleich). Das **zweite Paper-Konto** gibt dem Gateway eine separate WS-Verbindung — Live-Bots (Konto #1) bleiben unberührt (verifiziert: beide weiter verbunden, kein Livelock).
+
+### Die 4 Varianten (`VARIANTS` in `clone.py`)
+
+| Clone | spikes | memes | contrarian | score_min | Port | Hypothese |
+|-------|--------|-------|-----------|-----------|------|-----------|
+| **A_baseline** | ✓ | ✓ | – | 0.1 | 8092 | Referenz (aktuelle Strategie) |
+| **B_nospikes** | – | ✓ | – | 0.1 | 8093 | A vs B = Wert der Spikes |
+| **C_conservative** | – | – | – | 0.5 | 8094 | B vs C = Wert von schlank/selektiv |
+| **D_contrarian** | – | ✓ | ✓ | 0.1 | 8095 | B vs D = Momentum vs Mean-Reversion |
+
+- Alle starten bei **$5.000** (`START_BALANCE`, = echtes Kapital-Maximum → realistische Zahlen, %-Vergleich bleibt fair)
+- A consumiert Gateway-Spikes (`_consume_spikes`→`_spike_buy`); B/C/D ignorieren `spikes.json`
+- D nutzt `_contrarian_trade()`: kauft oversold (RSI<35 + Preis ≤ unterem BB) nur in Angst (F&G≤55), TP weiter (6%)
+- C: `excluded_symbols |= CRYPTO_MEME`, `_entry_score_min=0.5`
+
+### Dateien
+
+| Pfad | Zweck |
+|------|-------|
+| `crypto/gateway.py` | Market-Data-Gateway (Subklasse CryptoBot, publish-only) |
+| `crypto/clone.py` | Clone-Bot, Variante via `python3 clone.py <A_baseline\|B_nospikes\|C_conservative\|D_contrarian>` |
+| `crypto/compare_clones.py` | Vergleichs-Report (`--tg` für Telegram); Konsole-Tabelle nach Rendite sortiert |
+| `crypto/clones/<variant>_{state,dashboard,trades,control}.json` | Runtime je Clone (gitignored: `crypto/clones/*.json`) |
+| `crypto/clones/clones_dashboard.html` | Kombiniertes Dashboard (versioniert) |
+| `/dev/shm/crypto_gw/*.json` | Gateway-Feed (RAM, atomar via tmp+rename) |
+
+### Dashboard + Betrieb
+
+- **Kombiniertes Dashboard**: `http://<server>:8090/clones_dashboard.html` — alle 4 nach Rendite sortiert, Leader 👑, Auto-Refresh 15s, ⚡=Spike/↩=Contrarian-Position
+- **Sessions**: `gateway`, `clone_A_baseline`, `clone_B_nospikes`, `clone_C_conservative`, `clone_D_contrarian`, `clones_dashboard` (HTTP :8090)
+- **Monitor**: alle 6 in `BOTS` (`monitor_agent.py`, `trading_only=False` → immer Restart bei Crash)
+- **Reboot**: `start_all.sh` startet Gateway (+3s) → 4 Clones → Dashboard
+- **Vergleich abrufen**: `python3 crypto/compare_clones.py --tg`
+
+### Wichtig
+
+- **Demo only** — Clones traden in-memory (keine echten Orders), brauchen keine Konto-Credentials; nur das Gateway nutzt Konto #2 für den Preis-WS
+- **Spikes nur im WS-Modus** — REST-Plumbing-Modus des Gateways (falls `alpaca_gw_*` fehlt) erkennt keine Spikes → A==B
+- **`config.py`**: `alpaca_gw_api_key` + `alpaca_gw_secret_key` (2. Paper-Konto) aktivieren den WS-Modus; fehlen sie → REST-Fallback
 
 ---
 

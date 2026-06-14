@@ -1049,3 +1049,47 @@
 [2026-06-14 23:49:13] Ergebnisse gespeichert: /home/trading2025/trading_bot/agents/optimize_results.json
 [2026-06-14 23:49:13] Optimierungs-Analyse abgeschlossen
 [2026-06-15 00:26:25] Nächster Lauf: 2026-06-21 00:00 (in 143.6h)
+[2026-06-15 00:38:56] ============================================================
+[2026-06-15 00:38:56] Optimization Agent gestartet
+[2026-06-15 00:38:56] Ergebnisdatei : /home/trading2025/trading_bot/agents/optimize_results.json
+[2026-06-15 00:38:56] Zeitplan      : Jeden Sonntag 00:00 Uhr
+[2026-06-15 00:38:56] ============================================================
+[2026-06-15 00:38:56] --now Flag gesetzt: führe Analyse sofort aus
+[2026-06-15 00:38:56] ============================================================
+[2026-06-15 00:38:56] Optimierungs-Analyse gestartet
+[2026-06-15 00:38:56] ============================================================
+[2026-06-15 00:38:56] Trades: Super=6, Crypto=411
+[2026-06-15 00:38:56] Skips analysiert: Super=10, Crypto=10
+[2026-06-15 00:38:56] Lade ETF Tagesbars...
+[2026-06-15 00:38:56]   10 Symbole geladen: SLX(189), XLE(189), XOP(189), GLD(189), IBIT(189), XLF(189), XLI(189), XLK(189), ITA(189), PAVE(189)
+[2026-06-15 00:38:56] Starte Grid-Search Super Bot...
+[2026-06-15 00:38:56]   Grid: 81 combos × 10 symbols
+[2026-06-15 00:38:56]     SLX: 189 bars pre-computed
+[2026-06-15 00:38:56]     XLE: 189 bars pre-computed
+[2026-06-15 00:38:56]     XOP: 189 bars pre-computed
+[2026-06-15 00:38:56]     GLD: 189 bars pre-computed
+[2026-06-15 00:38:56]     IBIT: 189 bars pre-computed
+[2026-06-15 00:38:56]     XLF: 189 bars pre-computed
+[2026-06-15 00:38:56]     XLI: 189 bars pre-computed
+[2026-06-15 00:38:56]     XLK: 189 bars pre-computed
+[2026-06-15 00:38:56]     ITA: 189 bars pre-computed
+[2026-06-15 00:38:56]     PAVE: 189 bars pre-computed
+[2026-06-15 00:38:56]   Bestes Ergebnis: {'rsi_threshold': 65, 'st_mult': 4.0, 'stop_loss': 2.0, 'take_profit': 12.0, 'trailing_stop': 3.0}
+[2026-06-15 00:38:56] Lade Crypto Tagesbars...
+[2026-06-15 00:38:57]   9 Symbole geladen: BTC/USD(221), LTC/USD(221), SHIB/USD(221), XRP/USD(221), DOGE/USD(221), ETH/USD(221), LINK/USD(221), SOL/USD(221), AVAX/USD(221)
+[2026-06-15 00:38:57] Starte Grid-Search Crypto Bot...
+[2026-06-15 00:38:57]   Grid: 144 combos × 9 symbols
+[2026-06-15 00:38:57]     BTC/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     LTC/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     SHIB/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     XRP/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     DOGE/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     ETH/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     LINK/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     SOL/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]     AVAX/USD: 221 bars pre-computed
+[2026-06-15 00:38:57]   Bestes Ergebnis: {'rsi_threshold': 65, 'st_mult': 3.0, 'stop_loss': 2.5, 'take_profit': 5.0, 'trailing_stop': 1.5}
+[2026-06-15 00:38:57] 7 Empfehlungen generiert
+[2026-06-15 00:38:57] Sende Telegram-Bericht...
+[2026-06-15 00:38:58] Ergebnisse gespeichert: /home/trading2025/trading_bot/agents/optimize_results.json
+[2026-06-15 00:38:58] Optimierungs-Analyse abgeschlossen
