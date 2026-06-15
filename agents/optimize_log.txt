@@ -1094,3 +1094,6 @@
 [2026-06-15 00:38:58] Ergebnisse gespeichert: /home/trading2025/trading_bot/agents/optimize_results.json
 [2026-06-15 00:38:58] Optimierungs-Analyse abgeschlossen
 [2026-06-15 01:21:25] Nächster Lauf: 2026-06-21 00:00 (in 142.6h)
+[2026-06-15 02:16:25] Nächster Lauf: 2026-06-21 00:00 (in 141.7h)
+[2026-06-15 03:11:25] Nächster Lauf: 2026-06-21 00:00 (in 140.8h)
+[2026-06-15 04:06:25] Nächster Lauf: 2026-06-21 00:00 (in 139.9h)

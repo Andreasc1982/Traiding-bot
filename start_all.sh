@@ -45,12 +45,12 @@ fi
 # ── Super Bot Dashboard HTTP server (port 8080, serves trading_bot/ root) ─────
 screen -dmS dashboard bash -c '
   cd /home/trading2025/trading_bot &&
-  python3 -m http.server 8080 > /tmp/dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8080 dashboard_super.html dashboard.html dashboard.json > /tmp/dashboard.log 2>&1'
 
 # ── Crypto Bot Dashboard HTTP server (port 8081, serves crypto/ subdirectory) ─
 screen -dmS dashboard_crypto bash -c '
   cd /home/trading2025/trading_bot/crypto &&
-  python3 -m http.server 8081 > /tmp/dashboard_crypto.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8081 dashboard_crypto.html crypto_dashboard.json > /tmp/dashboard_crypto.log 2>&1'
 
 # ── Monitor Agent ─────────────────────────────────────────────────────────────
 screen -dmS monitor bash -c '
@@ -97,7 +97,7 @@ done
 screen -dmS clones_dashboard bash -c '
   fuser -k 8090/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/crypto/clones &&
-  python3 -m http.server 8090 > /tmp/clones_dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json D_contrarian_dashboard.json > /tmp/clones_dashboard.log 2>&1'
 
 echo "[start_all] All screen sessions launched."
 screen -list
