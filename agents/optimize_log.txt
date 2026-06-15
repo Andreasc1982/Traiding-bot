@@ -1093,3 +1093,4 @@
 [2026-06-15 00:38:57] Sende Telegram-Bericht...
 [2026-06-15 00:38:58] Ergebnisse gespeichert: /home/trading2025/trading_bot/agents/optimize_results.json
 [2026-06-15 00:38:58] Optimierungs-Analyse abgeschlossen
+[2026-06-15 01:21:25] Nächster Lauf: 2026-06-21 00:00 (in 142.6h)
