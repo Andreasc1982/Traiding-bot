@@ -429,11 +429,13 @@ Returns `"adx"` in the indicator dict.
 
 Runs at the top of the buy-gate block in `trade()`:
 
-| ADX value | Regime       | Score threshold | Position size multiplier |
-|-----------|-------------|-----------------|--------------------------|
-| ≥ 25      | TRENDING    | 75% of max score | 1.0× (full size)        |
-| 20–24     | TRANSITIONAL | 60% of max score | 0.6× (reduced size)     |
-| < 20      | RANGING     | 45% of max score | 0.4× (minimal size)     |
+| ADX value | Regime       | Score threshold (crypto) | Score threshold (super) | Position size multiplier |
+|-----------|-------------|--------------------------|-------------------------|--------------------------|
+| ≥ 25      | TRENDING    | 75% | **60%** | 1.0× (full size)        |
+| 20–24     | TRANSITIONAL | 60% | **50%** | 0.6× (reduced size)     |
+| < 20      | RANGING     | 45% | **40%** | 0.4× (minimal size)     |
+
+**Super-Bot-Schwellen gelockert (2026-06-17)**: nach 10-Jahres-Backtest (10 ETFs, fee-aware) von 75/60/45 auf **60/50/40** gesenkt. Begründung: bei 75% machte der Super Bot ~6 Trades in 2 Monaten (zu streng zum Testen). Backtest zeigte: über 10J ist ETF-Momentum bei *jeder* Schwelle profitabel (+60% bis +134%), 75% lässt Rendite liegen; Sweet-Spot 55-65% (mehr Teilnahme bei moderatem Drawdown; <45% explodiert der Drawdown auf 40%+). Crypto-Bot bleibt bei 75/60/45 (handelt genug). Script: `agents/backtest_super_strictness.py`.
 
 ### Weighted Indicator Score
 
@@ -1376,6 +1378,9 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **close_all Command (beide Bots + Risk Agent)** — `{"command":"close_all"}` in `bot_control.json` / `crypto_control.json`; `check_control()` schließt alle offenen Positionen via `get_price()` + `close_position()` mit Reason `RISK-CLOSE-ALL`; setzt `running=False`; entfernt Control-File (Signal für Risk Agent); beide Bots prüfen `check_control()` auch im Intra-Cycle Loop (max 2 min Reaktionszeit bei super_bot, max 30s bei crypto_bot); Risk Agent `_stop_super()` und `_stop_crypto()` schreiben jetzt `close_all` statt `stop`; pollen max 45s auf Control-File-Entfernung bevor Hard-Kill; live getestet mit 4 offenen Positionen: alle 4 korrekt geschlossen, Control-File entfernt, Bot gestoppt
 - [x] **Optimizer-Fix A (2026-06-15)** — `optimize_agent.py` las Ist-Parameter aus hartcodierten, veralteten Baselines (Crypto SL=4/TP=10, real 2.5/5) → falsche „current vs suggested"-Diffs + `baseline_result=None` (aktuelle Werte lagen nicht im Grid). Fix: `_read_current_params()` liest SL/TP/RSI/ST-mult per Regex direkt aus `super_bot.py`/`crypto_bot.py` (korrekte Werte als Fallback-Default), Grid enthält immer die Baseline-Werte (`sorted(set([...]+[baseline[x]]))`). Selbstkorrigierend bei künftigen Param-Änderungen
 - [x] **Optimizer-Fix B (2026-06-15)** — `simulate()` rechnete gebührenfrei → empfahl Overtrading; jetzt `cost`-Parameter pro Trade abgezogen (Crypto 2×(0.26%+0.05%), Stocks 2×0.02%) → Netto-Rendite UND Win-Rate fee-aware. Folge: selbst beste Backtest-Params nach Kosten nur knapp break-even. `/confirm` nach A+B wieder entsperrt (Lock im `telegram_router.py` entfernt 2026-06-15)
+- [x] **Super-Strenge-Backtest + Lockerung (2026-06-17)** — Erkenntnis aus dem Clone-Experiment: Super Bot machte ~6 Trades in 2 Monaten (zu streng → keine valide Stichprobe, momentum-„versagt"-Trugschluss vermieden). `agents/backtest_super_strictness.py` bildet den echten gewichteten Score nach und sweept die Schwelle über 10J/10 ETFs (yfinance, fee-aware, CMF+StochRSI ergänzt). Ergebnis: ETF-Momentum bei jeder Schwelle profitabel (+60-134%), 75% lässt Rendite liegen, <45% → 40% Drawdown. Super-Regime-Schwellen 75/60/45 → **60/50/40** gesenkt; Super tradet sofort wieder (ITA, PAVE gekauft). Crypto unverändert (75/60/45)
+- [x] **Equity-Logger Clones (2026-06-17)** — `log_clone_equity.py` (Cron alle 30 Min) schreibt `crypto/clones/equity_log.csv` (Equity-Kurven/Drawdown je Clone) + Telegram-Anomalie-Alarm bei |Rendite|>25% (Bug-Frühwarnung). Zusätzlich `crypto/compare_clones.py` 3× tgl. via Cron
+- [x] **Contrarian-Clone Bugfix (2026-06-17)** — D_contrarian zeigte +936% / 100% WR (638 Trades): Phantom aus Entry zum `ind["price"]` (Stunden-Schluss, hinkt nach) vs. Exit zum Live-Preis → konstant +11% auf jeden WIF-Kauf. Fix: Entry zum Live-`ws_prices` (gleiche Quelle wie Exit); D zurückgesetzt auf $5.000
 - [x] **Market-Data-Gateway + Clone-Experiment (2026-06-15)** — siehe eigene Sektion unten. Ein Gateway-Prozess (eigenes 2. Alpaca-Paper-Konto) zieht WS-Preise + Sentiment + Indikatoren einmal und publiziert nach `/dev/shm/crypto_gw`; 4 Clone-Bots (A/B/C/D) lesen identische Daten und traden je $5.000 demo mit eigenen State/Dashboards; Live-Bots unberührt; Monitor + start_all.sh integriert; kombiniertes Dashboard Port 8090
 
 ---

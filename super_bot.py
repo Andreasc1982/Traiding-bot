@@ -1500,11 +1500,11 @@ class SuperTradingBot:
             # ── ADX Market Regime Detection ────────────────────────────────────
             adx = ind.get("adx", 25.0)
             if adx >= 25:
-                regime, threshold, size_mult = "TRENDING",     0.75, 1.0
+                regime, threshold, size_mult = "TRENDING",     0.60, 1.0
             elif adx >= 20:
-                regime, threshold, size_mult = "TRANSITIONAL", 0.60, 0.6
+                regime, threshold, size_mult = "TRANSITIONAL", 0.50, 0.6
             else:
-                regime, threshold, size_mult = "RANGING",      0.45, 0.4
+                regime, threshold, size_mult = "RANGING",      0.40, 0.4
 
             # ── VIX Volatility Regime — multiplied on top of ADX size_mult ────
             vix_regime, vix_mult = self._get_vix_regime()
