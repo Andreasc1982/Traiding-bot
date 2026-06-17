@@ -532,12 +532,12 @@
       "drawdown_limit": -15.0
     }
   ],
-  "super_day_start": 72063.75,
-  "super_day_date": "2026-06-16",
+  "super_day_start": 72071.76,
+  "super_day_date": "2026-06-17",
   "super_halted": false,
   "super_resume_at": null,
-  "crypto_day_start": 14788.447698228047,
-  "crypto_day_date": "2026-06-16",
+  "crypto_day_start": 14728.1196548274,
+  "crypto_day_date": "2026-06-17",
   "crypto_halted": false,
   "crypto_resume_at": null,
   "halt_btc_price": null,
