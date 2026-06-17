@@ -24,6 +24,7 @@ VARIANTS = [
     ("B_nospikes",     "B · No-Spikes (Momentum)"),
     ("C_conservative", "C · Conservative (streng)"),
     ("D_contrarian",   "D · Contrarian (Oversold)"),
+    ("E_moonshot",     "E · Moonshot (Lotterie/Trailing)"),
 ]
 
 

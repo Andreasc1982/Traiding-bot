@@ -21,7 +21,7 @@ CLONE_DIR   = os.path.join(BASE, "crypto", "clones")
 CSV         = os.path.join(CLONE_DIR, "equity_log.csv")
 START       = 5000.0
 ANOMALY_PCT = 25.0                       # Tagesrenditen > 25% sind unrealistisch -> Bug
-VARIANTS    = ["A_baseline", "B_nospikes", "C_conservative", "D_contrarian"]
+VARIANTS    = ["A_baseline", "B_nospikes", "C_conservative", "D_contrarian", "E_moonshot"]
 
 
 def equity_of(d):

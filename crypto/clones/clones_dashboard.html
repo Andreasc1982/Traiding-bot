@@ -55,9 +55,10 @@ const META = {
   "B_nospikes":     { label:"B · No-Spikes",    desc:"Momentum, ohne Spikes" },
   "C_conservative": { label:"C · Conservative", desc:"Streng + keine Memes/Spikes" },
   "D_contrarian":   { label:"D · Contrarian",   desc:"Mean-Reversion (kauft oversold)" },
+  "E_moonshot":     { label:"E · Moonshot 🚀",  desc:"Lotterie: Breakout, kein TP, Trailing 25%" },
 };
 const START = 5000;
-const order = ["A_baseline","B_nospikes","C_conservative","D_contrarian"];
+const order = ["A_baseline","B_nospikes","C_conservative","D_contrarian","E_moonshot"];
 
 function equityOf(d){
   let eq = d.balance || 0;

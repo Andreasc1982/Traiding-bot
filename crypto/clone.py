@@ -35,7 +35,14 @@ VARIANTS = {
     "B_nospikes":     {"spikes": False, "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8093},
     "C_conservative": {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.5, "port": 8094},
     "D_contrarian":   {"spikes": False, "memes": True,  "contrarian": True,  "score_min": 0.1, "port": 8095},
+    # Lotterie / positive Schiefe: Breakout-Entry, KEIN TP, Trailing 25%, harter Stop 18%, Mini-Size
+    "E_moonshot":     {"spikes": False, "memes": True,  "contrarian": False, "moonshot": True, "score_min": 0.1, "port": 8096},
 }
+
+# Moonshot-Parameter (10J-Backtest 2026-06-18): Trailing schlaegt gedeckeltes TP 6.5x
+MOON_SIZE  = 0.03    # Mini-Wette 3% (Totalverlust einkalkuliert)
+MOON_HARD  = 0.18    # harter Stop -18%
+MOON_TRAIL = 0.25    # Trailing-Stop 25% vom Hoch, KEIN TP-Deckel
 
 
 def _read_shm(name, default=None):
@@ -97,7 +104,10 @@ class CloneBot(CryptoBot):
                     for sym in held:
                         p = self.ws_prices.get(sym)
                         if p:
-                            self._ws_check_price(sym, p)
+                            if self.cfg.get("moonshot"):
+                                self._moonshot_check(sym, p)
+                            else:
+                                self._ws_check_price(sym, p)
                     if self.cfg["spikes"]:
                         self._consume_spikes()
                 else:
@@ -179,10 +189,75 @@ class CloneBot(CryptoBot):
 
     # ── Entscheidung: Momentum (Basis) ODER Contrarian ───────────────────────
     def trade(self, scores):
-        if self.cfg["contrarian"]:
+        if self.cfg.get("moonshot"):
+            self._moonshot_trade(scores)
+        elif self.cfg["contrarian"]:
             self._contrarian_trade(scores)
         else:
             super().trade(scores)
+
+    # ── Moonshot: Breakout-Entry, kein TP, Trailing-Winner ───────────────────
+    def _moonshot_trade(self, scores):
+        """Positive-Skew Lotterie (10J-Backtest-getrieben): Momentum-Zuendung
+        (Preis > oberes Bollinger-Band + Supertrend bullish) -> Mini-Wette,
+        KEIN TP-Deckel. Exit nur via Trailing-Stop / harter Stop in _moonshot_check."""
+        if self.tg_paused:
+            return
+        dd_mult, dd_zone, dd_allow_meme = self._get_drawdown_mult()
+        if dd_mult == 0.0:
+            return
+        for sym in list(CRYPTO_MAIN) + list(CRYPTO_MEME):
+            if sym in self.excluded_symbols:
+                continue
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+            ind = self.get_indicators(sym)
+            if not ind:
+                continue
+            price    = self.ws_prices.get(sym) or ind.get("price")
+            bb_upper = ind.get("bb_upper")
+            st_ok    = ind.get("supertrend") == 1
+            if not (price and bb_upper):
+                continue
+            if price > bb_upper and st_ok:            # Ausbruch + Trend = Zuendung
+                with self.positions_lock:
+                    if sym in self.positions or len(self.positions) >= self.max_pos:
+                        continue
+                    shares = (self.balance * MOON_SIZE) / price
+                    if shares * price < 1:
+                        continue
+                    fill   = price * (1 + self.sim_slip) if self.demo else price
+                    fee_in = shares * fill * self.sim_fee if self.demo else 0.0
+                    self.balance -= shares * fill + fee_in
+                    self.positions[sym] = {
+                        "shares": shares, "entry": fill, "fee_in": round(fee_in, 6),
+                        "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "peak": fill, "hard_stop": fill * (1 - MOON_HARD),
+                        "trail": MOON_TRAIL, "moonshot": True,
+                    }
+                self._save_state()
+                print("[CLONE-E] MOONSHOT-BUY " + sym + " $" + str(round(price, 6)) +
+                      " (Breakout) | Bal $" + str(round(self.balance, 0)))
+
+    def _moonshot_check(self, symbol, price):
+        """Exit: harter Stop -18% ODER Ruecksetzer 25% vom Hoch. KEIN TP."""
+        with self.positions_lock:
+            pos = self.positions.get(symbol)
+            if not pos or not pos.get("moonshot"):
+                return
+            if price > pos["peak"]:
+                pos["peak"] = price
+            entry, peak = pos["entry"], pos["peak"]
+            hard  = pos.get("hard_stop", entry * (1 - MOON_HARD))
+            trail = pos.get("trail", MOON_TRAIL)
+            reason = None
+            if price <= hard:
+                reason = "MOON-HARDSTOP"
+            elif peak > entry and price <= peak * (1 - trail):
+                reason = "MOON-TRAIL"
+        if reason:
+            self.close_position(symbol, price, reason, (price - entry) / entry * 100)
 
     def _contrarian_trade(self, scores):
         """Mean-Reversion: kauft die am staerksten ueberverkauften Coins
