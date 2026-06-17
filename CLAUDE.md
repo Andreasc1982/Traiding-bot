@@ -1420,6 +1420,9 @@ Konto #2 (config alpaca_gw_*):       Gateway          → 1 WS, /dev/shm/crypto_
 | **B_nospikes** | – | ✓ | – | 0.1 | 8093 | A vs B = Wert der Spikes |
 | **C_conservative** | – | – | – | 0.5 | 8094 | B vs C = Wert von schlank/selektiv |
 | **D_contrarian** | – | ✓ | ✓ | 0.1 | 8095 | B vs D = Momentum vs Mean-Reversion |
+| **E_moonshot** | – | ✓ | – | 0.1 | 8096 | Lotterie: Breakout-Entry, KEIN TP, Trailing 25%, Mini-Size 3% (positive Schiefe) |
+
+**E_moonshot (2026-06-18)**: separates „Lotterie"-Experiment (€50-100-Idee). `_moonshot_trade()`: Entry bei Preis > oberem Bollinger-Band + Supertrend bullish (Momentum-Zündung); Mini-Wette 3%; KEIN TP-Deckel. `_moonshot_check()`: Exit nur via harter Stop −18% (`MOON_HARD`) ODER Trailing 25% vom Hoch (`MOON_TRAIL`). Datengetrieben: `agents/backtest_moonshot.py` (10J, 12 Coins) zeigte Trailing schlägt gedeckeltes TP 6,5× (Schiefe 1,5→24,6, größter Treffer +118%→+17.742%) — aber 64-79% Drawdown + Survivorship-Bias, real viel bescheidener. Reine Wette, kein Edge.
 
 - Alle starten bei **$5.000** (`START_BALANCE`, = echtes Kapital-Maximum → realistische Zahlen, %-Vergleich bleibt fair)
 - A consumiert Gateway-Spikes (`_consume_spikes`→`_spike_buy`); B/C/D ignorieren `spikes.json`
