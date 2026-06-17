@@ -211,7 +211,9 @@ class CloneBot(CryptoBot):
             if not ind:
                 continue
             rsi      = ind.get("rsi", 50)
-            price    = ind.get("price") or self.ws_prices.get(sym)
+            # LIVE-Preis (gleiche Quelle wie der Exit!) — NICHT ind["price"] (Stunden-
+            # Schluss hinkt nach -> sonst Phantom-Gewinn aus Entry/Exit-Preis-Mismatch)
+            price    = self.ws_prices.get(sym) or ind.get("price")
             bb_lower = ind.get("bb_lower")
             if price and bb_lower and rsi < 35 and price <= bb_lower * 1.02:
                 candidates.append((sym, rsi, ind, float(price)))
