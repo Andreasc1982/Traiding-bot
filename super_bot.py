@@ -765,6 +765,22 @@ class SuperTradingBot:
                           str(round(self.start_balance, 2)))
             else:
                 self.start_balance = self.balance
+
+            # Restore open positions so they survive a restart (Demo-Artefakt-Fix)
+            saved_pos = st.get("positions", {})
+            if saved_pos and isinstance(saved_pos, dict):
+                valid = {}
+                for sym, pos in saved_pos.items():
+                    if (isinstance(pos, dict) and pos.get("entry", 0) > 0 and
+                            pos.get("shares", 0) > 0):
+                        valid[sym] = pos
+                if valid:
+                    with self.positions_lock:
+                        self.positions = valid
+                    for sym, pos in valid.items():
+                        print("[STATE] Position wiederhergestellt: " + sym + " " +
+                              str(round(pos["shares"], 4)) + " @ $" +
+                              str(round(pos["entry"], 2)) + " seit " + pos.get("time", "?"))
         except Exception as e:
             print("[STATE] Load error: " + str(e))
 
@@ -772,12 +788,14 @@ class SuperTradingBot:
         """Persist balance and daily-loss baseline to disk."""
         try:
             with self.positions_lock:
-                bal   = self.balance
-                start = self.start_balance
+                bal       = self.balance
+                start     = self.start_balance
+                positions = dict(self.positions)   # snapshot under lock
             st = {
                 "balance":           round(bal, 2),
                 "day_start_balance": round(start, 2),
                 "day_date":          datetime.now().strftime("%Y-%m-%d"),
+                "positions":         positions,     # full position dicts, restored on startup
             }
             with open(SUPER_STATE_PATH, "w") as f:
                 json.dump(st, f)
