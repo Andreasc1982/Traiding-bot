@@ -76,6 +76,16 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u crypto_bot.py > /tmp/crypto_bot.log 2>&1"
         ),
     },
+    "dex": {
+        "name":         "DEX-Monitor (Solana)",
+        "session":      "dex",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1"
+        ),
+    },
     "gateway": {
         "name":         "Market-Data Gateway",
         "session":      "gateway",

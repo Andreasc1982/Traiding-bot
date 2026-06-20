@@ -99,5 +99,11 @@ screen -dmS clones_dashboard bash -c '
   cd /home/trading2025/trading_bot/crypto/clones &&
   python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json D_contrarian_dashboard.json E_moonshot_dashboard.json > /tmp/clones_dashboard.log 2>&1'
 
+# DEX-Monitor (Solana, read-only)
+screen -dmS dex bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1'
+
 echo "[start_all] All screen sessions launched."
 screen -list

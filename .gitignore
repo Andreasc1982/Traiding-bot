@@ -33,3 +33,5 @@ __pycache__/
 *.pyc
 *.pyo
 crypto/clones/*.json
+dex/*.json
+dex/heartbeat.json
