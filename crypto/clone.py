@@ -43,6 +43,7 @@ VARIANTS = {
 MOON_SIZE  = 0.03    # Mini-Wette 3% (Totalverlust einkalkuliert)
 MOON_HARD  = 0.18    # harter Stop -18%
 MOON_TRAIL = 0.25    # Trailing-Stop 25% vom Hoch, KEIN TP-Deckel
+MOON_MAX_HOURS = 72  # Zeit-Exit: feststeckende Wette nach 3 Tagen schliessen -> Slot frei (mehr At-Bats)
 
 
 def _read_shm(name, default=None):
@@ -251,11 +252,20 @@ class CloneBot(CryptoBot):
             entry, peak = pos["entry"], pos["peak"]
             hard  = pos.get("hard_stop", entry * (1 - MOON_HARD))
             trail = pos.get("trail", MOON_TRAIL)
+            pnl_pct = (price - entry) / entry * 100
             reason = None
             if price <= hard:
                 reason = "MOON-HARDSTOP"
             elif peak > entry and price <= peak * (1 - trail):
                 reason = "MOON-TRAIL"
+            else:
+                # Zeit-Exit: feststeckende Wette (weder hoch noch zum Stop) -> Slot freigeben
+                try:
+                    age_h = (datetime.now() - datetime.strptime(pos["time"], "%Y-%m-%d %H:%M")).total_seconds() / 3600
+                except Exception:
+                    age_h = 0
+                if age_h >= MOON_MAX_HOURS and -12.0 < pnl_pct < 15.0:
+                    reason = "MOON-TIMEOUT"
         if reason:
             self.close_position(symbol, price, reason, (price - entry) / entry * 100)
 
