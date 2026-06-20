@@ -236,13 +236,16 @@ class CloneBot(CryptoBot):
                         "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         "peak": fill, "hard_stop": fill * (1 - MOON_HARD),
                         "trail": MOON_TRAIL, "moonshot": True,
+                        "orig_shares": shares, "orig_cost": shares * fill + fee_in, "scaled": [],
                     }
                 self._save_state()
                 print("[CLONE-E] MOONSHOT-BUY " + sym + " $" + str(round(price, 6)) +
                       " (Breakout) | Bal $" + str(round(self.balance, 0)))
 
     def _moonshot_check(self, symbol, price):
-        """Exit: harter Stop -18% ODER Ruecksetzer 25% vom Hoch. KEIN TP."""
+        """Scaling-out an Meilensteinen (+50% / +100% House-Money / +300%) UND
+        Voll-Exit: harter Stop -18% ODER 25% Trailing ODER 72h-Timeout. KEIN TP-Deckel."""
+        scale, reason = None, None
         with self.positions_lock:
             pos = self.positions.get(symbol)
             if not pos or not pos.get("moonshot"):
@@ -253,13 +256,21 @@ class CloneBot(CryptoBot):
             hard  = pos.get("hard_stop", entry * (1 - MOON_HARD))
             trail = pos.get("trail", MOON_TRAIL)
             pnl_pct = (price - entry) / entry * 100
-            reason = None
+            scaled = pos.get("scaled", [])
+            # ── Teilverkäufe an Meilensteinen (Profi-Technik) ────────────────
+            if pnl_pct >= 50 and "S50" not in scaled:
+                scale = (pos.get("orig_shares", pos["shares"]) * 0.25, "MOON-SCALE50", "S50")
+            elif pnl_pct >= 100 and "S100" not in scaled:
+                # House Money: Einsatz rausnehmen -> Rest läuft risikofrei
+                scale = (min(pos.get("orig_cost", 0) / price, pos["shares"] * 0.7), "MOON-HOUSE", "S100")
+            elif pnl_pct >= 300 and "S300" not in scaled:
+                scale = (pos["shares"] * 0.33, "MOON-SCALE300", "S300")
+            # ── Voll-Exit ────────────────────────────────────────────────────
             if price <= hard:
                 reason = "MOON-HARDSTOP"
             elif peak > entry and price <= peak * (1 - trail):
                 reason = "MOON-TRAIL"
             else:
-                # Zeit-Exit: feststeckende Wette (weder hoch noch zum Stop) -> Slot freigeben
                 try:
                     age_h = (datetime.now() - datetime.strptime(pos["time"], "%Y-%m-%d %H:%M")).total_seconds() / 3600
                 except Exception:
@@ -268,6 +279,37 @@ class CloneBot(CryptoBot):
                     reason = "MOON-TIMEOUT"
         if reason:
             self.close_position(symbol, price, reason, (price - entry) / entry * 100)
+        elif scale and scale[0] > 0:
+            self._moonshot_scale_out(symbol, price, scale[0], scale[1], scale[2])
+
+    def _moonshot_scale_out(self, symbol, price, sell_shares, tag, marker):
+        """Teilverkauf an einem Meilenstein — sichert Gewinn, Rest läuft weiter."""
+        with self.positions_lock:
+            pos = self.positions.get(symbol)
+            if not pos:
+                return
+            sell_shares = min(sell_shares, pos["shares"] * 0.95)
+            pos.setdefault("scaled", []).append(marker)   # Meilenstein als erledigt markieren
+            if sell_shares <= 0 or sell_shares * price < 1:
+                return
+            fill = price * (1 - self.sim_slip) if self.demo else price
+            fee  = sell_shares * fill * self.sim_fee if self.demo else 0.0
+            proceeds = sell_shares * fill - fee
+            profit = proceeds - sell_shares * pos["entry"]
+            self.balance += proceeds
+            pos["shares"] -= sell_shares
+            self.trades.append({"symbol": symbol, "profit": round(profit, 2),
+                                "pct": round((price - pos["entry"]) / pos["entry"] * 100, 1),
+                                "reason": tag, "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                "moonshot": True, "partial": True})
+        try:
+            with open(self._trades_path, "w") as f:
+                json.dump(self.trades, f)
+        except Exception:
+            pass
+        self._save_state()
+        print("[CLONE-E] " + tag + " " + symbol + " teilverkauft @ $" + str(round(price, 6)) +
+              " | Bal $" + str(round(self.balance, 0)))
 
     def _contrarian_trade(self, scores):
         """Mean-Reversion: kauft die am staerksten ueberverkauften Coins
