@@ -122,6 +122,7 @@ class SuperTradingBot:
         self.trades      = []
         self.stop_loss   = 2.0   # optimized: 3.0 → 2.0
         self.take_profit = 12.0  # optimized: 15.0 → 12.0
+        self._sl_cooldown = {}   # symbol -> ts letzter Hard-Stop; sperrt Wiederkauf 1.5h
         self.max_pos     = 15
         self.pos_size    = 0.05
         self.excluded_symbols = {"XLF"}   # Optimizer-Flag 2026-06-14: >=50% SL-Exits (revidierbar)
@@ -674,6 +675,39 @@ class SuperTradingBot:
         self.ws_connected = False
         print("[WS] Geschlossen — Code: " + str(code))
 
+    def _exit_trigger(self, pos, price, ws=True):
+        """Tiered Profit-Protection (portiert von crypto_bot). Zonen nach best_pnl:
+        >=tp -> 3% Trailing | >=6% -> Profit-Lock (peak-2%) | >=4% -> min +2% sichern
+        | >=2% -> Break-Even (nie mehr ins Minus) | <2% -> harter Stop. PSAR hat Vorrang."""
+        entry    = pos["entry"]
+        highest  = pos.get("highest", entry)
+        pnl_pct  = ((price - entry) / entry) * 100
+        best_pnl = ((highest - entry) / entry) * 100
+        trailing = ((highest - price) / highest) * 100 if highest > 0 else 0
+        psar_stop = pos.get("psar_stop")
+        sl = pos.get("stop_loss", self.stop_loss)
+        tp = pos.get("take_profit", self.take_profit)
+        pfx = "WS-" if ws else ""
+        # PSAR dynamischer Stop (primaer bei Super, Tagesbars -> keine pnl-Schwelle)
+        if psar_stop is not None and price < psar_stop:
+            return pfx + "PSAR-STOP"
+        if best_pnl >= tp:
+            if trailing >= 3.0:
+                return pfx + "TRAIL-STOP"
+        elif best_pnl >= 6.0:
+            if pnl_pct < best_pnl - 2.0:
+                return pfx + "PROFIT-LOCK"
+        elif best_pnl >= 4.0:
+            if pnl_pct < 2.0:
+                return pfx + "PROFIT-LOCK"
+        elif best_pnl >= 2.0:
+            if pnl_pct < 0.0:
+                return pfx + "BREAKEVEN"
+        else:
+            if pnl_pct <= -sl:
+                return pfx + "STOP-LOSS"
+        return None
+
     def _ws_check_price(self, symbol, price):
         """
         Called on every trade tick from the WebSocket thread.
@@ -688,19 +722,8 @@ class SuperTradingBot:
 
             if price > pos.get("highest", pos["entry"]):
                 pos["highest"] = price
-
-            trailing = ((pos["highest"] - price) / pos["highest"]) * 100
-
-            psar_stop = pos.get("psar_stop")
-            sl = pos.get("stop_loss", self.stop_loss)
-            tp = pos.get("take_profit", self.take_profit)
-            if psar_stop is not None and price < psar_stop:
-                trigger = "WS-PSAR-STOP"
-            elif pnl_pct <= -sl:
-                trigger = "WS-STOP-LOSS"
-            elif pnl_pct >= tp and trailing >= 3.0:
-                trigger = "WS-TRAIL-STOP"
-            else:
+            trigger = self._exit_trigger(pos, price, ws=True)
+            if trigger is None:
                 return
 
         # Fire close outside the lock — close_position does its own atomic pop
@@ -929,17 +952,8 @@ class SuperTradingBot:
                 pnl_pct = ((price - pos["entry"]) / pos["entry"]) * 100
                 if price > pos.get("highest", pos["entry"]):
                     pos["highest"] = price
-                trailing = ((pos["highest"] - price) / pos["highest"]) * 100
-                psar_stop = pos.get("psar_stop")
-                sl = pos.get("stop_loss", self.stop_loss)
-                tp = pos.get("take_profit", self.take_profit)
-                if psar_stop is not None and price < psar_stop:
-                    trigger = "PSAR-STOP"
-                elif pnl_pct <= -sl:
-                    trigger = "STOP-LOSS"
-                elif pnl_pct >= tp and trailing >= 3.0:
-                    trigger = "TRAIL-STOP"
-                else:
+                trigger = self._exit_trigger(pos, price, ws=False)
+                if trigger is None:
                     continue
             self.close_position(symbol, price, trigger, pnl_pct)
 
@@ -980,6 +994,11 @@ class SuperTradingBot:
             json.dump(self.trades, f)
 
         self._save_state()   # persist balance after every close
+
+        # 1.5h Cooling nach hartem Stop -- kein Wiederkauf in den Abwaertstrend
+        if reason in ("WS-STOP-LOSS", "STOP-LOSS"):
+            self._sl_cooldown[symbol] = time.time()
+            print("[COOLING] " + symbol + " -- 1.5h Sperre nach Hard-Stop")
 
         with self.positions_lock:
             bal = self.balance
@@ -1475,6 +1494,12 @@ class SuperTradingBot:
             with self.positions_lock:
                 if symbol in self.positions or len(self.positions) >= self.max_pos:
                     continue
+
+            # 1.5h SL-Cooling -- kein Wiederkauf direkt nach Hard-Stop
+            sl_age = time.time() - self._sl_cooldown.get(symbol, 0)
+            if sl_age < 5400:
+                print("[SKIP] " + symbol + " SL-COOLING " + str(int((5400 - sl_age) / 60)) + "min")
+                continue
 
             # Earnings window guard — no new buys within 2 days before / 1 day after
             blocked, earn_stock, earn_date = self._get_earnings_window(symbol)
