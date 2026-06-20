@@ -16,8 +16,10 @@
   h1 { font-size:20px; margin:0; }
   .sub { color:var(--dim); font-size:13px; }
   #updated { margin-left:auto; color:var(--dim); font-size:12px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  .grid { display:grid; grid-template-columns:repeat(3,1fr);
           gap:16px; padding:22px; }
+  @media (max-width:1100px){ .grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:680px){  .grid{ grid-template-columns:1fr; } }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
           padding:18px; position:relative; }
   .card.leader { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; }
