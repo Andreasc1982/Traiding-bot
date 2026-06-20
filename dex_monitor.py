@@ -153,8 +153,9 @@ def run():
                 if s["passed"]:
                     passed += 1
                     prev = watchlist.get(addr, {})
-                    s["first_seen"] = prev.get("first_seen", now)
-                    s["last_seen"]  = now
+                    s["first_seen"]  = prev.get("first_seen", now)
+                    s["first_price"] = prev.get("first_price", s["price"])  # Entdeckungs-Preis fixieren
+                    s["last_seen"]   = now
                     watchlist[addr] = s
                     print("[PASS] " + s["symbol"].ljust(10) + " liq$" + str(s["liq"]) +
                           " chg5=" + str(s["chg5"]) + "% buys/sells=" + str(s["buys"]) + "/" +

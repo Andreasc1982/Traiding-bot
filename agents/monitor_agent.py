@@ -86,6 +86,16 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1"
         ),
     },
+    "dex_dashboard": {
+        "name":         "DEX Dashboard HTTP :8091",
+        "session":      "dex_dashboard",
+        "trading_only": False,
+        "cmd": (
+            "fuser -k 8091/tcp 2>/dev/null; sleep 1; "
+            "cd /home/trading2025/trading_bot/dex && "
+            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json > /tmp/dex_dashboard.log 2>&1"
+        ),
+    },
     "gateway": {
         "name":         "Market-Data Gateway",
         "session":      "gateway",
