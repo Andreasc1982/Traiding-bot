@@ -104,10 +104,15 @@ screen -dmS dex bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1'
+# DEX Paper-Moonshot (simuliert, kein Geld)
+screen -dmS dex_paper bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1'
 screen -dmS dex_dashboard bash -c '
   fuser -k 8091/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/dex &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json > /tmp/dex_dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json > /tmp/dex_dashboard.log 2>&1'
 
 echo "[start_all] All screen sessions launched."
 screen -list

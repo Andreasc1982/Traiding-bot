@@ -76,7 +76,12 @@ def screen_token(addr):
     vol5  = (p.get("volume") or {}).get("m5", 0) or 0
     txns  = (p.get("txns") or {}).get("m5", {}) or {}
     buys, sells = txns.get("buys", 0) or 0, txns.get("sells", 0) or 0
-    chg5  = (p.get("priceChange") or {}).get("m5", 0) or 0
+    pcd   = p.get("priceChange") or {}
+    chg5  = pcd.get("m5", 0) or 0
+    chg1  = pcd.get("h1", 0) or 0
+    vold  = p.get("volume") or {}
+    volh1 = vold.get("h1", 0) or 0
+    volh6 = vold.get("h6", 0) or 0          # ~5h-Volumen (sustained interest, kein Flash)
     created = p.get("pairCreatedAt", 0) or 0
     age_h = (time.time() * 1000 - created) / 3600000 if created else 999.0
     price = p.get("priceUsd")          # als STRING belassen — Micro-Preis (z.B. "0.000000034")
@@ -101,7 +106,9 @@ def screen_token(addr):
     return {
         "addr": addr, "symbol": symbol, "price": price,
         "liq": round(liq), "vol5": round(vol5), "buys": buys, "sells": sells,
-        "chg5": round(chg5, 1), "age_h": round(age_h, 1),
+        "chg5": round(chg5, 1), "chg1": round(chg1, 1),
+        "vol_h1": round(volh1), "vol_h6": round(volh6),
+        "age_h": round(age_h, 1),
         "rug_risk": rug_risk, "passed": len(reasons) == 0, "reasons": reasons,
     }
 

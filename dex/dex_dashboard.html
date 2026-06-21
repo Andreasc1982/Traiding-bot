@@ -4,105 +4,182 @@
 <meta charset="utf-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DEX-Monitor — Solana Watchlist</title>
+<title>DEX-Monitor — Solana</title>
 <style>
   :root { --bg:#0e1116; --card:#171c24; --line:#262d38; --txt:#e6edf3; --dim:#8b949e;
           --green:#3fb950; --red:#f85149; --gold:#d4a017; --blue:#58a6ff; --yellow:#d29922; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--txt);
          font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
-  header { padding:18px 22px; border-bottom:1px solid var(--line); display:flex;
+  header { padding:16px 22px; border-bottom:1px solid var(--line); display:flex;
            align-items:baseline; gap:14px; flex-wrap:wrap; }
   h1 { font-size:20px; margin:0; }
+  h2 { font-size:14px; margin:0 0 10px; color:var(--dim); text-transform:uppercase;
+       letter-spacing:.5px; font-weight:600; }
   .sub { color:var(--dim); font-size:13px; }
-  .stats { margin-left:auto; display:flex; gap:18px; font-size:13px; }
-  .stat b { color:var(--blue); font-size:16px; }
-  .stat span { color:var(--dim); }
-  .wrap { padding:18px 22px; overflow-x:auto; }
+  #updated { color:var(--dim); font-size:12px; margin-left:auto; }
+  section { padding:16px 22px; border-bottom:1px solid var(--line); }
+  .cards { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:8px;
+         padding:10px 16px; min-width:110px; }
+  .kpi .v { font-size:20px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .kpi .l { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.4px; }
+  .note { color:var(--dim); font-size:12px; margin-top:4px; }
+  .wrap { overflow-x:auto; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th { text-align:left; color:var(--dim); font-weight:500; font-size:11px;
-       text-transform:uppercase; letter-spacing:.5px; padding:8px 10px;
-       border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); }
-  td { padding:9px 10px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+       text-transform:uppercase; letter-spacing:.5px; padding:7px 10px;
+       border-bottom:1px solid var(--line); }
+  td { padding:8px 10px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
   tr:hover td { background:#1b212b; }
   .sym { color:var(--blue); font-weight:600; }
   .pos { color:var(--green); } .neg { color:var(--red); } .dim { color:var(--dim); }
   .pill { padding:2px 8px; border-radius:10px; font-size:11px; }
   .pill.ok { background:rgba(63,185,80,.15); color:var(--green); }
   .pill.warn { background:rgba(210,153,34,.15); color:var(--yellow); }
-  #updated { color:var(--dim); font-size:12px; width:100%; margin-top:2px; }
-  .empty { color:var(--dim); padding:30px; text-align:center; font-style:italic; }
+  .pill.run { background:rgba(88,166,255,.15); color:var(--blue); }
+  .pill.house { background:rgba(212,160,23,.15); color:var(--gold); }
+  .empty { color:var(--dim); padding:18px; text-align:center; font-style:italic; font-size:13px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+  @media (max-width:840px){ .two { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <header>
   <h1>🛰️ DEX-Monitor</h1>
-  <span class="sub">Solana · Token-Discovery + Scam-Screening · read-only (kein Geld)</span>
-  <div class="stats" id="stats"></div>
+  <span class="sub">Solana · Screening + Paper-Moonshot · kein echtes Geld</span>
   <div id="updated">lädt…</div>
 </header>
-<div class="wrap">
-  <table>
+
+<!-- ─────────── PAPER-MOONSHOT ─────────── -->
+<section>
+  <h2>🚀 Paper-Moonshot <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— realistisch: 5% Slippage/Seite · ehrliche Rug-Verluste</span></h2>
+  <div class="cards" id="pcards"></div>
+  <div class="two">
+    <div>
+      <h2>Offene Wetten</h2>
+      <div class="wrap"><table>
+        <thead><tr><th>Symbol</th><th>Entry</th><th>Aktuell</th><th>P&L</th><th>Peak</th><th>Status</th></tr></thead>
+        <tbody id="popen"></tbody>
+      </table></div>
+      <div class="empty" id="popen_e" style="display:none">Keine offenen Wetten — wartet auf Momentum-Token…</div>
+    </div>
+    <div>
+      <h2>Letzte Trades</h2>
+      <div class="wrap"><table>
+        <thead><tr><th>Symbol</th><th>Ergebnis</th><th>$</th><th>Grund</th><th>Zeit</th></tr></thead>
+        <tbody id="ptrades"></tbody>
+      </table></div>
+      <div class="empty" id="ptrades_e" style="display:none">Noch keine abgeschlossenen Trades.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── SCREENING-WATCHLIST ─────────── -->
+<section style="border-bottom:none">
+  <h2>🔎 Screening-Watchlist <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— sortiert nach Performance seit Entdeckung</span></h2>
+  <div class="cards" id="scards"></div>
+  <div class="wrap"><table>
     <thead><tr>
-      <th>Symbol</th><th>Preis</th><th>seit Entdeckung</th><th>Mom. 5m</th>
-      <th>Liquidität</th><th>Buy/Sell</th><th>Rug</th><th>Alter</th><th>entdeckt</th>
+      <th>Symbol</th><th>Preis</th><th>seit Entdeckung</th><th>Mom. 1h</th>
+      <th>5h-Vol</th><th>Liquidität</th><th>Buy/Sell</th><th>Rug</th><th>Alter</th>
     </tr></thead>
     <tbody id="rows"></tbody>
-  </table>
-  <div class="empty" id="empty" style="display:none">Noch keine Token auf der Watchlist — Screening läuft…</div>
-</div>
+  </table></div>
+  <div class="empty" id="wl_e" style="display:none">Noch keine Token auf der Watchlist — Screening läuft…</div>
+</section>
 
 <script>
 function fmtPrice(p){
   const n = parseFloat(p);
   if (!isFinite(n) || n === 0) return "–";
   if (n >= 1) return "$" + n.toLocaleString("de-DE",{maximumFractionDigits:4});
-  return "$" + n.toPrecision(3);   // Micro-Preise: 3 signifikante Stellen
+  return "$" + n.toPrecision(3);
 }
-function fmtUsd(n){ return "$" + (n||0).toLocaleString("de-DE",{maximumFractionDigits:0}); }
+function usd0(n){ return "$" + (Number(n)||0).toLocaleString("de-DE",{maximumFractionDigits:0}); }
+function usd2(n){ return "$" + (Number(n)||0).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function pct(n){ n=Number(n)||0; return (n>=0?"+":"")+n.toFixed(1)+"%"; }
+async function getJSON(f){ try { return await (await fetch(f+"?_="+Date.now())).json(); } catch(e){ return null; } }
 
 async function load(){
-  let wl = {}, hb = {};
-  try { wl = await (await fetch("watchlist.json?_="+Date.now())).json(); } catch(e){}
-  try { hb = await (await fetch("heartbeat.json?_="+Date.now())).json(); } catch(e){}
+  const [ph, ps, pt, wl, hb] = await Promise.all([
+    getJSON("paper_heartbeat.json"), getJSON("paper_state.json"),
+    getJSON("paper_trades.json"), getJSON("watchlist.json"), getJSON("heartbeat.json")
+  ]);
 
-  const rows = Object.values(wl).map(t => {
-    const cur = parseFloat(t.price), first = parseFloat(t.first_price || t.price);
-    const perf = (isFinite(cur) && isFinite(first) && first > 0) ? (cur-first)/first*100 : 0;
-    return {...t, perf};
-  }).sort((a,b)=> b.perf - a.perf);
+  // ── Paper KPIs ──
+  const eq = ph ? ph.equity : 500, start = 500;
+  const ret = (eq/start - 1)*100;
+  const wr = (ph && ph.trades) ? (ph.wins/ph.trades*100) : 0;
+  document.getElementById("pcards").innerHTML = `
+    <div class="kpi"><div class="v ${ret>=0?'pos':'neg'}">${usd2(eq)}</div><div class="l">Equity (${pct(ret)})</div></div>
+    <div class="kpi"><div class="v">${usd2(ph?ph.bankroll:start)}</div><div class="l">Bankroll frei</div></div>
+    <div class="kpi"><div class="v">${ph?ph.open:0}</div><div class="l">offene Wetten</div></div>
+    <div class="kpi"><div class="v">${ph?ph.trades:0}</div><div class="l">Trades</div></div>
+    <div class="kpi"><div class="v ${wr>=50?'pos':'dim'}">${wr.toFixed(0)}%</div><div class="l">Win-Rate</div></div>`;
 
-  const tb = document.getElementById("rows");
-  tb.innerHTML = "";
-  document.getElementById("empty").style.display = rows.length ? "none" : "block";
-  for (const t of rows){
-    const pc = (t.chg5>=0?"pos":"neg"), pf = (t.perf>=0?"pos":"neg");
-    const bs = (t.sells>0 && t.buys/t.sells < 1) ? "neg" : "pos";
-    const rugCls = (t.rug_risk && t.rug_risk!=="ok" && t.rug_risk!=="?") ? "warn" : "ok";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="sym">${t.symbol||"?"}</td>
-      <td>${fmtPrice(t.price)}</td>
-      <td class="${pf}">${t.perf>=0?"+":""}${t.perf.toFixed(1)}%</td>
-      <td class="${pc}">${t.chg5>=0?"+":""}${t.chg5}%</td>
-      <td>${fmtUsd(t.liq)}</td>
-      <td class="${bs}">${t.buys}/${t.sells}</td>
-      <td><span class="pill ${rugCls}">${t.rug_risk||"?"}</span></td>
-      <td class="dim">${t.age_h}h</td>
-      <td class="dim">${(t.first_seen||"").slice(5)}</td>`;
-    tb.appendChild(tr);
+  // ── Open paper positions ──
+  const pos = (ps && ps.positions) ? Object.values(ps.positions) : [];
+  const ob = document.getElementById("popen"); ob.innerHTML = "";
+  document.getElementById("popen_e").style.display = pos.length ? "none" : "block";
+  pos.sort((a,b)=> ((b.last_price/b.entry)||0)-((a.last_price/a.entry)||0));
+  for (const p of pos){
+    const pl = p.entry>0 ? (p.last_price/p.entry-1)*100 : 0;
+    const fromPeak = p.peak>0 ? (p.last_price/p.peak-1)*100 : 0;
+    const st = p.scaled ? '<span class="pill house">House-Money</span>' : '<span class="pill run">läuft</span>';
+    ob.insertAdjacentHTML("beforeend", `<tr>
+      <td class="sym">${p.symbol||"?"}</td><td>${fmtPrice(p.entry)}</td>
+      <td>${fmtPrice(p.last_price)}</td><td class="${pl>=0?'pos':'neg'}">${pct(pl)}</td>
+      <td class="dim">${pct(fromPeak)}</td><td>${st}</td></tr>`);
   }
 
-  document.getElementById("stats").innerHTML =
-    `<div class="stat"><b>${hb.screened||0}</b> <span>gescreent</span></div>
-     <div class="stat"><b>${hb.passed||0}</b> <span>bestanden</span></div>
-     <div class="stat"><b>${rows.length}</b> <span>Watchlist</span></div>`;
-  const age = hb.ts ? Math.round((Date.now()/1000 - hb.ts)/60) : "?";
+  // ── Recent paper trades ──
+  const trs = (pt||[]).slice(-15).reverse();
+  const tb = document.getElementById("ptrades"); tb.innerHTML = "";
+  document.getElementById("ptrades_e").style.display = trs.length ? "none" : "block";
+  for (const t of trs){
+    const win = (t.profit||0) > 0;
+    const tag = t.reason==="RUG-TOTAL" ? "💀" : (win ? "🚀" : "");
+    const rc = t.reason==="RUG-TOTAL" ? "neg" : "dim";
+    tb.insertAdjacentHTML("beforeend", `<tr>
+      <td class="sym">${t.symbol||"?"} ${tag}</td>
+      <td class="${(t.pct||0)>=0?'pos':'neg'}">${pct(t.pct)}</td>
+      <td class="${win?'pos':'neg'}">${usd2(t.profit)}</td>
+      <td class="${rc}">${t.reason||""}</td>
+      <td class="dim">${(t.time||"").slice(5)}</td></tr>`);
+  }
+
+  // ── Watchlist ──
+  const rows = Object.values(wl||{}).map(t => {
+    const cur = parseFloat(t.price), first = parseFloat(t.first_price || t.price);
+    const perf = (isFinite(cur)&&isFinite(first)&&first>0) ? (cur-first)/first*100 : 0;
+    return {...t, perf};
+  }).sort((a,b)=> b.perf - a.perf);
+  const rb = document.getElementById("rows"); rb.innerHTML = "";
+  document.getElementById("wl_e").style.display = rows.length ? "none" : "block";
+  for (const t of rows){
+    const bs = (t.sells>0 && t.buys/t.sells < 1) ? "neg" : "pos";
+    const rugCls = (t.rug_risk && t.rug_risk!=="ok" && t.rug_risk!=="?") ? "warn" : "ok";
+    rb.insertAdjacentHTML("beforeend", `<tr>
+      <td class="sym">${t.symbol||"?"}</td><td>${fmtPrice(t.price)}</td>
+      <td class="${t.perf>=0?'pos':'neg'}">${pct(t.perf)}</td>
+      <td class="${(t.chg1||0)>=0?'pos':'neg'}">${pct(t.chg1||t.chg5||0)}</td>
+      <td class="dim">${usd0(t.vol_h6)}</td><td>${usd0(t.liq)}</td>
+      <td class="${bs}">${t.buys}/${t.sells}</td>
+      <td><span class="pill ${rugCls}">${t.rug_risk||"?"}</span></td>
+      <td class="dim">${t.age_h}h</td></tr>`);
+  }
+  document.getElementById("scards").innerHTML = `
+    <div class="kpi"><div class="v">${hb?hb.screened:0}</div><div class="l">gescreent / Zyklus</div></div>
+    <div class="kpi"><div class="v pos">${hb?hb.passed:0}</div><div class="l">bestanden</div></div>
+    <div class="kpi"><div class="v">${rows.length}</div><div class="l">Watchlist</div></div>`;
+
+  const pa = ph && ph.ts ? Math.round((Date.now()/1000-ph.ts)/60) : "?";
   document.getElementById("updated").textContent =
-    "Zyklus " + (hb.cycle||"?") + " · letztes Update vor " + age + " min · Auto-Refresh 20s";
+    "Paper-Zyklus " + (ph?ph.cycle:"?") + " · Update vor " + pa + " min · Refresh 15s";
 }
 load();
-setInterval(load, 20000);
+setInterval(load, 15000);
 </script>
 </body>
 </html>
