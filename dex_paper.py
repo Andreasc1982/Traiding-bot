@@ -53,6 +53,22 @@ MAX_HOURS      = 48        # Zeit-Exit fuer Zombies (steht weder hoch noch tief)
 POLL_SEC       = 20        # Held-Positionen alle 20s pruefen
 TIMEOUT        = 10
 
+TG_TOKEN   = config.get("telegram_bot_token", "")
+TG_CHAT    = config.get("telegram_chat_id", "")
+TG_WIN_PCT = 25.0          # Telegram-Alert ab diesem Gewinn-% (Moonshots)
+SUMMARY_H  = 6             # Telegram-Zusammenfassung alle 6h
+
+
+def _tg(msg):
+    """Telegram-Nachricht (gleicher Chat wie Live-Bots). Graceful ohne Config."""
+    if not TG_TOKEN or not TG_CHAT:
+        return
+    try:
+        requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
+                      data={"chat_id": TG_CHAT, "text": msg, "parse_mode": "HTML"}, timeout=TIMEOUT)
+    except Exception as e:
+        print("[TG] " + str(e)[:60])
+
 
 def _get(url):
     try:
@@ -126,6 +142,12 @@ def close_paper(state, trades, addr, price, reason):
     print("[PAPER-CLOSE] " + reason + " " + pos["symbol"] + " " +
           ("+" if pct >= 0 else "") + str(round(pct, 1)) + "% -> $" +
           str(round(profit, 2)) + " " + tag)
+    if reason == "RUG-TOTAL":
+        _tg("💀 <b>DEX-Rug</b>: " + pos["symbol"] + " " + str(round(pct, 1)) +
+            "% = $" + str(round(profit, 2)) + " (Screening hat ihn durchgelassen)")
+    elif pct >= TG_WIN_PCT:
+        _tg("🚀 <b>DEX-Gewinn</b>: " + pos["symbol"] + " +" + str(round(pct, 1)) +
+            "% = $" + str(round(profit, 2)) + " (" + reason + ")")
 
 
 def scale_out(state, trades, addr, price):
@@ -140,11 +162,27 @@ def scale_out(state, trades, addr, price):
     state["bankroll"] += proceeds
     print("[PAPER-SCALE] " + pos["symbol"] + " +100% -> Einsatz $" +
           str(round(proceeds, 2)) + " gesichert (House-Money laeuft)")
+    _tg("🏠 <b>DEX House-Money</b>: " + pos["symbol"] + " +100% — Einsatz $" +
+        str(round(proceeds, 2)) + " gesichert, Rest laeuft 🎰")
 
 
 def equity(state):
     open_val = sum(p["shares"] * p.get("last_price", p["entry"]) for p in state["positions"].values())
     return state["bankroll"] + open_val
+
+
+def _tg_summary(state, trades):
+    eq = equity(state)
+    n = len(trades)
+    wins = sum(1 for tr in trades if tr.get("profit", 0) > 0)
+    rugs = sum(1 for tr in trades if tr.get("reason") == "RUG-TOTAL")
+    wr = (wins / n * 100) if n else 0
+    best = max((tr.get("pct", 0) for tr in trades), default=0)
+    _tg("🛰️ <b>DEX Paper-Moonshot</b>\n"
+        "Equity: $" + str(round(eq, 2)) + " (" + ("%+.1f" % ((eq / START_BANKROLL - 1) * 100)) + "%)\n"
+        "Offen: " + str(len(state["positions"])) + " | Trades: " + str(n) +
+        " | Win-Rate: " + str(round(wr)) + "%\n"
+        "Rugs: " + str(rugs) + " | Bester Trade: +" + str(round(best, 1)) + "%")
 
 
 def run():
@@ -177,6 +215,10 @@ def run():
             trades = json.load(open(PTRADES))
         except Exception:
             pass
+
+    state.setdefault("last_summary", time.time())   # erste 6h-Summary erst in 6h (ueberlebt Restarts via State)
+    _tg("🛰️ DEX Paper-Moonshot laeuft — Equity $" + str(round(equity(state), 2)) +
+        " | offen " + str(len(state["positions"])) + " | Trades " + str(len(trades)))
 
     cycle = 0
     while True:
@@ -277,6 +319,11 @@ def run():
                       str(round(equity(state), 2)) + " | offen " +
                       str(len(state["positions"])) + " | Trades " + str(len(trades)) +
                       " (" + str(wins) + " Gewinner)")
+            # 6h-Telegram-Zusammenfassung
+            if time.time() - state.get("last_summary", 0) >= SUMMARY_H * 3600:
+                state["last_summary"] = time.time()
+                _atomic(PSTATE, state)
+                _tg_summary(state, trades)
         except Exception as e:
             print("[PAPER-LOOP] " + str(e))
         time.sleep(POLL_SEC)
