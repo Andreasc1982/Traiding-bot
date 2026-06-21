@@ -1379,6 +1379,7 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 - [x] **Optimizer-Fix A (2026-06-15)** — `optimize_agent.py` las Ist-Parameter aus hartcodierten, veralteten Baselines (Crypto SL=4/TP=10, real 2.5/5) → falsche „current vs suggested"-Diffs + `baseline_result=None` (aktuelle Werte lagen nicht im Grid). Fix: `_read_current_params()` liest SL/TP/RSI/ST-mult per Regex direkt aus `super_bot.py`/`crypto_bot.py` (korrekte Werte als Fallback-Default), Grid enthält immer die Baseline-Werte (`sorted(set([...]+[baseline[x]]))`). Selbstkorrigierend bei künftigen Param-Änderungen
 - [x] **Optimizer-Fix B (2026-06-15)** — `simulate()` rechnete gebührenfrei → empfahl Overtrading; jetzt `cost`-Parameter pro Trade abgezogen (Crypto 2×(0.26%+0.05%), Stocks 2×0.02%) → Netto-Rendite UND Win-Rate fee-aware. Folge: selbst beste Backtest-Params nach Kosten nur knapp break-even. `/confirm` nach A+B wieder entsperrt (Lock im `telegram_router.py` entfernt 2026-06-15)
 - [x] **DEX-Monitor Phase 2a (2026-06-20)** — `dex_monitor.py` (Session `dex`, im Monitor + start_all): Solana Token-Discovery via DexScreener (`token-profiles/latest/v1`) + Scam-Screening (Liquidität ≥$10k, Buy/Sell-Druck, Momentum, Alter 15min-48h, RugCheck-API `api.rugcheck.xyz`), **read-only, kein Geld, keine Wallet**. Persistente Watchlist (`dex/watchlist.json`) + Trainings-Zeitreihe (`dex/screening_log.csv`) + Heartbeat. Erster Test: 23 gescreent → 3 bestanden (87% rausgefiltert). Grundlage fürs spätere Paper-Moonshot + Phase 2b (echte Jupiter-Swaps + Hot-Wallet). Bug-Lehren eingebaut: harte 10s-Timeouts, Micro-Preise als String (kein round→0), atomare Writes, defensives Parsen, **absoluter venv-Pfad** (relativer scheiterte still). Pi-Härtung dabei: SSH key-only, unattended-upgrades aktiv, fail2ban
+- [x] **DEX Paper-Moonshot (2026-06-22)** — `dex_paper.py` (Session `dex_paper`): simuliertes Moonshot-Trading auf den vom `dex_monitor` gescreenten Solana-Token, **kein Geld**. $500 Bankroll, $20-Wetten, Entry ≥12% 1h-Mom + ≥$5k 5h-Vol, Stop −35%, Trailing 30% (kein TP-Deckel), Scale-Out +100% (House-Money), realistische 5% Slippage/Seite. **Ehrliche Rug-Verluste**: Fill zum abgestürzten Preis (kein −35%-Schutz vor Rugs). Adversarial-Honesty-Review (Workflow) fand + fixte 2 HIGH-Bugs: (1) API-Ausfall ≠ Rug (`None` vs `{}`, 3× Bestätigung) — sonst Fake −95% bei Timeout/429; (2) Entry zur Live-Quelle statt 120s-altem Watchlist-Preis (Freshness-Phantom, Cousin des Contrarian-Bugs). `rug_sim.py` beweist empirisch: Instant-Rug nicht einholbar (−98%, im 1-Block gelockt), Slow-Bleed vom Trailing gefangen (+40%). Dashboard :8091 zeigt Paper-Portfolio + Watchlist. Schutz gegen Rugs = nur Screening VOR Kauf (26h: 3.580 RUG-DANGER aussortiert)
 - [x] **Super: Positions-Persistenz + Tiered Exit + SL-Cooling von crypto_bot portiert (2026-06-20)** — Anlass: nach Gate-Lockerung tradete Super wieder, aber Positionen verdampften bei jedem Neustart (keine Persistenz) → Performance unmessbar + Phantom-Balance-Rückgang. (1) **Persistenz**: `_save_state`/`_load_state` speichern/restaurieren `positions` in `super_state.json` (Sanity entry>0/shares>0), live verifiziert (XLK überlebt Neustart). (2) **Tiered Exit** `_exit_trigger()`: 5 Zonen nach `best_pnl` — ≥tp→3% Trailing, ≥6%→Profit-Lock(peak−2%), ≥4%→min +2%, ≥2%→Break-Even (nie mehr ins Minus), <2%→harter Stop; PSAR bei Super ohne pnl-Schwelle (primärer Stop, Tagesbars); ersetzt die inline-Logik in `_ws_check_price`+`check_stops`. (3) **SL-Cooling** `_sl_cooldown`: 1.5h Wiederkauf-Sperre nach Hard-Stop (in `close_position` gesetzt, in `trade()` geprüft). Feature-Abgleich ergab: sim_fee (Aktien free) + BTC-Vol-Regime (BTC-spezifisch) bewusst NICHT portiert; ML hat nur Super
 - [x] **Super-Strenge-Backtest + Lockerung (2026-06-17)** — Erkenntnis aus dem Clone-Experiment: Super Bot machte ~6 Trades in 2 Monaten (zu streng → keine valide Stichprobe, momentum-„versagt"-Trugschluss vermieden). `agents/backtest_super_strictness.py` bildet den echten gewichteten Score nach und sweept die Schwelle über 10J/10 ETFs (yfinance, fee-aware, CMF+StochRSI ergänzt). Ergebnis: ETF-Momentum bei jeder Schwelle profitabel (+60-134%), 75% lässt Rendite liegen, <45% → 40% Drawdown. Super-Regime-Schwellen 75/60/45 → **60/50/40** gesenkt; Super tradet sofort wieder (ITA, PAVE gekauft). Crypto unverändert (75/60/45)
 - [x] **Equity-Logger Clones (2026-06-17)** — `log_clone_equity.py` (Cron alle 30 Min) schreibt `crypto/clones/equity_log.csv` (Equity-Kurven/Drawdown je Clone) + Telegram-Anomalie-Alarm bei |Rendite|>25% (Bug-Frühwarnung). Zusätzlich `crypto/compare_clones.py` 3× tgl. via Cron
@@ -1458,6 +1459,72 @@ Konto #2 (config alpaca_gw_*):       Gateway          → 1 WS, /dev/shm/crypto_
 
 ---
 
+## DEX-Welt (Phase 2a) — Monitor + Paper-Moonshot
+
+Eigenständiger, **komplett isolierter** Zweig (eigener Pfad `dex/`, eigene Screen-Sessions, **kein Geld, keine Wallet**) zum Erforschen der Solana-DEX-Cent-Coins: hohes Risiko, winzige Beträge. Zwei Prozesse:
+
+1. **`dex_monitor.py`** (Session `dex`) — **read-only** Token-Discovery + Scam-Screening. Pollt DexScreener, bewertet jeden Token, führt eine persistente Watchlist + Trainings-Zeitreihe.
+2. **`dex_paper.py`** (Session `dex_paper`) — **simuliertes** Moonshot-Trading auf den gescreenten Token (kein echtes Geld, keine Orders). Misst EHRLICH, ob die Idee nach Kosten UND Rugs trägt.
+
+Beide schreiben NUR nach `dex/`. Berühren weder Live-Bots noch Clones/Gateway (0 Referenzen). Grundlage fürs spätere Phase 2b (echte Jupiter-Swaps + funded Hot-Wallet — braucht User-Wallet, Seed bleibt beim User).
+
+### Dateien
+
+| Pfad | Zweck |
+|------|-------|
+| `dex_monitor.py` | Screening-Prozess (read-only) |
+| `dex_paper.py` | Paper-Moonshot-Trader (simuliert) |
+| `dex/watchlist.json` | Bestandene Token (persistent, cap 200), inkl. `first_price` (Entdeckungs-Preis), `chg1`, `vol_h6` |
+| `dex/screening_log.csv` | Zeitreihe ALLER gescreenten Token (zum Anlernen: fängt das Screening Rugs/Gewinner?) |
+| `dex/heartbeat.json` | Monitor-Heartbeat (cycle, screened, passed, watchlist) |
+| `dex/paper_state.json` | Paper-Bankroll + offene Wetten + traded-Dedup (atomar) |
+| `dex/paper_trades.json` | Abgeschlossene Paper-Trades (atomar) |
+| `dex/paper_heartbeat.json` | Paper-Heartbeat (equity, bankroll, open, trades, wins) |
+| `dex/dex_dashboard.html` | Kombiniertes Dashboard (Paper-Portfolio + Screening-Watchlist) |
+| `dash_server.py 8091 …` | Gehärteter HTTP-Server (Whitelist), Session `dex_dashboard` |
+
+### Screening (`dex_monitor.py`)
+
+Konservativ — die MEISTEN Token sollen durchfallen (Rug-Dichte). Schwellen: `MIN_LIQUIDITY=$10k`, `MIN_VOL_5M=$500`, Alter `15min–48h`, `MIN_BUY_RATIO=0.5` (kein massiver Verkaufsdruck), **RugCheck-API** (`api.rugcheck.xyz`, `danger`-Level → raus). Live-Praxis (26h, 18.853 Token): ~18% bestehen, 82% raus; häufigste Gründe liq<10k, vol5<500, **RUG-DANGER (3.580)**, sell_druck. `chg1`/`vol_h6` werden für den Paper-Entry mitgeschrieben.
+
+### Paper-Moonshot (`dex_paper.py`)
+
+| Parameter | Wert | Notiz |
+|-----------|------|-------|
+| `START_BANKROLL` | $500 | Paper-Kapital |
+| `BET` | $20 | Mini-Wette pro Token |
+| `MAX_POS` | 12 | max gleichzeitige Wetten |
+| `ENTRY_MOM` | 12% | min 1h-Momentum (`chg1`) |
+| `ENTRY_VOL_H6` | $5.000 | min 6h(~5h)-Volumen — echtes Interesse, kein Flash |
+| `ENTRY_SLIP` / `EXIT_SLIP` | 5%/Seite | DEX-Micro-Cap-Slippage (bewusst pessimistisch) |
+| `HARD` | −35% | harter Stop (DEX-Noise braucht Luft) |
+| `TRAIL` | 30% | Trailing vom Hoch (Gewinner laufen lassen, KEIN TP-Deckel) |
+| `SCALE_AT` | +100% | House-Money: Einsatz rausnehmen, Rest läuft |
+| `RUG_LIQ` | $2.500 | Liquidität darunter = gerugged |
+| `RUG_CONFIRM` | 3 | aufeinanderfolgende Belege nötig (gegen API-Hiccups) |
+| `RUG_RECOVERY` | 0.05 | verschwundener Token: Restwert-Annahme (−95%) |
+| `POLL_SEC` | 20s | Held-Positionen-Check |
+
+**Exit-Logik** (`token_now()` live alle 20s): Rug (Liq < `RUG_LIQ`, nach 3 Belegen) → Fill zum **abgestürzten** Preis (kein clean exit); sonst Hard-Stop / Trailing / Zeit-Exit (48h Zombie); Scale-Out bei +100%. Entry-Dedup über `state["traded"]` (kein Wiederkauf eines bereits abgeschlossenen Token).
+
+### EHRLICHKEIT — der ganze Sinn
+
+Ein geschönter Paper-Test wäre schlimmer als kein Test. Drei bewusste Entscheidungen + zwei via Adversarial-Honesty-Review (Workflow) gefundene HIGH-Bugs:
+
+- **Ehrliche Rug-Verluste**: der −35%-Stop rettet NICHT vor einem Rug. Fill zum tatsächlich abgestürzten Preis (~−95%). Empirisch (`rug_sim.py`): Instant-Rug = −98% von $20, NICHT einholbar (Verlust im 1-Block-Rug ~0,4s gelockt, VOR dem ersten Poll). Slow-Bleed dagegen → Trailing greift binnen 20s (Test: +40% gesichert). **Schutz gegen Rugs = nur das Screening VOR dem Kauf.**
+- **Realistische Slippage** 5%/Seite, auf Kauf UND Verkauf.
+- **Fix (Review, HIGH)**: `token_now()` unterscheidet API-Ausfall (`None`, NICHT werten) von echtem Vanish (`{}`); Rug erst nach `RUG_CONFIRM=3` Belegen — sonst buchte ein Timeout/429 einen FAKE −95%-Verlust auf eine gesunde Position.
+- **Fix (Review, HIGH)**: Entry re-priced zur **gleichen Live-Quelle** wie der Exit (`token_now()`), nicht zum bis zu 120s alten Watchlist-Preis. Da nur steigende Token gekauft werden, war der alte Preis systematisch zu niedrig → eingebauter Fake-Sofortgewinn (Cousin des Contrarian-Phantom-Bugs).
+
+### Dashboard + Betrieb
+
+- **URL**: `http://<server>:8091/dex_dashboard.html` (Heimnetz + WireGuard; ufw nur LAN/VPN). Oben Paper-Portfolio (Equity, offene Wetten, letzte Trades — Rug 💀 / Gewinner 🚀), unten Screening-Watchlist (sortiert nach Performance seit Entdeckung).
+- **Sessions**: `dex`, `dex_paper`, `dex_dashboard` — alle im Monitor (`BOTS`, `trading_only=False`) + `start_all.sh` (Reboot).
+- **Whitelist** (`dash_server.py`): `dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json` — `config.py` bleibt 403.
+- **`rug_sim.py`** — empirischer Rug-Reaktionstest (nutzt echte `dex_paper`-Konstanten + `close_paper()`, kein Netzwerk).
+
+---
+
 ## Known Gotchas
 
 **Kraken symbol format**: BTC is `XBTUSD` not `BTCUSD`. Response key may be long-form (`XXBTZUSD`). Use `next(v for k, v in result.items() if k != "last")` to extract OHLC data.
@@ -1522,3 +1589,7 @@ Konto #2 (config alpaca_gw_*):       Gateway          → 1 WS, /dev/shm/crypto_
 **Drawdown-Re-Baseline ist Absicht, kein Verlust-Vergessen**: Beim Drawdown-Resume wird `peak_value=None` gesetzt → Peak misst ab dem aktuellen (niedrigeren) Wert. Das „verzeiht" optisch den Drawdown, ist aber gewollt: ohne Reset entsteht die Dauer-Halt-Schleife. Die Eskalation (`≥2 Halts/48h → manual_hold`) fängt den Fall ab, dass die Strategie nach dem Reset ERNEUT −15% verliert (echter Death-Spiral statt Schleifen-Artefakt).
 
 **Partial Resume nach Drawdown-Halt**: Nach `halt_both` bleibt `s["halted"]` (kombinierter Flag) True bis BEIDE Bots resumed sind. `_update_halt_file()` darf `halted_bots` deshalb nur aus den per-Bot-Flags (`super_halted`/`crypto_halted`) ableiten — nicht aus dem kombinierten Flag, sonst verliert ein bereits resumed Bot seinen Monitor-Crash-Schutz (gefixt 2026-06-10; Halt-File wird seither auch bei jedem Agent-Start neu synchronisiert).
+
+**DEX Paper: API-Ausfall ist KEIN Rug**: `dex_paper.token_now()` gibt `None` bei API-Ausfall (Timeout/429/5xx) zurück und `{}` bei echtem Vanish (200 OK, aber keine Solana-Pairs mehr). Die Exit-Schleife wertet `None` NICHT als Rug (überspringt den Zyklus, resettet `rug_misses`), und bucht einen Rug erst nach `RUG_CONFIRM=3` aufeinanderfolgenden Belegen (Liq<`RUG_LIQ` oder Vanish). Vorher (Honesty-Review-Bug): `token_now()` gab bei JEDEM Fehler `None`, und die Schleife buchte das sofort als −95%-Rug → ein einzelner Netz-Hiccup zerstörte eine gesunde Position mit einem Fake-Totalverlust und verfälschte den ganzen Test irreproduzierbar.
+
+**DEX Paper: Entry zur Live-Quelle, nicht zur Watchlist**: der Entry-Fill nutzt `token_now()` (live, gleiche Quelle wie der Exit), NICHT den Watchlist-Preis (bis zu 120s alt — der Monitor pollt nur alle `POLL_SEC=120s` und nur die ≤30 wiedergesehenen Token). Da der Entry-Gate nur steigende Token (≥12% `chg1`) durchlässt, ist der ältere Watchlist-Preis systematisch UNTER dem Live-Preis → ein eingebauter Fake-Sofortgewinn beim ersten Mark-to-Market. Gleiche Bug-Klasse wie das Contrarian-Phantom (Entry zu alter Quelle, Exit live). Watchlist-Felder (`chg1`/`vol_h6`) dienen nur dem Gating, nie dem Fill-Preis.
