@@ -33,6 +33,13 @@ class Handler(SimpleHTTPRequestHandler):
         self.path = "/" + p
         return p
 
+    def end_headers(self):
+        # echte No-Cache-Header -> Browser holt immer die frische Version
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
     def do_GET(self):
         if self._check() is not None:
             super().do_GET()
