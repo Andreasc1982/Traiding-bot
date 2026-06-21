@@ -1522,6 +1522,7 @@ Ein geschönter Paper-Test wäre schlimmer als kein Test. Drei bewusste Entschei
 - **Sessions**: `dex`, `dex_paper`, `dex_dashboard` — alle im Monitor (`BOTS`, `trading_only=False`) + `start_all.sh` (Reboot).
 - **Whitelist** (`dash_server.py`): `dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json` — `config.py` bleibt 403.
 - **`rug_sim.py`** — empirischer Rug-Reaktionstest (nutzt echte `dex_paper`-Konstanten + `close_paper()`, kein Netzwerk).
+- **Telegram** (gleicher Chat/Token wie Live-Bots, `_tg()`/`sendMessage` — kein getUpdates-Konflikt mit dem Router): 💀 Rug, 🚀 Gewinn ≥`TG_WIN_PCT`(25%), 🏠 House-Money (+100%), 🛰️ `SUMMARY_H`(6h)-Zusammenfassung (Equity/Trades/Win-Rate/Rugs) + Startup-Ping. Kleinverluste/Stops bewusst NICHT einzeln (Spam-Schutz) — die stehen in der 6h-Übersicht. `last_summary` in `paper_state.json` persistiert → Restarts re-senden die Summary nicht sofort. `dex_monitor` bleibt still (read-only, keine Alerts).
 
 ---
 
