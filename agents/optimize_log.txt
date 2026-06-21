@@ -1248,3 +1248,44 @@
 [2026-06-20 20:41:25] Nächster Lauf: 2026-06-21 00:00 (in 3.3h)
 [2026-06-20 21:36:25] Nächster Lauf: 2026-06-21 00:00 (in 2.4h)
 [2026-06-20 22:31:25] Nächster Lauf: 2026-06-21 00:00 (in 1.5h)
+[2026-06-20 23:26:25] Nächster Lauf: 2026-06-21 00:00 (in 0.6h)
+[2026-06-21 00:21:25] Sonntag 00:xx erkannt — starte Wochenanalyse (2026-06-21)
+[2026-06-21 00:21:25] ============================================================
+[2026-06-21 00:21:25] Optimierungs-Analyse gestartet
+[2026-06-21 00:21:25] ============================================================
+[2026-06-21 00:21:25] Trades: Super=33, Crypto=462
+[2026-06-21 00:21:25] Skips analysiert: Super=10, Crypto=10
+[2026-06-21 00:21:25] Lade ETF Tagesbars...
+[2026-06-21 00:21:26]   10 Symbole geladen: GLD(189), IBIT(189), PAVE(189), SLX(189), XLE(189), XLI(189), XLK(189), ITA(189), XLF(189), XOP(189)
+[2026-06-21 00:21:26] Starte Grid-Search Super Bot...
+[2026-06-21 00:21:26]   Grid: 81 combos × 10 symbols
+[2026-06-21 00:21:26]     GLD: 189 bars pre-computed
+[2026-06-21 00:21:26]     IBIT: 189 bars pre-computed
+[2026-06-21 00:21:26]     PAVE: 189 bars pre-computed
+[2026-06-21 00:21:26]     SLX: 189 bars pre-computed
+[2026-06-21 00:21:26]     XLE: 189 bars pre-computed
+[2026-06-21 00:21:26]     XLI: 189 bars pre-computed
+[2026-06-21 00:21:26]     XLK: 189 bars pre-computed
+[2026-06-21 00:21:26]     ITA: 189 bars pre-computed
+[2026-06-21 00:21:26]     XLF: 189 bars pre-computed
+[2026-06-21 00:21:26]     XOP: 189 bars pre-computed
+[2026-06-21 00:21:26]   Bestes Ergebnis: {'rsi_threshold': 65, 'st_mult': 4.0, 'stop_loss': 2.0, 'take_profit': 12.0, 'trailing_stop': 3.0}
+[2026-06-21 00:21:26] Lade Crypto Tagesbars...
+[2026-06-21 00:21:26]   9 Symbole geladen: AVAX/USD(221), BTC/USD(221), DOGE/USD(221), ETH/USD(221), SHIB/USD(221), SOL/USD(221), XRP/USD(221), LINK/USD(221), LTC/USD(221)
+[2026-06-21 00:21:26] Starte Grid-Search Crypto Bot...
+[2026-06-21 00:21:26]   Grid: 81 combos × 9 symbols
+[2026-06-21 00:21:27]     AVAX/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     BTC/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     DOGE/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     ETH/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     SHIB/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     SOL/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     XRP/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     LINK/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]     LTC/USD: 221 bars pre-computed
+[2026-06-21 00:21:27]   Bestes Ergebnis: {'rsi_threshold': 65, 'st_mult': 3.5, 'stop_loss': 3.0, 'take_profit': 8.0, 'trailing_stop': 2.0}
+[2026-06-21 00:21:27] 7 Empfehlungen generiert
+[2026-06-21 00:21:27] Sende Telegram-Bericht...
+[2026-06-21 00:21:27] Ergebnisse gespeichert: /home/trading2025/trading_bot/agents/optimize_results.json
+[2026-06-21 00:21:27] Optimierungs-Analyse abgeschlossen
+[2026-06-21 01:16:27] Nächster Lauf: 2026-06-28 00:00 (in 166.7h)

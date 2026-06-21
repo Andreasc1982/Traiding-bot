@@ -554,12 +554,12 @@
       "reason": "48h Safety-Net"
     }
   ],
-  "super_day_start": 69814.81000000001,
-  "super_day_date": "2026-06-20",
+  "super_day_start": 66620.64,
+  "super_day_date": "2026-06-21",
   "super_halted": false,
   "super_resume_at": null,
-  "crypto_day_start": 14659.09007430284,
-  "crypto_day_date": "2026-06-20",
+  "crypto_day_start": 14643.49968958716,
+  "crypto_day_date": "2026-06-21",
   "crypto_halted": false,
   "crypto_resume_at": null,
   "halt_btc_price": null,
