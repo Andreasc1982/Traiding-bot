@@ -42,6 +42,7 @@ MAX_POS        = 12        # max gleichzeitige Wetten
 ENTRY_MOM      = 12.0      # Trigger: >=12% 1h-Momentum (sustained, kein 5-min-Flash)
 ENTRY_VOL_H6   = 5000      # zusaetzlich: >=$5k 6h(~5h)-Volumen — echtes Interesse, kein toter Flash
 ENTRY_MAX_CHG5 = 15.0      # v2 Anti-Chase: NICHT mitten im 5m-Spike kaufen — Daten v1: 5m-Mom 25%+ -> ~0% Win (Top-Kauf)
+ENTRY_MAX_CHG1 = 100.0     # v2.1 Anti-Parabolic: 1h-Momentum-Deckel — schon >100% gelaufen = Top (CALVIN +256% -> -18.7%); Startwert, aus chg1-Daten zu schaerfen
 ENTRY_SLIP     = 0.05      # 5% Kauf-Slippage
 EXIT_SLIP      = 0.05      # 5% Verkauf-Slippage
 HARD           = 0.35      # harter Stop -35% (DEX-Noise verlangt Luft)
@@ -221,7 +222,8 @@ def run():
           " | Entry >=" + str(ENTRY_MOM) + "% 1h-Mom + >=$" + str(ENTRY_VOL_H6) + " 5h-Vol")
     print("  Stop -" + str(int(HARD * 100)) + "% | Trail " + str(int(TRAIL * 100)) +
           "% | Slippage " + str(int(ENTRY_SLIP * 100)) + "%/Seite | Rug<$" + str(RUG_LIQ))
-    print("  v2: Anti-Chase 5m<=" + str(ENTRY_MAX_CHG5) + "% | Break-Even ab +" +
+    print("  v2: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
+          "% | Anti-Chase 5m<=" + str(ENTRY_MAX_CHG5) + "% | Break-Even ab +" +
           str(int(BE_TRIGGER * 100)) + "%")
     print("=" * 58)
 
@@ -269,7 +271,9 @@ def run():
                 mom   = t.get("chg1", t.get("chg5", 0)) or 0
                 volh6 = t.get("vol_h6", 0) or 0
                 chg5  = t.get("chg5", 0) or 0
-                if mom < ENTRY_MOM or volh6 < ENTRY_VOL_H6:   # 12% 1h-Momentum UND 5h-Volumen
+                if mom < ENTRY_MOM or mom > ENTRY_MAX_CHG1:   # 1h-Momentum im Band: genug Trend, aber nicht schon parabolisch (CALVIN)
+                    continue
+                if volh6 < ENTRY_VOL_H6:                      # genug 5h-Volumen
                     continue
                 if chg5 > ENTRY_MAX_CHG5:                     # v2 Anti-Chase: nicht mitten im 5m-Spike (Top-Kauf)
                     continue
