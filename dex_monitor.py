@@ -31,9 +31,9 @@ HEARTBEAT = os.path.join(DEX_DIR, "heartbeat.json")
 LOG_CSV   = os.path.join(DEX_DIR, "screening_log.csv")
 
 CHAIN          = "solana"
-POLL_SEC       = 120
+POLL_SEC       = 60          # 120->60: dank Batch-Call + Lazy-RugCheck (1 statt ~30 DexScreener-Calls/Zyklus)
 TIMEOUT        = 10
-MAX_PER_CYCLE  = 30          # nur Top-N Profile/Zyklus screenen (Rate-Limit-Schonung)
+MAX_PER_CYCLE  = 30          # nur Top-N Profile/Zyklus screenen (= 1 Batch-Call, DexScreener-Limit 30 Adressen)
 
 # Screening-Schwellen — konservativ: die MEISTEN Token sollen durchfallen (Rug-Dichte!)
 MIN_LIQUIDITY  = 10000       # min $10k Liquiditaet (darunter Rug-anfaellig)
@@ -63,15 +63,17 @@ def _atomic_write(path, obj):
         print("[DEX-WRITE] " + str(e))
 
 
-def screen_token(addr):
-    data = _get("https://api.dexscreener.com/latest/dex/tokens/" + addr)
-    if not data or not data.get("pairs"):
+def _best_pair(pairs, addr):
+    """Liquidestes Solana-Pair fuer eine Adresse aus einer gemischten Batch-Pair-Liste."""
+    cand = [p for p in pairs if p.get("chainId") == CHAIN
+            and (p.get("baseToken") or {}).get("address") == addr]
+    if not cand:
         return None
-    pairs = [p for p in data["pairs"] if p.get("chainId") == CHAIN]
-    if not pairs:
-        return None
-    p = max(pairs, key=lambda x: (x.get("liquidity") or {}).get("usd", 0) or 0)
+    return max(cand, key=lambda x: (x.get("liquidity") or {}).get("usd", 0) or 0)
 
+
+def screen_pair(p, addr):
+    """Billiges Screening aus einem bereits geholten Pair — KEIN RugCheck (kommt lazy)."""
     liq   = (p.get("liquidity") or {}).get("usd", 0) or 0
     vol5  = (p.get("volume") or {}).get("m5", 0) or 0
     txns  = (p.get("txns") or {}).get("m5", {}) or {}
@@ -88,20 +90,11 @@ def screen_token(addr):
     symbol = (p.get("baseToken") or {}).get("symbol", "?")
 
     reasons = []
-    if liq < MIN_LIQUIDITY:                              reasons.append("liq<10k")
-    if vol5 < MIN_VOL_5M:                                reasons.append("vol5<500")
-    if age_h > MAX_AGE_H:                                reasons.append("alt>48h")
-    if age_h < MIN_AGE_MIN / 60.0:                       reasons.append("zu_neu")
-    if sells > 0 and (buys / max(sells, 1)) < MIN_BUY_RATIO: reasons.append("sell_druck")
-
-    # RugCheck (der wichtigste Filter)
-    rug = _get("https://api.rugcheck.xyz/v1/tokens/" + addr + "/report/summary")
-    rug_risk = "?"
-    if rug is not None:
-        risks = rug.get("risks") or []
-        rug_risk = (",".join((r.get("name", "")[:14]) for r in risks[:2]) or "ok")
-        if any(r.get("level") == "danger" for r in risks):
-            reasons.append("RUG-DANGER")
+    if liq < MIN_LIQUIDITY:                                   reasons.append("liq<10k")
+    if vol5 < MIN_VOL_5M:                                     reasons.append("vol5<500")
+    if age_h > MAX_AGE_H:                                     reasons.append("alt>48h")
+    if age_h < MIN_AGE_MIN / 60.0:                            reasons.append("zu_neu")
+    if sells > 0 and (buys / max(sells, 1)) < MIN_BUY_RATIO:  reasons.append("sell_druck")
 
     return {
         "addr": addr, "symbol": symbol, "price": price,
@@ -109,8 +102,18 @@ def screen_token(addr):
         "chg5": round(chg5, 1), "chg1": round(chg1, 1),
         "vol_h1": round(volh1), "vol_h6": round(volh6),
         "age_h": round(age_h, 1),
-        "rug_risk": rug_risk, "passed": len(reasons) == 0, "reasons": reasons,
+        "rug_risk": "?", "passed": False, "reasons": reasons,
     }
+
+
+def rugcheck(addr):
+    """RugCheck-Status — lazy, nur fuer Cheap-Passer aufgerufen. -> (label, is_danger)."""
+    rug = _get("https://api.rugcheck.xyz/v1/tokens/" + addr + "/report/summary")
+    if rug is None:
+        return "?", False
+    risks = rug.get("risks") or []
+    label = (",".join((r.get("name", "")[:14]) for r in risks[:2]) or "ok")
+    return label, any(r.get("level") == "danger" for r in risks)
 
 
 def run():
@@ -138,15 +141,25 @@ def run():
         try:
             profiles = _get("https://api.dexscreener.com/token-profiles/latest/v1") or []
             sol = [x for x in profiles if x.get("chainId") == CHAIN][:MAX_PER_CYCLE]
+            addrs = [x.get("tokenAddress") for x in sol if x.get("tokenAddress")]
+            # EIN Batch-Call fuer ALLE Token-Daten (DexScreener: bis 30 Adressen/Call)
+            batch = _get("https://api.dexscreener.com/latest/dex/tokens/" + ",".join(addrs[:30]))
+            all_pairs = (batch or {}).get("pairs") or []
             screened = passed = 0
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
-            for x in sol:
-                addr = x.get("tokenAddress")
-                if not addr:
+            for addr in addrs:
+                p = _best_pair(all_pairs, addr)
+                if not p:
                     continue
-                s = screen_token(addr)
-                if not s:
-                    continue
+                s = screen_pair(p, addr)
+                # Lazy RugCheck — nur fuer Tokens die die billigen Filter schon bestehen
+                if not s["reasons"]:
+                    label, danger = rugcheck(addr)
+                    s["rug_risk"] = label
+                    if danger:
+                        s["reasons"].append("RUG-DANGER")
+                    time.sleep(0.3)   # RugCheck-Schonung (nur fuer die wenigen Passer)
+                s["passed"] = len(s["reasons"]) == 0
                 screened += 1
                 # Zeitreihe loggen (alle, zum Anlernen)
                 try:
@@ -168,7 +181,6 @@ def run():
                     print("[PASS] " + s["symbol"].ljust(10) + " liq$" + str(s["liq"]) +
                           " chg5=" + str(s["chg5"]) + "% buys/sells=" + str(s["buys"]) + "/" +
                           str(s["sells"]) + " rug=" + s["rug_risk"])
-                time.sleep(0.4)   # Rate-Limit-Schonung
 
             # Watchlist auf zuletzt 200 begrenzen (aelteste raus)
             if len(watchlist) > 200:

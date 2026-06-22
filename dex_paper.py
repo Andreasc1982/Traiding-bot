@@ -112,6 +112,32 @@ def token_now(addr):
     return {"price": price, "liq": liq}
 
 
+def tokens_now(addrs):
+    """Batch: bis zu 30 Adressen in EINEM Call. -> dict addr -> {price, liq}.
+    None (statt dict) bei komplettem API-Ausfall (transient, nicht werten).
+    Fehlt eine Adresse im Ergebnis -> echter Vanish (Aufrufer behandelt als {})."""
+    if not addrs:
+        return {}
+    d = _get("https://api.dexscreener.com/latest/dex/tokens/" + ",".join(addrs[:30]))
+    if d is None:
+        return None                       # kompletter API-Ausfall
+    out = {}
+    for p in (d.get("pairs") or []):
+        if p.get("chainId") != "solana":
+            continue
+        a = (p.get("baseToken") or {}).get("address")
+        if not a:
+            continue
+        liq = (p.get("liquidity") or {}).get("usd", 0) or 0
+        try:
+            price = float(p.get("priceUsd") or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        if a not in out or liq > out[a]["liq"]:   # liquidestes Pair pro Token
+            out[a] = {"price": price, "liq": liq}
+    return out
+
+
 def _f(x):
     try:
         return float(x)
@@ -265,10 +291,12 @@ def run():
                       str(price) + " mom=" + str(mom) + "% (fill $" +
                       str(round(fill, 10)) + " inkl. Slippage)")
 
-            # ── 2. EXITS — held positions, EHRLICHE Rug-Behandlung ───────────
-            for addr in list(state["positions"].keys()):
+            # ── 2. EXITS — alle held positions in EINEM Batch-Call (bis 30 Adressen) ──
+            held = list(state["positions"].keys())
+            batch = tokens_now(held)
+            for addr in held:
                 pos = state["positions"][addr]
-                now = token_now(addr)
+                now = None if batch is None else batch.get(addr, {})   # batch=None -> API-Ausfall; fehlt -> Vanish ({})
 
                 # Transienter API-Ausfall -> diesen Zyklus ueberspringen, NICHT als Rug werten
                 if now is None:
@@ -312,7 +340,6 @@ def run():
                     reason = "TIMEOUT"
                 if reason:
                     close_paper(state, trades, addr, cur, reason)
-                time.sleep(0.3)   # Rate-Limit-Schonung zwischen Positionen
 
             # ── 3. Persist + Heartbeat ───────────────────────────────────────
             if len(state["traded"]) > 1000:
