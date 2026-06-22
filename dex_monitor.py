@@ -130,7 +130,7 @@ def run():
 
     if not os.path.exists(LOG_CSV):
         with open(LOG_CSV, "w") as f:
-            f.write("time,addr,symbol,price,liq,vol5,buys,sells,chg5,age_h,passed,rug_risk,reasons\n")
+            f.write("time,addr,symbol,price,liq,vol5,buys,sells,chg5,age_h,passed,rug_risk,reasons,chg1,vol_h6\n")
 
     cycle = 0
     while True:
@@ -154,7 +154,8 @@ def run():
                         f.write(",".join(str(v) for v in [
                             now, s["addr"], s["symbol"], s["price"], s["liq"], s["vol5"],
                             s["buys"], s["sells"], s["chg5"], s["age_h"], s["passed"],
-                            s["rug_risk"].replace(",", ";"), "|".join(s["reasons"])]) + "\n")
+                            s["rug_risk"].replace(",", ";"), "|".join(s["reasons"]),
+                            s.get("chg1", 0), s.get("vol_h6", 0)]) + "\n")
                 except Exception:
                     pass
                 if s["passed"]:
