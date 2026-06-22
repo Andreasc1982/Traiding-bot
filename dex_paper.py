@@ -41,6 +41,7 @@ BET            = 20.0      # $20 Mini-Wette pro Token (kleine Betraege = Strateg
 MAX_POS        = 12        # max gleichzeitige Wetten
 ENTRY_MOM      = 12.0      # Trigger: >=12% 1h-Momentum (sustained, kein 5-min-Flash)
 ENTRY_VOL_H6   = 5000      # zusaetzlich: >=$5k 6h(~5h)-Volumen — echtes Interesse, kein toter Flash
+ENTRY_MAX_CHG5 = 15.0      # v2 Anti-Chase: NICHT mitten im 5m-Spike kaufen — Daten v1: 5m-Mom 25%+ -> ~0% Win (Top-Kauf)
 ENTRY_SLIP     = 0.05      # 5% Kauf-Slippage
 EXIT_SLIP      = 0.05      # 5% Verkauf-Slippage
 HARD           = 0.35      # harter Stop -35% (DEX-Noise verlangt Luft)
@@ -49,6 +50,7 @@ RUG_LIQ        = 2500      # Liquiditaet < $2.5k = gerugged -> Fill zum Ist-Prei
 RUG_CONFIRM    = 3         # so viele aufeinanderfolgende Rug-Belege noetig (gegen API-Hiccups -> keine Fake-Verluste)
 RUG_RECOVERY   = 0.05      # komplett verschwundener Token: Restwert-Annahme (5% = -95%, ehrlich pessimistisch)
 SCALE_AT       = 1.00      # bei +100%: Einsatz rausnehmen (House-Money), Rest laeuft
+BE_TRIGGER     = 0.25      # v2: ab +25% Peak Break-Even-Floor — einen Gewinner nie ins Minus zurueckdrehen lassen
 MAX_HOURS      = 48        # Zeit-Exit fuer Zombies (steht weder hoch noch tief)
 POLL_SEC       = 20        # Held-Positionen alle 20s pruefen
 TIMEOUT        = 10
@@ -135,6 +137,7 @@ def close_paper(state, trades, addr, price, reason):
         "addr": addr, "symbol": pos["symbol"], "profit": round(profit, 2),
         "pct": round(pct, 1), "reason": reason,
         "entry": pos["entry"], "exit": price,
+        "peak_pct": round((pos.get("peak", pos["entry"]) / pos["entry"] - 1) * 100, 1) if pos["entry"] > 0 else 0,
         "opened": pos["time"], "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "scaled": pos.get("scaled", False),
     })
@@ -192,6 +195,8 @@ def run():
           " | Entry >=" + str(ENTRY_MOM) + "% 1h-Mom + >=$" + str(ENTRY_VOL_H6) + " 5h-Vol")
     print("  Stop -" + str(int(HARD * 100)) + "% | Trail " + str(int(TRAIL * 100)) +
           "% | Slippage " + str(int(ENTRY_SLIP * 100)) + "%/Seite | Rug<$" + str(RUG_LIQ))
+    print("  v2: Anti-Chase 5m<=" + str(ENTRY_MAX_CHG5) + "% | Break-Even ab +" +
+          str(int(BE_TRIGGER * 100)) + "%")
     print("=" * 58)
 
     state = {"bankroll": START_BANKROLL, "positions": {}, "traded": []}
@@ -237,7 +242,10 @@ def run():
                     continue
                 mom   = t.get("chg1", t.get("chg5", 0)) or 0
                 volh6 = t.get("vol_h6", 0) or 0
-                if mom < ENTRY_MOM or volh6 < ENTRY_VOL_H6:   # 12% Momentum UND 5h-Volumen
+                chg5  = t.get("chg5", 0) or 0
+                if mom < ENTRY_MOM or volh6 < ENTRY_VOL_H6:   # 12% 1h-Momentum UND 5h-Volumen
+                    continue
+                if chg5 > ENTRY_MAX_CHG5:                     # v2 Anti-Chase: nicht mitten im 5m-Spike (Top-Kauf)
                     continue
                 live = token_now(addr)        # gleiche Live-Quelle wie der Exit -> kein Freshness-Phantom
                 if not live or live.get("price", 0) <= 0 or live.get("liq", 0) < RUG_LIQ:
@@ -293,8 +301,11 @@ def run():
                     scale_out(state, trades, addr, cur)
 
                 reason = None
+                be_armed = pos["peak"] >= pos["entry"] * (1 + BE_TRIGGER)   # war die Position je >= +25%?
                 if cur <= pos["entry"] * (1 - HARD):
                     reason = "HARD-STOP"
+                elif be_armed and cur <= pos["entry"]:
+                    reason = "BREAKEVEN"      # war im Plus, jetzt zurueck am Entry -> Gewinn nicht ins Minus drehen
                 elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - TRAIL):
                     reason = "TRAIL"
                 elif age_h >= MAX_HOURS and -20 < pnl < 25:
