@@ -1535,6 +1535,25 @@ Nach 70 v1-Trades (−55,7%, 16% Win) zeigte `dex_analyze.py` (Join Trades ↔ `
 
 ---
 
+## Health-Logging + Singleton-Lock (Autark-Betrieb)
+
+Damit die Bots live **ohne tägliches Eingreifen** laufen: ein Doppelstart-Schutz (verhindert das Duplikat-Chaos — mehrere Instanzen sprengten Alpacas WS-Limit → 406, korrumpierten `dashboard.json`/`super_state.json`, erzeugten Phantom-Drawdowns die die Risk-Bremse auslösten) plus ein zentrales Event-Log zur Langzeit-Fehleranalyse.
+
+### `health.py` (gemeinsames Modul im Repo-Root)
+- **`acquire_singleton(name)`** — exklusiver `flock` auf `/tmp/<name>.lock`. Returns `None` wenn schon eine Instanz läuft (Aufrufer beendet sich), sonst File-Handle (gehalten bis Prozessende; Auto-Release auch bei `os._exit`/`kill -9`). Eingebaut in `super_bot.py` + `crypto_bot.py` `__main__` — **jede zweite Instanz beendet sich sofort selbst** (empirisch verifiziert).
+- **`log(source, event, detail)`** — append-only nach `agents/health_log.csv` (`flock`-geschützt, schluckt eigene Fehler → crasht NIE den Bot).
+
+### Geloggte Events
+| Quelle | Events |
+|--------|--------|
+| super_bot / crypto_bot | `START`, `DUPLICATE_BLOCKED`, `WATCHDOG_HANG` (vor `os._exit`) |
+| monitor_agent | `CRASH`, `RESTART_OK`, `RESTART_FAIL` (je Session) |
+
+### `health_report.py` — Muster über Zeit
+`python3 health_report.py [tage] [--tg]`: Events nach Typ/Quelle/Tag, Crash-Hotspots, Warnungen (häufige Watchdog-Hangs, fehlgeschlagene Restarts). `--tg` → Telegram, eignet sich für einen wöchentlichen Cron als autarker Gesundheits-Check. `agents/health_log.csv` wird vom GitHub-Backup mitgesichert (persistente Historie). *Noch nicht abgedeckt (TODO): Lock für gateway/clones/dex_*, plus STALE/NO_TRADES/HALT-Events.*
+
+---
+
 ## Known Gotchas
 
 **Kraken symbol format**: BTC is `XBTUSD` not `BTCUSD`. Response key may be long-form (`XXBTZUSD`). Use `next(v for k, v in result.items() if k != "last")` to extract OHLC data.
@@ -1603,3 +1622,7 @@ Nach 70 v1-Trades (−55,7%, 16% Win) zeigte `dex_analyze.py` (Join Trades ↔ `
 **DEX Paper: API-Ausfall ist KEIN Rug**: `dex_paper.token_now()` gibt `None` bei API-Ausfall (Timeout/429/5xx) zurück und `{}` bei echtem Vanish (200 OK, aber keine Solana-Pairs mehr). Die Exit-Schleife wertet `None` NICHT als Rug (überspringt den Zyklus, resettet `rug_misses`), und bucht einen Rug erst nach `RUG_CONFIRM=3` aufeinanderfolgenden Belegen (Liq<`RUG_LIQ` oder Vanish). Vorher (Honesty-Review-Bug): `token_now()` gab bei JEDEM Fehler `None`, und die Schleife buchte das sofort als −95%-Rug → ein einzelner Netz-Hiccup zerstörte eine gesunde Position mit einem Fake-Totalverlust und verfälschte den ganzen Test irreproduzierbar.
 
 **DEX Paper: Entry zur Live-Quelle, nicht zur Watchlist**: der Entry-Fill nutzt `token_now()` (live, gleiche Quelle wie der Exit), NICHT den Watchlist-Preis (bis zu 60s alt — der Monitor pollt alle `POLL_SEC=60s` und nur die ≤30 wiedergesehenen Token). Da der Entry-Gate nur steigende Token (≥12% `chg1`) durchlässt, ist der ältere Watchlist-Preis systematisch UNTER dem Live-Preis → ein eingebauter Fake-Sofortgewinn beim ersten Mark-to-Market. Gleiche Bug-Klasse wie das Contrarian-Phantom (Entry zu alter Quelle, Exit live). Watchlist-Felder (`chg1`/`vol_h6`) dienen nur dem Gating, nie dem Fill-Preis.
+
+**Mehrfach-Instanzen = WS-406 + State-Korruption (gelöst via Singleton-Lock)**: Ohne Doppelstart-Schutz konnten sich mehrere `super_bot`/`crypto_bot`-Instanzen ansammeln (Monitor-Restart-Rennen, mehrfaches start_all, manueller Start). Folgen: Alpacas WS-Connection-Limit gesprengt (`406 connection limit exceeded` → keine Live-Preise), gegenseitiges Überschreiben von `dashboard.json`/`super_state.json` (Dashboard zeigte 0 Positionen trotz gehaltener, falsche Balance), Phantom-Drawdowns die 2× die Risk-Bremse auslösten. Fix: `health.acquire_singleton()` (flock) im `__main__` beider Bots → 2. Instanz beendet sich (`DUPLICATE_BLOCKED` im Health-Log). **Diagnose-Falle**: `ps aux | grep -c '[s]uper_bot.py'` zählt **3 pro Instanz** (SCREEN-Wrapper + bash-Hülle + python) — echte Instanzen via Prozessbaum (`ps -eo pid,ppid,cmd`) oder `pgrep -f 'python3 -u super_bot.py'`.
+
+**`pkill -f super_bot.py` killt die eigene SSH-Session**: der ausführende Remote-Shell-Prozess hat `super_bot.py` im Command (z.B. wenn im selben Befehl auch der Start-Befehl steht) → `pkill` matcht sich selbst. Mitigation: Bracket-Trick `pkill -f '[s]uper_bot.py'` UND den Start-Befehl NICHT in dieselbe SSH-Zeile packen (sonst matcht das `super_bot.py` im Start-String trotzdem). Besser: kill und start in getrennten SSH-Aufrufen.
