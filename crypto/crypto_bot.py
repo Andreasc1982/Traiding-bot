@@ -2573,5 +2573,19 @@ class CryptoBot:
 
 
 if __name__ == "__main__":
+    import sys, os
+    sys.path.insert(0, "/home/trading2025/trading_bot")
+    try:
+        import health
+        _lock = health.acquire_singleton("crypto_bot")
+        if _lock is None:
+            health.log("crypto_bot", "DUPLICATE_BLOCKED", "andere Instanz laeuft bereits")
+            print("[SINGLETON] crypto_bot laeuft bereits — diese Instanz beendet sich.")
+            raise SystemExit(0)
+        health.log("crypto_bot", "START", "")
+    except SystemExit:
+        raise
+    except Exception as _e:
+        print("[SINGLETON] health-Modul nicht verfuegbar (laufe trotzdem): " + str(_e))
     bot = CryptoBot()
     bot.run()

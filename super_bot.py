@@ -1019,6 +1019,11 @@ class SuperTradingBot:
             age = time.time() - self._last_heartbeat
             if age > TIMEOUT:
                 print("[WATCHDOG] Hauptloop haengt seit {:.0f}s — erzwinge Neustart".format(age))
+                try:
+                    import health
+                    health.log("super_bot", "WATCHDOG_HANG", "Hauptloop haengt seit " + str(int(age)) + "s")
+                except Exception:
+                    pass
                 os._exit(1)
 
     # ── Time-based exit for stuck positions ─────────────────────────────────
@@ -1969,5 +1974,19 @@ class SuperTradingBot:
 
 
 if __name__ == "__main__":
+    import sys, os
+    sys.path.insert(0, "/home/trading2025/trading_bot")
+    try:
+        import health
+        _lock = health.acquire_singleton("super_bot")
+        if _lock is None:
+            health.log("super_bot", "DUPLICATE_BLOCKED", "andere Instanz laeuft bereits")
+            print("[SINGLETON] super_bot laeuft bereits — diese Instanz beendet sich.")
+            raise SystemExit(0)
+        health.log("super_bot", "START", "")
+    except SystemExit:
+        raise
+    except Exception as _e:
+        print("[SINGLETON] health-Modul nicht verfuegbar (laufe trotzdem): " + str(_e))
     bot = SuperTradingBot()
     bot.run(interval=600)

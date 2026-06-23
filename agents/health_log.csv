@@ -1,0 +1,3 @@
+time,source,event,detail
+2026-06-23 23:39:55,super_bot,START,
+2026-06-23 23:40:07,super_bot,DUPLICATE_BLOCKED,andere Instanz laeuft bereits

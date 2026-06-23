@@ -26,6 +26,10 @@ try:
     from config import config
 except ImportError:
     config = {}
+try:
+    import health
+except Exception:
+    health = None
 
 TELEGRAM_TOKEN   = config.get("telegram_bot_token", "")
 TELEGRAM_CHAT_ID = config.get("telegram_chat_id", "")
@@ -317,6 +321,7 @@ def check_bots():
             msg = "🚨 CRASH: " + name + " (screen:" + session + ") ist ausgefallen! " + now_str
             print(msg)
             tg(msg)
+            if health: health.log("monitor", "CRASH", name + " (" + session + ")")
             _crash_alerted[session] = True
 
         # Wait briefly so any lingering zombie screen clears, then restart
@@ -329,11 +334,13 @@ def check_bots():
             msg = "✅ RESTART OK: " + name + " erfolgreich neu gestartet. " + now_str
             print(msg)
             tg(msg)
+            if health: health.log("monitor", "RESTART_OK", name + " (" + session + ")")
             _crash_alerted[session] = False
         else:
             msg = "❌ RESTART FEHLGESCHLAGEN: " + name + " laeuft immer noch nicht! " + now_str
             print(msg)
             tg(msg)
+            if health: health.log("monitor", "RESTART_FAIL", name + " (" + session + ")")
 
 # -- Stale dashboard check ----------------------------------------------------
 
