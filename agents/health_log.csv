@@ -1,3 +1,12 @@
 time,source,event,detail
 2026-06-23 23:39:55,super_bot,START,
 2026-06-23 23:40:07,super_bot,DUPLICATE_BLOCKED,andere Instanz laeuft bereits
+2026-06-23 23:50:12,gateway,START,
+2026-06-23 23:50:16,clone_A_baseline,START,
+2026-06-23 23:50:17,clone_B_nospikes,START,
+2026-06-23 23:50:18,clone_C_conservative,START,
+2026-06-23 23:50:19,clone_D_contrarian,START,
+2026-06-23 23:50:20,clone_E_moonshot,START,
+2026-06-23 23:50:21,dex_monitor,START,
+2026-06-23 23:50:22,dex_paper,START,
+2026-06-23 23:50:23,risk_agent,START,{'super_limit': -8.0; 'crypto_limit': -8.0; 'drawdown_limit': -15.0}

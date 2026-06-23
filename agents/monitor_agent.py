@@ -357,6 +357,12 @@ def check_stale():
                    " min nicht aktualisiert -- Bot evtl. haengend?")
             print(msg)
             tg(msg)
+            if health:                                  # max 1x/30min je Bot -> kein Log-Spam
+                _last = getattr(check_stale, "_last", {})
+                if _last.get(name, 0) + 1800 < time.time():
+                    health.log("monitor", "STALE", name + " " + str(round(age_min)) + "min")
+                    _last[name] = time.time()
+                    check_stale._last = _last
 
 # -- No-trades alert ----------------------------------------------------------
 
@@ -517,6 +523,7 @@ def check_no_trades():
             )
             print("[NO_TRADES] " + msg)
             tg(msg)
+            if health: health.log("monitor", "NO_TRADES", "seit " + str(round(silence_hours, 1)) + "h")
             _last_no_trades = time.time()
 
     except Exception as e:

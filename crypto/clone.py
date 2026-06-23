@@ -376,4 +376,16 @@ class CloneBot(CryptoBot):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise SystemExit("Usage: python3 clone.py <variant>")
+    try:
+        import health
+        _name = "clone_" + sys.argv[1]
+        if health.acquire_singleton(_name) is None:
+            health.log(_name, "DUPLICATE_BLOCKED", "")
+            print("[SINGLETON] " + _name + " laeuft bereits — Instanz beendet sich.")
+            raise SystemExit(0)
+        health.log(_name, "START", "")
+    except SystemExit:
+        raise
+    except Exception as _e:
+        print("[SINGLETON] health n/a: " + str(_e))
     CloneBot(sys.argv[1]).run()

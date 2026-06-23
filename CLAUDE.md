@@ -1540,17 +1540,21 @@ Nach 70 v1-Trades (−55,7%, 16% Win) zeigte `dex_analyze.py` (Join Trades ↔ `
 Damit die Bots live **ohne tägliches Eingreifen** laufen: ein Doppelstart-Schutz (verhindert das Duplikat-Chaos — mehrere Instanzen sprengten Alpacas WS-Limit → 406, korrumpierten `dashboard.json`/`super_state.json`, erzeugten Phantom-Drawdowns die die Risk-Bremse auslösten) plus ein zentrales Event-Log zur Langzeit-Fehleranalyse.
 
 ### `health.py` (gemeinsames Modul im Repo-Root)
-- **`acquire_singleton(name)`** — exklusiver `flock` auf `/tmp/<name>.lock`. Returns `None` wenn schon eine Instanz läuft (Aufrufer beendet sich), sonst File-Handle (gehalten bis Prozessende; Auto-Release auch bei `os._exit`/`kill -9`). Eingebaut in `super_bot.py` + `crypto_bot.py` `__main__` — **jede zweite Instanz beendet sich sofort selbst** (empirisch verifiziert).
+- **`acquire_singleton(name)`** — exklusiver `flock` auf `/tmp/<name>.lock`. Returns `None` wenn schon eine Instanz läuft (Aufrufer beendet sich), sonst File-Handle (gehalten bis Prozessende; Auto-Release auch bei `os._exit`/`kill -9`). Eingebaut in ALLE Langläufer (`super_bot`, `crypto_bot`, `gateway`, `clone_<variant>`, `dex_monitor`, `dex_paper`) im `__main__` — **jede zweite Instanz beendet sich sofort selbst** (empirisch verifiziert). Clones locken per-Variante (`clone_A_baseline` etc.), blockieren sich also nicht gegenseitig.
 - **`log(source, event, detail)`** — append-only nach `agents/health_log.csv` (`flock`-geschützt, schluckt eigene Fehler → crasht NIE den Bot).
 
 ### Geloggte Events
 | Quelle | Events |
 |--------|--------|
 | super_bot / crypto_bot | `START`, `DUPLICATE_BLOCKED`, `WATCHDOG_HANG` (vor `os._exit`) |
-| monitor_agent | `CRASH`, `RESTART_OK`, `RESTART_FAIL` (je Session) |
+| gateway / clone_* / dex_monitor / dex_paper | `START`, `DUPLICATE_BLOCKED` |
+| monitor_agent | `CRASH`, `RESTART_OK`, `RESTART_FAIL`, `STALE` (30-min-Dedup), `NO_TRADES` |
+| risk_agent | alle via `log_event()`-Hook: `HALT_SUPER/CRYPTO/BOTH`, `RESUME_*`, `DAY_START`, `START` |
 
 ### `health_report.py` — Muster über Zeit
-`python3 health_report.py [tage] [--tg]`: Events nach Typ/Quelle/Tag, Crash-Hotspots, Warnungen (häufige Watchdog-Hangs, fehlgeschlagene Restarts). `--tg` → Telegram, eignet sich für einen wöchentlichen Cron als autarker Gesundheits-Check. `agents/health_log.csv` wird vom GitHub-Backup mitgesichert (persistente Historie). *Noch nicht abgedeckt (TODO): Lock für gateway/clones/dex_*, plus STALE/NO_TRADES/HALT-Events.*
+`python3 health_report.py [tage] [--tg]`: Events nach Typ/Quelle/Tag, Crash-Hotspots, Warnungen (häufige Watchdog-Hangs, fehlgeschlagene Restarts). `agents/health_log.csv` wird vom GitHub-Backup mitgesichert (persistente Historie).
+
+**Wöchentlicher Autark-Check**: Crontab `0 8 * * 1` ruft `health_report.py 7 --tg` → Montag 08:00 kommt die Gesundheits-Zusammenfassung automatisch per Telegram, ohne nachschauen zu müssen. *Noch offen (TODO): `WS_FAIL`/`STATE_RESTORE`-Events.*
 
 ---
 

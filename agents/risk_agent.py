@@ -183,6 +183,11 @@ def log_event(s, t, **kw):
     ev = {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "type": t, **kw}
     s["events"].append(ev)
     print("[EVENT] " + t + ": " + str(kw))
+    try:
+        import health
+        health.log("risk_agent", t, str(kw)[:150])
+    except Exception:
+        pass
 
 def _update_halt_file(s):
     sh = s.get("super_halted"); ch = s.get("crypto_halted")

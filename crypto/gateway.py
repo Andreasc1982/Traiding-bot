@@ -175,4 +175,15 @@ class Gateway(CryptoBot):
 
 
 if __name__ == "__main__":
+    try:
+        import health
+        if health.acquire_singleton("gateway") is None:
+            health.log("gateway", "DUPLICATE_BLOCKED", "")
+            print("[SINGLETON] gateway laeuft bereits — Instanz beendet sich.")
+            raise SystemExit(0)
+        health.log("gateway", "START", "")
+    except SystemExit:
+        raise
+    except Exception as _e:
+        print("[SINGLETON] health n/a: " + str(_e))
     Gateway().run()

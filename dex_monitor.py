@@ -199,4 +199,15 @@ def run():
 
 
 if __name__ == "__main__":
+    try:
+        import health
+        if health.acquire_singleton("dex_monitor") is None:
+            health.log("dex_monitor", "DUPLICATE_BLOCKED", "")
+            print("[SINGLETON] dex_monitor laeuft bereits — Instanz beendet sich.")
+            raise SystemExit(0)
+        health.log("dex_monitor", "START", "")
+    except SystemExit:
+        raise
+    except Exception as _e:
+        print("[SINGLETON] health n/a: " + str(_e))
     run()
