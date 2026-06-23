@@ -2,7 +2,7 @@
   "peak_value": 84469.09076482525,
   "day_start_value": 105341.43559023943,
   "day_start_date": "2026-06-03",
-  "halted": false,
+  "halted": true,
   "resume_at": null,
   "events": [
     {
@@ -552,22 +552,33 @@
       "type": "RESUME_CRYPTO",
       "value": 14659.09,
       "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-06-22 08:08:39",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -82.75% (Limit -15.0%)",
+      "drawdown_pct": -82.75,
+      "combined": 14574.46,
+      "peak": 84469.09,
+      "halt_btc": 64097.95,
+      "halt_spy": 748.46
     }
   ],
-  "super_day_start": 66620.64,
-  "super_day_date": "2026-06-22",
-  "super_halted": false,
+  "super_day_start": 66631.81,
+  "super_day_date": "2026-06-23",
+  "super_halted": true,
   "super_resume_at": null,
-  "crypto_day_start": 14566.521835439677,
-  "crypto_day_date": "2026-06-22",
-  "crypto_halted": false,
+  "crypto_day_start": 14574.45587102537,
+  "crypto_day_date": "2026-06-23",
+  "crypto_halted": true,
   "crypto_resume_at": null,
-  "halt_btc_price": null,
-  "halt_time": null,
-  "halt_spy_price": null,
+  "halt_btc_price": 64097.95,
+  "halt_time": "2026-06-22 08:07",
+  "halt_spy_price": 748.46,
   "rolling_peak": 94971.84,
   "manual_hold": false,
   "drawdown_halt_times": [
-    "2026-06-18 07:14"
+    "2026-06-18 07:14",
+    "2026-06-22 08:07"
   ]
 }
