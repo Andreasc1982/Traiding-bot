@@ -562,14 +562,27 @@
       "peak": 84469.09,
       "halt_btc": 64097.95,
       "halt_spy": 748.46
+    },
+    {
+      "time": "2026-06-23 08:07:26",
+      "type": "RESUME_SUPER",
+      "value": 66620.46,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-23 23:50:23",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
     }
   ],
-  "super_day_start": 66631.81,
-  "super_day_date": "2026-06-23",
-  "super_halted": true,
+  "super_day_start": 66554.36,
+  "super_day_date": "2026-06-24",
+  "super_halted": false,
   "super_resume_at": null,
   "crypto_day_start": 14574.45587102537,
-  "crypto_day_date": "2026-06-23",
+  "crypto_day_date": "2026-06-24",
   "crypto_halted": true,
   "crypto_resume_at": null,
   "halt_btc_price": 64097.95,
