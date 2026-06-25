@@ -10,3 +10,7 @@ time,source,event,detail
 2026-06-23 23:50:21,dex_monitor,START,
 2026-06-23 23:50:22,dex_paper,START,
 2026-06-23 23:50:23,risk_agent,START,{'super_limit': -8.0; 'crypto_limit': -8.0; 'drawdown_limit': -15.0}
+2026-06-24 08:07:20,risk_agent,RESUME_CRYPTO,{'value': 14574.46; 'reason': '48h Safety-Net'}
+2026-06-24 08:07:23,crypto_bot,START,
+2026-06-24 08:07:45,monitor,NO_TRADES,seit 10.2h
+2026-06-24 12:35:03,risk_agent,HALT_BOTH,{'reason': 'DRAWDOWN -17.95% (Limit -15.0%)'; 'drawdown_pct': -17.95; 'combined': 66554.22; 'peak': 81114.68; 'halt_btc': 62538.1; 'halt_spy': 733.62}
