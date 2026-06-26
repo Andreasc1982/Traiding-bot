@@ -1,5 +1,5 @@
 {
-  "peak_value": 81114.67879047,
+  "peak_value": 81168.25935867509,
   "day_start_value": 105341.43559023943,
   "day_start_date": "2026-06-03",
   "halted": true,
@@ -591,14 +591,20 @@
       "peak": 81114.68,
       "halt_btc": 62538.1,
       "halt_spy": 733.62
+    },
+    {
+      "time": "2026-06-25 12:33:20",
+      "type": "RESUME_SUPER",
+      "value": 66554.22,
+      "reason": "24h Safety-Net"
     }
   ],
-  "super_day_start": 66554.22,
-  "super_day_date": "2026-06-25",
-  "super_halted": true,
+  "super_day_start": 66591.54,
+  "super_day_date": "2026-06-26",
+  "super_halted": false,
   "super_resume_at": null,
   "crypto_day_start": 14543.249358675095,
-  "crypto_day_date": "2026-06-25",
+  "crypto_day_date": "2026-06-26",
   "crypto_halted": true,
   "crypto_resume_at": null,
   "halt_btc_price": 62538.1,

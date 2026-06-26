@@ -14,3 +14,5 @@ time,source,event,detail
 2026-06-24 08:07:23,crypto_bot,START,
 2026-06-24 08:07:45,monitor,NO_TRADES,seit 10.2h
 2026-06-24 12:35:03,risk_agent,HALT_BOTH,{'reason': 'DRAWDOWN -17.95% (Limit -15.0%)'; 'drawdown_pct': -17.95; 'combined': 66554.22; 'peak': 81114.68; 'halt_btc': 62538.1; 'halt_spy': 733.62}
+2026-06-25 12:33:20,risk_agent,RESUME_SUPER,{'value': 66554.22; 'reason': '24h Safety-Net'}
+2026-06-25 12:33:24,super_bot,START,
