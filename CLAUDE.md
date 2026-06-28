@@ -3,45 +3,62 @@
 ## Directory Layout
 
 ```
-/home/trading2025/trading_bot/
-├── super_bot.py              # Stock ETF bot
-├── config.py                 # All secrets and switches (not in git)
-├── dashboard.json            # Live JSON feed for super_bot dashboard
-├── dashboard_super.html      # Super bot web dashboard
-├── trades_history.json       # Persistent trade log (super_bot)
-├── super_state.json          # Persisted balance + daily-loss baseline (survives restarts)
-├── bot_control.json          # Pause/stop control for super_bot (written by telegram_router)
-├── telegram_router.py        # Single Telegram getUpdates poller — routes commands to both bots
-├── start_all.sh              # Launches all 9 screen sessions (called by systemd)
-├── .gitignore                # Excludes config.*, state files, live feeds, logs
+/home/trading2025/trading_bot/        # = Repo-Root — ALLE Bot-SKRIPTE liegen hier (auch die DEX-Bots!)
+│
+├── super_bot.py              # Stock-ETF-Bot (Trend-Folger, 10 Sektor-ETFs)  [Session: trading]
+├── dex_monitor.py            # ★ DEX-Bot 1: Solana Token-Screening, read-only [Session: dex]
+├── dex_paper.py              # ★ DEX-Bot 2: Paper-Moonshot auf gescreente Token [Session: dex_paper]
+├── telegram_router.py        # Einziger Telegram-getUpdates-Poller (routet zu allen Bots) [tgrouter]
+├── health.py                 # Singleton-Lock + zentrales Health-Logging (gemeinsames Modul)
+├── health_report.py          # Health-Log-Auswertung (Cron Mo 08:00 --tg)
+├── dash_server.py            # Gehaerteter Dashboard-HTTP-Server (Whitelist + No-Cache-Header)
+├── rug_sim.py                # Empirischer Rug-Reaktionstest fuer dex_paper
+├── dex_analyze.py            # Winner/Loser-Analyse der DEX-Paper-Trades (Join gg. screening_log)
+├── log_clone_equity.py       # Clone-Equity-Logger (Cron alle 30 min)
+├── start_all.sh              # Startet ALLE ~19 Screen-Sessions (via systemd beim Reboot)
+├── config.py                 # Alle Secrets + Switches (NICHT in git)
+├── CLAUDE.md  .gitignore
+│   # Laufzeit (gitignored): dashboard.json, super_state.json, bot_control.json, trades_history.json, dashboard_super.html
+│   # Legacy (unbenutzt): bot.py, bot_simple_backup.py, start.sh
 │
 ├── crypto/
-│   ├── crypto_bot.py         # Crypto bot
-│   ├── crypto_dashboard.json # Live JSON feed for crypto dashboard
-│   ├── dashboard_crypto.html # Crypto bot web dashboard
-│   ├── crypto_control.json   # Pause/stop control for crypto_bot (written by telegram_router)
-│   ├── crypto_state.json     # Persisted balance + daily-loss baseline (survives restarts)
-│   └── trades_history.json   # Persistent trade log (crypto_bot)
+│   ├── crypto_bot.py         # Crypto-Bot (20 Coins, Spikes, On-Chain)  [Session: crypto]
+│   ├── gateway.py            # Market-Data-Gateway (Konto #2 -> /dev/shm/crypto_gw/)  [gateway]
+│   ├── clone.py              # Clone-Bot: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot>
+│   ├── compare_clones.py     # Clone-Vergleichsreport (--tg)
+│   ├── dashboard_crypto.html
+│   └── clones/               # Clone-Runtime je Variante + clones_dashboard.html (Port 8090)
+│       # Laufzeit (gitignored): crypto_state.json, crypto_control.json, crypto_dashboard.json
+│
+├── dex/                       # ★ DEX-DATEN — Achtung: die SKRIPTE liegen im Root, NICHT hier!
+│   ├── dex_dashboard.html    # DEX-Dashboard (Port 8091)
+│   ├── watchlist.json        # Bestandene Token
+│   ├── screening_log.csv     # Zeitreihe ALLER gescreenten Token (Trainingsdaten)
+│   ├── heartbeat.json        # Monitor-Heartbeat
+│   └── paper_state.json / paper_trades.json / paper_heartbeat.json   # Paper-Trader (v1 archiviert: *_v1.json)
 │
 └── agents/
-    ├── monitor_agent.py       # Watchdog: restarts crashed bots, daily Telegram report
-    ├── risk_agent.py          # Portfolio risk guard: halts bots on loss/drawdown limits
-    ├── backtest_agent.py      # 2024 historical backtest for both bots
-    ├── optimize_agent.py      # Weekly parameter optimizer (runs every Sunday 00:00)
-    ├── risk_halt.json         # Written by risk_agent when halted; read by monitor_agent
-    ├── risk_log.json          # Persisted risk state + event history
-    ├── backtest_results.json  # Full backtest output (machine-readable)
-    ├── backtest_report.txt    # Human-readable backtest summary
-    ├── optimize_results.json  # Weekly optimization output (machine-readable)
-    ├── optimize_log.txt       # Timestamped optimization run log
-    └── github_backup.py       # Nightly git commit + push at 02:00 (screen: backup)
+    ├── monitor_agent.py       # Watchdog: Restart bei Crash + Health-Log + Telegram-Reports
+    ├── risk_agent.py          # Risk-Guard: Halt bei Verlust/Drawdown (Events -> Health-Log)
+    ├── optimize_agent.py      # Woechentlicher Parameter-Optimizer (So 00:00)
+    ├── github_backup.py       # Naechtliches git commit+push (02:00)  [Session: backup]
+    ├── backtest_agent.py              # 2024-Backtest beider Bots
+    ├── backtest_super_strictness.py   # 10J Schwellen-Sweep (Super Bot)
+    ├── backtest_contrarian.py         # 10J antizyklischer Mean-Reversion-Backtest
+    ├── backtest_moonshot.py           # 10J Moonshot-Schiefe-Backtest
+    ├── health_log.csv         # Zentrales Event-Log (geschrieben von health.py)
+    ├── equity_history.csv     # Stuendliche Equity-Kurve (risk_agent)
+    │   # Laufzeit: risk_halt.json, risk_log.json, optimize_results.json, backtest_*.{json,txt}
+
+# ~19 Screen-Sessions: trading, crypto, dashboard, dashboard_crypto, monitor, risk, optimize,
+#   tgrouter, backup, gateway, clone_A..E (5), clones_dashboard, dex, dex_paper, dex_dashboard
 ```
 
-Local copies (Windows, for editing):
-- `C:\Users\Jennifer\super_bot_new.py`
-- `C:\Users\Jennifer\crypto_bot_new.py`
-- `C:\Users\Jennifer\dashboard_super.html`
-- `C:\Users\Jennifer\dashboard_crypto.html`
+Local copies (Windows, zum Editieren — vom Server gepullt, editiert, zurueck-deployt):
+- Bots:    `super_bot.py` · `crypto_bot.py` · `dex_monitor.py` · `dex_paper.py`
+- Infra:   `health.py` · `health_report.py` · `dash_server.py` · `gateway.py` · `clone.py`
+- Agents:  `monitor_agent.py` · `risk_agent.py`
+- Dashboards: `dashboard_super.html` · `dashboard_crypto.html` · `dex_dashboard.html`
 
 ---
 
