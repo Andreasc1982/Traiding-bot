@@ -688,8 +688,8 @@ class SuperTradingBot:
         sl = pos.get("stop_loss", self.stop_loss)
         tp = pos.get("take_profit", self.take_profit)
         pfx = "WS-" if ws else ""
-        # PSAR dynamischer Stop (primaer bei Super, Tagesbars -> keine pnl-Schwelle)
-        if psar_stop is not None and price < psar_stop:
+        # PSAR dynamischer Stop — erst ab -0.5% Buffer (Tagesbars zu nah am Einstieg bei Churn)
+        if psar_stop is not None and price < psar_stop and pnl_pct <= -0.5:
             return pfx + "PSAR-STOP"
         if best_pnl >= tp:
             if trailing >= 3.0:
@@ -995,10 +995,10 @@ class SuperTradingBot:
 
         self._save_state()   # persist balance after every close
 
-        # 1.5h Cooling nach hartem Stop -- kein Wiederkauf in den Abwaertstrend
-        if reason in ("WS-STOP-LOSS", "STOP-LOSS"):
+        # 1.5h Cooling nach Stop — kein Wiederkauf in den Abwaertstrend
+        if reason in ("WS-STOP-LOSS", "STOP-LOSS", "WS-PSAR-STOP", "PSAR-STOP"):
             self._sl_cooldown[symbol] = time.time()
-            print("[COOLING] " + symbol + " -- 1.5h Sperre nach Hard-Stop")
+            print("[COOLING] " + symbol + " -- 1.5h Sperre nach " + reason)
 
         with self.positions_lock:
             bal = self.balance
