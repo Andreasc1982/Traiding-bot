@@ -245,6 +245,16 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u telegram_router.py > /tmp/tgrouter.log 2>&1"
         ),
     },
+    "backup": {
+        "name":         "GitHub Backup Agent",
+        "session":      "backup",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/agents && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u github_backup.py > /tmp/backup.log 2>&1"
+        ),
+    },
 }
 
 # -- State --------------------------------------------------------------------
