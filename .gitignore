@@ -35,3 +35,11 @@ __pycache__/
 crypto/clones/*.json
 dex/*.json
 dex/heartbeat.json
+
+# ── Runtime data / agent logs (append-only, not source) ──────────────────
+agents/equity_history.csv
+agents/health_log.csv
+agents/optimize_log.txt
+agents/risk_log.json
+crypto/clones/equity_log.csv
+dex/screening_log.csv
