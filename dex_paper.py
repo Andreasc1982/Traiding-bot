@@ -51,9 +51,12 @@ RUG_LIQ        = 2500      # Liquiditaet < $2.5k = gerugged -> Fill zum Ist-Prei
 RUG_CONFIRM    = 3         # so viele aufeinanderfolgende Rug-Belege noetig (gegen API-Hiccups -> keine Fake-Verluste)
 RUG_RECOVERY   = 0.05      # komplett verschwundener Token: Restwert-Annahme (5% = -95%, ehrlich pessimistisch)
 SCALE_AT       = 1.00      # bei +100%: Einsatz rausnehmen (House-Money), Rest laeuft
-BE_TRIGGER     = 0.25      # v2: ab +25% Peak Break-Even-Floor — einen Gewinner nie ins Minus zurueckdrehen lassen
+BE_TRIGGER     = 0.25      # ab +25% Peak -> Break-Even-Schutz aktiv
+BE_FLOOR       = 0.10      # v3: Floor bei Entry+10% (deckt 5% Exit-Slippage + Buffer ab; vorher Entry -> avg -8.6%)
 MAX_HOURS      = 48        # Zeit-Exit fuer Zombies (steht weder hoch noch tief)
 POLL_SEC       = 20        # Held-Positionen alle 20s pruefen
+EARLY_EXIT_SEC = 180       # v3: Frueh-Exit-Fenster (3 Min = 9 Polls nach Kauf)
+EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort raus (statt -35% abwarten)
 TIMEOUT        = 10
 
 TG_TOKEN   = config.get("telegram_bot_token", "")
@@ -222,9 +225,9 @@ def run():
           " | Entry >=" + str(ENTRY_MOM) + "% 1h-Mom + >=$" + str(ENTRY_VOL_H6) + " 5h-Vol")
     print("  Stop -" + str(int(HARD * 100)) + "% | Trail " + str(int(TRAIL * 100)) +
           "% | Slippage " + str(int(ENTRY_SLIP * 100)) + "%/Seite | Rug<$" + str(RUG_LIQ))
-    print("  v2: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
-          "% | Anti-Chase 5m<=" + str(ENTRY_MAX_CHG5) + "% | Break-Even ab +" +
-          str(int(BE_TRIGGER * 100)) + "%")
+    print("  v3: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
+          "% | Anti-Chase 5m<=" + str(ENTRY_MAX_CHG5) + "% | BE-Floor +10% | Early-Exit -" +
+          str(int(EARLY_EXIT_DROP)) + "%/" + str(EARLY_EXIT_SEC) + "s | ProgTrail 30/25/20/15%")
     print("=" * 58)
 
     state = {"bankroll": START_BANKROLL, "positions": {}, "traded": []}
@@ -288,6 +291,7 @@ def run():
                     "symbol": t.get("symbol", "?"), "entry": fill, "shares": shares,
                     "peak": fill, "last_price": fill, "bet": BET, "realized": 0.0,
                     "scaled": False, "rug_misses": 0,
+                    "entry_ts": time.time(),                       # v3: Frueh-Exit-Uhr
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 }
                 state["traded"].append(addr)
@@ -333,12 +337,28 @@ def run():
                     scale_out(state, trades, addr, cur)
 
                 reason = None
-                be_armed = pos["peak"] >= pos["entry"] * (1 + BE_TRIGGER)   # war die Position je >= +25%?
-                if cur <= pos["entry"] * (1 - HARD):
+                be_armed = pos["peak"] >= pos["entry"] * (1 + BE_TRIGGER)   # war je >= +25%?
+                # Progressives Trailing: grosse Gewinner enger fassen
+                peak_pct_val = (pos["peak"] / pos["entry"] - 1) * 100 if pos["entry"] > 0 else 0
+                if peak_pct_val >= 200:
+                    trail_now = 0.15
+                elif peak_pct_val >= 100:
+                    trail_now = 0.20
+                elif peak_pct_val >= 50:
+                    trail_now = 0.25
+                else:
+                    trail_now = TRAIL        # 0.30 default
+
+                # Fix 1: Frueh-Exit — sofort-tote Entries in 3 Min abschneiden
+                age_s = time.time() - pos.get("entry_ts", time.time())
+                if age_s < EARLY_EXIT_SEC and pnl <= -EARLY_EXIT_DROP:
+                    reason = "EARLY-EXIT"
+                # Fix 2: BREAKEVEN-Floor bei Entry+10% (deckt Slippage ab)
+                elif be_armed and cur <= pos["entry"] * (1 + BE_FLOOR):
+                    reason = "BREAKEVEN"
+                elif cur <= pos["entry"] * (1 - HARD):
                     reason = "HARD-STOP"
-                elif be_armed and cur <= pos["entry"]:
-                    reason = "BREAKEVEN"      # war im Plus, jetzt zurueck am Entry -> Gewinn nicht ins Minus drehen
-                elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - TRAIL):
+                elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - trail_now):
                     reason = "TRAIL"
                 elif age_h >= MAX_HOURS and -20 < pnl < 25:
                     reason = "TIMEOUT"
