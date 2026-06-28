@@ -278,5 +278,100 @@ def main():
     print("         Baeren-Spalte zeigt, ob Dip-Buying im Crash ueberlebt.")
 
 
+def robustness_check(data, vix, spy_ma200):
+    """
+    1) VIX-Threshold-Sweep: Variant-D-Konfiguration, nur VIX-Schwelle variiert 20-36
+    2) Per-Crash-Aufschluesselung fuer Variant D (Trade-Klumpung)
+    """
+    D_BASE = {"rsi_p": 2, "rsi_entry": 10, "regime": "etf_ma200",
+              "exit": "ma5", "stop": 0.08, "maxhold": 10}
+
+    print()
+    print("=" * 72)
+    print("  ROBUSTHEIT 1 — VIX-Schwellen-Sweep (sonst identisch zu Variant D)")
+    print("=" * 72)
+    print("  Zeigt: Ist VIX>28 curve-fit, oder traegt ein breiter Bereich?")
+    print()
+    hdr2 = "%-8s %5s %6s %7s %10s %6s %5s" % (
+        "VIX>", "N", "Win%", "Exp%", "Baer-Exp%", "MaxDD", "Baer-N")
+    print(hdr2)
+    print("-" * len(hdr2))
+
+    for thresh in [20, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 36]:
+        V = dict(D_BASE, fear=("vix", thresh))
+        all_tr = []
+        for s in data:
+            all_tr += simulate(data[s], V, vix, spy_ma200)
+        st = stats(all_tr)
+        if not st:
+            print("%-8s  (keine Trades)" % (">" + str(thresh)))
+            continue
+        bear_tr = [t for t in all_tr if in_bear(t[0])]
+        bs = stats(bear_tr)
+        _, dd = equity_curve(all_tr)
+        marker = "  <-- D (Basis)" if thresh == 28 else ""
+        bexp = ("%+.2f" % bs["avg"]) if bs else "    -"
+        bn   = str(bs["n"]) if bs else "-"
+        print("%-8s %5d %5.0f%% %+6.2f %10s %5.0f%% %5s%s" % (
+            ">" + str(thresh), st["n"], st["win"], st["avg"], bexp, dd, bn, marker))
+
+    print()
+    print("=" * 72)
+    print("  ROBUSTHEIT 2 — Variant D: Trades je Crash (Klumpungs-Test)")
+    print("=" * 72)
+    print("  Zeigt: Kommt die Performance aus einem einzigen Crash-Event?")
+    print()
+    V_D = dict(D_BASE, fear=("vix", 28))
+    d_trades = []
+    for s in data:
+        for t in simulate(data[s], V_D, vix, spy_ma200):
+            d_trades.append((s,) + t)
+
+    for bname, (lo, hi) in BEARS.items():
+        crash = [(s, dt, r, h) for s, dt, r, h in d_trades if lo <= dt <= hi]
+        if not crash:
+            print("  %-20s: 0 Trades" % bname)
+            continue
+        avg_r = sum(r for _, _, r, _ in crash) / len(crash)
+        wins  = sum(1 for _, _, r, _ in crash if r > 0)
+        print("  %-20s: %2d Trades, %d%% Win, Exp %+.2f%%" % (
+            bname, len(crash), 100 * wins // len(crash), avg_r * 100))
+        for s, dt, r, h in sorted(crash, key=lambda x: x[1]):
+            print("    %s  %-6s  %+.1f%%  %dd" % (dt, s, r * 100, h))
+
+    non_bear = [(s, dt, r, h) for s, dt, r, h in d_trades if not in_bear(dt)]
+    if non_bear:
+        avg_nb = sum(r for _, _, r, _ in non_bear) / len(non_bear)
+        wins_nb = sum(1 for _, _, r, _ in non_bear if r > 0)
+        print()
+        print("  %-20s: %2d Trades, %d%% Win, Exp %+.2f%%" % (
+            "Normal (kein Crash)", len(non_bear),
+            100 * wins_nb // len(non_bear), avg_nb * 100))
+
+    print()
+    print("FAZIT-GUIDE:")
+    print("  VIX-Sweep: Wenn Exp% monoton faellt mit steigendem VIX → kein Curve-Fit,")
+    print("             Bereich traegt. Wenn nur VIX>28 gut → verdaechtig.")
+    print("  Klumpung:  Wenn >50% der Performance aus einem Crash → zu wenig Stichproben.")
+
+
 if __name__ == "__main__":
     main()
+    print()
+    print("Starte Robustheitspruefung (gleiche Daten, kein zweiter Download)...")
+    # Daten fuer Robustheit neu laden (main() gibt sie nicht zurueck)
+    data_r = {}
+    for s in ETFS:
+        d = fetch(s)
+        if d:
+            data_r[s] = precompute(d)
+    spy_r  = fetch("SPY")
+    vixd_r = fetch("^VIX")
+    if spy_r and vixd_r:
+        sm_r = sma(spy_r["close"], 200)
+        spy_ma_r = {}
+        for k, dt in enumerate(spy_r["dates"]):
+            spy_ma_r[dt] = sm_r[k]
+            spy_ma_r["_spy_" + dt] = spy_r["close"][k]
+        vix_r = {dt: vixd_r["close"][k] for k, dt in enumerate(vixd_r["dates"])}
+        robustness_check(data_r, vix_r, spy_ma_r)

@@ -170,6 +170,16 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u clone.py E_moonshot > /tmp/clone_E_moonshot.log 2>&1"
         ),
     },
+    "clone_F_contrarian_vix28": {
+        "name":         "Clone F (deep-fear contrarian)",
+        "session":      "clone_F_contrarian_vix28",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py F_contrarian_vix28 > /tmp/clone_F.log 2>&1"
+        ),
+    },
     "clones_dashboard": {
         "name":         "Clones Dashboard HTTP :8090",
         "session":      "clones_dashboard",
@@ -177,7 +187,10 @@ BOTS = {
         "cmd": (
             "fuser -k 8090/tcp 2>/dev/null; sleep 1; "
             "cd /home/trading2025/trading_bot/crypto/clones && "
-            "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json D_contrarian_dashboard.json E_moonshot_dashboard.json > /tmp/clones_dashboard.log 2>&1"
+            "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
+            "A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json "
+            "D_contrarian_dashboard.json E_moonshot_dashboard.json F_contrarian_vix28_dashboard.json "
+            "> /tmp/clones_dashboard.log 2>&1"
         ),
     },
     "dashboard": {

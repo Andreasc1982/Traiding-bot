@@ -6,12 +6,15 @@ identische Daten -> fairer Vergleich. Demo only (in-memory Balance, keine
 echten Orders), eigene State/Dashboard/Trades-Dateien, Telegram aus.
 
 Varianten:
-  A_baseline     : Momentum, MIT (Gateway-)Spikes, Memes, normale Schwelle
-  B_nospikes     : Momentum, OHNE Spikes
-  C_conservative : Momentum, OHNE Spikes, OHNE Memes, strenger Einstieg
-  D_contrarian   : Mean-Reversion — kauft oversold (RSI<35 + am unteren BB) in Angst
+  A_baseline        : Momentum, MIT (Gateway-)Spikes, Memes, normale Schwelle
+  B_nospikes        : Momentum, OHNE Spikes
+  C_conservative    : Momentum, OHNE Spikes, OHNE Memes, strenger Einstieg
+  D_contrarian      : Mean-Reversion — kauft oversold (RSI<35 + am unteren BB) in Angst
+  E_moonshot        : Lotterie — Breakout-Entry, kein TP, Trailing 25%, harter Stop 18%
+  F_contrarian_vix28: Deep-Fear — kauft RSI<20 + Supertrend bullish NUR bei F&G<25
+                      (Crypto-Adaption des 10J-ETF-Backtests: RSI2<10 + VIX>28 → 80% Win)
 
-Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian>
+Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28>
 """
 import os, sys, json, time, threading
 from datetime import datetime
@@ -31,12 +34,15 @@ START_BALANCE = 5000.0    # entspricht dem echten Kapital-Maximum -> realistisch
                           # (alle Clones gleich -> fairer %-Vergleich bleibt erhalten)
 
 VARIANTS = {
-    "A_baseline":     {"spikes": True,  "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8092},
-    "B_nospikes":     {"spikes": False, "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8093},
-    "C_conservative": {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.5, "port": 8094},
-    "D_contrarian":   {"spikes": False, "memes": True,  "contrarian": True,  "score_min": 0.1, "port": 8095},
+    "A_baseline":          {"spikes": True,  "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8092},
+    "B_nospikes":          {"spikes": False, "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8093},
+    "C_conservative":      {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.5, "port": 8094},
+    "D_contrarian":        {"spikes": False, "memes": True,  "contrarian": True,  "score_min": 0.1, "port": 8095},
     # Lotterie / positive Schiefe: Breakout-Entry, KEIN TP, Trailing 25%, harter Stop 18%, Mini-Size
-    "E_moonshot":     {"spikes": False, "memes": True,  "contrarian": False, "moonshot": True, "score_min": 0.1, "port": 8096},
+    "E_moonshot":          {"spikes": False, "memes": True,  "contrarian": False, "moonshot": True,      "score_min": 0.1, "port": 8096},
+    # Deep-Fear Contrarian: RSI<20 + Supertrend bullish + F&G<25 (Extreme Fear)
+    # Crypto-Adaption des 10J-ETF-Backtests (VIX>28 = F&G<25, RSI2<10 ≈ RSI14<20)
+    "F_contrarian_vix28":  {"spikes": False, "memes": False, "contrarian": False, "fear_contrarian": True, "score_min": 0.1, "port": 8097},
 }
 
 # Moonshot-Parameter (10J-Backtest 2026-06-18): Trailing schlaegt gedeckeltes TP 6.5x
@@ -192,6 +198,8 @@ class CloneBot(CryptoBot):
     def trade(self, scores):
         if self.cfg.get("moonshot"):
             self._moonshot_trade(scores)
+        elif self.cfg.get("fear_contrarian"):
+            self._fear_contrarian_trade(scores)
         elif self.cfg["contrarian"]:
             self._contrarian_trade(scores)
         else:
@@ -310,6 +318,92 @@ class CloneBot(CryptoBot):
         self._save_state()
         print("[CLONE-E] " + tag + " " + symbol + " teilverkauft @ $" + str(round(price, 6)) +
               " | Bal $" + str(round(self.balance, 0)))
+
+    def _fear_contrarian_trade(self, scores):
+        """Deep-Fear Contrarian — Crypto-Adaption des 10J-ETF-Backtests.
+
+        Bedingungen (analog zu Backtest-Variante D: RSI2<10 + MA200 + VIX>28):
+          - F&G < 25 (Extreme Fear = VIX>28-Aequivalent fuer Crypto)
+          - RSI(14) < 20  (tief ueberverkauft; RSI2<10 hat keine hourly-Entsprechung)
+          - Supertrend == 1 (bullish auf Stundenbars = kurzfristiger Regime-Filter)
+            Verhindert: "Knife catchen" in echtem Bear (Supertrend bullish = Trend ok)
+          - KEIN BTC-Crash-Modus
+        Exit: Standard SL=8% (Backtest-Wert) / TP=5% / Tiered-Exit des Parents.
+        Keine Memes (Backtest: ETFs = liquidere Assets).
+        Max 3 gleichzeitige Fear-Contrarian-Positionen (Konzentrations-Schutz).
+        """
+        if self.tg_paused:
+            return
+        fg = self.last_fg.get("value", 50)
+        if fg >= 25:
+            return   # nur Extreme Fear (<25), kein normaler Angst-Kauf
+        if self._btc_crash_mode:
+            return
+        dd_mult, dd_zone, _ = self._get_drawdown_mult()
+        if dd_mult == 0.0:
+            return
+
+        # Nur Main-Coins (keine Memes), max 3 Fear-Contrarian-Positionen gleichzeitig
+        fear_pos_count = sum(1 for p in self.positions.values() if p.get("fear_contrarian"))
+        if fear_pos_count >= 3:
+            return
+
+        candidates = []
+        for sym in list(CRYPTO_MAIN):
+            if sym in self.excluded_symbols:
+                continue
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+            if time.time() - self._sl_cooldown.get(sym, 0) < 5400:
+                continue
+            ind = self.get_indicators(sym)
+            if not ind:
+                continue
+            rsi        = ind.get("rsi", 50)
+            supertrend = ind.get("supertrend", -1)
+            price      = self.ws_prices.get(sym) or ind.get("price")
+            if not price:
+                continue
+            if rsi < 20 and supertrend == 1:
+                candidates.append((sym, rsi, ind, float(price)))
+
+        if not candidates:
+            print("[CLONE-F] F&G=" + str(fg) + " (Extreme Fear) — keine RSI<20+ST-bull Kandidaten")
+            return
+
+        candidates.sort(key=lambda x: x[1])   # am meisten ueberverkauft zuerst
+        print("[CLONE-F] F&G=" + str(fg) + " Extreme Fear | Kandidaten: " +
+              ", ".join(s + " RSI=" + str(round(r, 1)) for s, r, _, _ in candidates))
+
+        for sym, rsi, ind, price in candidates[:2]:   # max 2 pro Zyklus
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+                fear_pos_count = sum(1 for p in self.positions.values() if p.get("fear_contrarian"))
+                if fear_pos_count >= 3:
+                    break
+                atr         = ind.get("atr", 0) or (price * 0.02)
+                risk_budget = self.balance * 0.01
+                atr_shares  = risk_budget / (atr * 2) if atr > 0 else 0
+                max_shares  = (self.balance * self.pos_size * dd_mult) / price
+                shares = min(atr_shares, max_shares) if atr_shares > 0 else max_shares
+                if shares * price < 1:
+                    continue
+                fill   = price * (1 + self.sim_slip) if self.demo else price
+                fee_in = shares * fill * self.sim_fee if self.demo else 0.0
+                self.balance -= shares * fill + fee_in
+                self.positions[sym] = {
+                    "shares": shares, "entry": fill, "fee_in": round(fee_in, 6),
+                    "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "highest": fill,
+                    "stop_loss": 8.0,    # Backtest-Wert: gibt Pos Luft in echter Panik
+                    "take_profit": 5.0,  # Mean-Reversion-Ziel
+                    "fear_contrarian": True,
+                }
+            self._save_state()
+            print("[CLONE-F] FEAR-BUY " + sym + " RSI=" + str(round(rsi, 1)) +
+                  " F&G=" + str(fg) + " ST=bull $" + str(round(price, 6)) +
+                  " | Bal $" + str(round(self.balance, 0)))
 
     def _contrarian_trade(self, scores):
         """Mean-Reversion: kauft die am staerksten ueberverkauften Coins
