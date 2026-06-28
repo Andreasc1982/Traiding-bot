@@ -1446,3 +1446,68 @@
 [2026-06-26 23:21:27] Nächster Lauf: 2026-06-28 00:00 (in 24.6h)
 [2026-06-27 00:16:27] Nächster Lauf: 2026-06-28 00:00 (in 23.7h)
 [2026-06-27 01:11:27] Nächster Lauf: 2026-06-28 00:00 (in 22.8h)
+[2026-06-27 02:06:27] Nächster Lauf: 2026-06-28 00:00 (in 21.9h)
+[2026-06-27 03:01:27] Nächster Lauf: 2026-06-28 00:00 (in 21.0h)
+[2026-06-27 03:56:27] Nächster Lauf: 2026-06-28 00:00 (in 20.1h)
+[2026-06-27 04:51:27] Nächster Lauf: 2026-06-28 00:00 (in 19.1h)
+[2026-06-27 05:46:27] Nächster Lauf: 2026-06-28 00:00 (in 18.2h)
+[2026-06-27 06:41:27] Nächster Lauf: 2026-06-28 00:00 (in 17.3h)
+[2026-06-27 07:36:27] Nächster Lauf: 2026-06-28 00:00 (in 16.4h)
+[2026-06-27 08:31:27] Nächster Lauf: 2026-06-28 00:00 (in 15.5h)
+[2026-06-27 09:26:27] Nächster Lauf: 2026-06-28 00:00 (in 14.6h)
+[2026-06-27 10:21:27] Nächster Lauf: 2026-06-28 00:00 (in 13.6h)
+[2026-06-27 11:16:27] Nächster Lauf: 2026-06-28 00:00 (in 12.7h)
+[2026-06-27 12:11:27] Nächster Lauf: 2026-06-28 00:00 (in 11.8h)
+[2026-06-27 13:06:27] Nächster Lauf: 2026-06-28 00:00 (in 10.9h)
+[2026-06-27 14:01:27] Nächster Lauf: 2026-06-28 00:00 (in 10.0h)
+[2026-06-27 14:56:27] Nächster Lauf: 2026-06-28 00:00 (in 9.1h)
+[2026-06-27 15:51:27] Nächster Lauf: 2026-06-28 00:00 (in 8.1h)
+[2026-06-27 16:46:27] Nächster Lauf: 2026-06-28 00:00 (in 7.2h)
+[2026-06-27 17:41:27] Nächster Lauf: 2026-06-28 00:00 (in 6.3h)
+[2026-06-27 18:36:27] Nächster Lauf: 2026-06-28 00:00 (in 5.4h)
+[2026-06-27 19:31:27] Nächster Lauf: 2026-06-28 00:00 (in 4.5h)
+[2026-06-27 20:26:27] Nächster Lauf: 2026-06-28 00:00 (in 3.6h)
+[2026-06-27 21:21:27] Nächster Lauf: 2026-06-28 00:00 (in 2.6h)
+[2026-06-27 22:16:27] Nächster Lauf: 2026-06-28 00:00 (in 1.7h)
+[2026-06-27 23:11:27] Nächster Lauf: 2026-06-28 00:00 (in 0.8h)
+[2026-06-28 00:06:27] Sonntag 00:xx erkannt — starte Wochenanalyse (2026-06-28)
+[2026-06-28 00:06:27] ============================================================
+[2026-06-28 00:06:27] Optimierungs-Analyse gestartet
+[2026-06-28 00:06:27] ============================================================
+[2026-06-28 00:06:27] Trades: Super=34, Crypto=502
+[2026-06-28 00:06:27] Skips analysiert: Super=10, Crypto=10
+[2026-06-28 00:06:27] Lade ETF Tagesbars...
+[2026-06-28 00:06:28]   10 Symbole geladen: XLF(189), XOP(189), XLE(189), XLI(189), XLK(189), GLD(189), IBIT(189), ITA(189), PAVE(189), SLX(189)
+[2026-06-28 00:06:28] Starte Grid-Search Super Bot...
+[2026-06-28 00:06:28]   Grid: 81 combos × 10 symbols
+[2026-06-28 00:06:28]     XLF: 189 bars pre-computed
+[2026-06-28 00:06:28]     XOP: 189 bars pre-computed
+[2026-06-28 00:06:28]     XLE: 189 bars pre-computed
+[2026-06-28 00:06:28]     XLI: 189 bars pre-computed
+[2026-06-28 00:06:28]     XLK: 189 bars pre-computed
+[2026-06-28 00:06:28]     GLD: 189 bars pre-computed
+[2026-06-28 00:06:28]     IBIT: 189 bars pre-computed
+[2026-06-28 00:06:28]     ITA: 189 bars pre-computed
+[2026-06-28 00:06:28]     PAVE: 189 bars pre-computed
+[2026-06-28 00:06:28]     SLX: 189 bars pre-computed
+[2026-06-28 00:06:28]   Bestes Ergebnis: {'rsi_threshold': 65, 'st_mult': 4.0, 'stop_loss': 2.0, 'take_profit': 12.0, 'trailing_stop': 3.0}
+[2026-06-28 00:06:28] Lade Crypto Tagesbars...
+[2026-06-28 00:06:29]   9 Symbole geladen: ETH/USD(221), LINK/USD(221), SHIB/USD(221), SOL/USD(221), XRP/USD(221), AVAX/USD(221), BTC/USD(221), DOGE/USD(221), LTC/USD(221)
+[2026-06-28 00:06:29] Starte Grid-Search Crypto Bot...
+[2026-06-28 00:06:29]   Grid: 81 combos × 9 symbols
+[2026-06-28 00:06:29]     ETH/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     LINK/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     SHIB/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     SOL/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     XRP/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     AVAX/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     BTC/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     DOGE/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]     LTC/USD: 221 bars pre-computed
+[2026-06-28 00:06:29]   Bestes Ergebnis: {'rsi_threshold': 65, 'st_mult': 3.5, 'stop_loss': 3.0, 'take_profit': 8.0, 'trailing_stop': 2.0}
+[2026-06-28 00:06:29] 7 Empfehlungen generiert
+[2026-06-28 00:06:29] Sende Telegram-Bericht...
+[2026-06-28 00:06:29] Ergebnisse gespeichert: /home/trading2025/trading_bot/agents/optimize_results.json
+[2026-06-28 00:06:29] Optimierungs-Analyse abgeschlossen
+[2026-06-28 01:01:29] Nächster Lauf: 2026-07-05 00:00 (in 167.0h)
+[2026-06-28 01:56:29] Nächster Lauf: 2026-07-05 00:00 (in 166.1h)
