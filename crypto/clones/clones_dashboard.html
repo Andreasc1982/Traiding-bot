@@ -53,14 +53,15 @@
 
 <script>
 const META = {
-  "A_baseline":     { label:"A · Baseline",     desc:"Momentum + Spikes + Memes" },
-  "B_nospikes":     { label:"B · No-Spikes",    desc:"Momentum, ohne Spikes" },
-  "C_conservative": { label:"C · Conservative", desc:"Streng + keine Memes/Spikes" },
-  "D_contrarian":   { label:"D · Contrarian",   desc:"Mean-Reversion (kauft oversold)" },
-  "E_moonshot":     { label:"E · Moonshot 🚀",  desc:"Lotterie: Breakout, kein TP, Trailing 25%" },
+  "A_baseline":          { label:"A · Baseline",        desc:"Momentum + Spikes + Memes" },
+  "B_nospikes":          { label:"B · No-Spikes",       desc:"Momentum, ohne Spikes" },
+  "C_conservative":      { label:"C · Conservative",    desc:"Streng + keine Memes/Spikes" },
+  "D_contrarian":        { label:"D · Contrarian",      desc:"Mean-Reversion (kauft oversold)" },
+  "E_moonshot":          { label:"E · Moonshot 🚀",     desc:"Lotterie: Breakout, kein TP, Trailing 25%" },
+  "F_contrarian_vix28":  { label:"F · Deep-Fear 😱",   desc:"RSI<20 + Supertrend bull + F&G<25 (Extreme Fear)" },
 };
 const START = 5000;
-const order = ["A_baseline","B_nospikes","C_conservative","D_contrarian","E_moonshot"];
+const order = ["A_baseline","B_nospikes","C_conservative","D_contrarian","E_moonshot","F_contrarian_vix28"];
 
 function equityOf(d){
   let eq = d.balance || 0;
