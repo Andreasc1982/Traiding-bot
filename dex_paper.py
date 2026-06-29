@@ -65,6 +65,10 @@ STALE_PNL      = -5.0      # ...und aktuell im Minus (nicht nur flach)
 STALE_VOL_MIN  = 200_000   # frischer Kandidat muss >= $200k 6h-Volumen haben
 STALE_FRESH_H  = 1.0       # frischer Kandidat muss in letzter Stunde gesehen worden sein
 
+MAX_POS_PREMIUM = 5        # v4 Premium-Slots: extra Kapazitaet fuer Ausnahme-Kandidaten
+PREMIUM_MOM     = 60.0     # Premium: >= 60% 1h-Momentum (Skully/MMGA-Niveau)
+PREMIUM_VOL     = 500_000  # Premium: >= $500k 6h-Volumen (echtes Interesse, kein Micro-Cap)
+
 TG_TOKEN   = config.get("telegram_bot_token", "")
 TG_CHAT    = config.get("telegram_chat_id", "")
 TG_WIN_PCT = 25.0          # Telegram-Alert ab diesem Gewinn-% (Moonshots)
@@ -272,9 +276,12 @@ def run():
           " | Entry >=" + str(ENTRY_MOM) + "% 1h-Mom + >=$" + str(ENTRY_VOL_H6) + " 5h-Vol")
     print("  Stop -" + str(int(HARD * 100)) + "% | Trail " + str(int(TRAIL * 100)) +
           "% | Slippage " + str(int(ENTRY_SLIP * 100)) + "%/Seite | Rug<$" + str(RUG_LIQ))
-    print("  v3: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
+    print("  v4: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
           "% | Anti-Chase 5m<=" + str(ENTRY_MAX_CHG5) + "% | BE-Floor +10% | Early-Exit -" +
           str(int(EARLY_EXIT_DROP)) + "%/" + str(EARLY_EXIT_SEC) + "s | ProgTrail 30/25/20/15%")
+    print("  Slots: " + str(MAX_POS) + " normal + " + str(MAX_POS_PREMIUM) +
+          " Premium (>=" + str(int(PREMIUM_MOM)) + "% mom + $" + str(int(PREMIUM_VOL/1000)) + "k vol) | Stale-Swap >" +
+          str(STALE_HOURS) + "h / Peak<" + str(int(STALE_PEAK)) + "%")
     print("=" * 58)
 
     state = {"bankroll": START_BANKROLL, "positions": {}, "traded": []}
@@ -314,7 +321,8 @@ def run():
             except Exception:
                 pass
             for addr, t in wl.items():
-                if len(state["positions"]) >= MAX_POS or state["bankroll"] < BET:
+                n_pos = len(state["positions"])
+                if n_pos >= MAX_POS + MAX_POS_PREMIUM or state["bankroll"] < BET:
                     break
                 if addr in state["positions"] or addr in state["traded"]:
                     continue
@@ -326,6 +334,10 @@ def run():
                 if volh6 < ENTRY_VOL_H6:                      # genug 5h-Volumen
                     continue
                 if chg5 > ENTRY_MAX_CHG5:                     # v2 Anti-Chase: nicht mitten im 5m-Spike (Top-Kauf)
+                    continue
+                # v4 Premium-Slots: normaler Slot voll -> nur Premium-Kandidaten (>=60% mom + $500k vol)
+                is_premium = (mom >= PREMIUM_MOM and volh6 >= PREMIUM_VOL)
+                if n_pos >= MAX_POS and not is_premium:
                     continue
                 live = token_now(addr)        # gleiche Live-Quelle wie der Exit -> kein Freshness-Phantom
                 if not live or live.get("price", 0) <= 0 or live.get("liq", 0) < RUG_LIQ:
@@ -340,11 +352,17 @@ def run():
                     "scaled": False, "rug_misses": 0,
                     "entry_ts": time.time(),                       # v3: Frueh-Exit-Uhr
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "premium": is_premium,
                 }
                 state["traded"].append(addr)
+                slot_tag = " [PREMIUM 🌟]" if is_premium else ""
                 print("[PAPER-BUY] " + t.get("symbol", "?") + " @ $" +
                       str(price) + " mom=" + str(mom) + "% (fill $" +
-                      str(round(fill, 10)) + " inkl. Slippage)")
+                      str(round(fill, 10)) + " inkl. Slippage)" + slot_tag)
+                if is_premium:
+                    _tg("🌟 <b>DEX Premium-Entry</b>: " + t.get("symbol", "?") +
+                        " | mom=" + str(round(mom, 1)) + "% | vol=$" +
+                        str(int(volh6 / 1000)) + "k — Extra-Slot genutzt")
 
             # ── 2. EXITS — alle held positions in EINEM Batch-Call (bis 30 Adressen) ──
             held = list(state["positions"].keys())
