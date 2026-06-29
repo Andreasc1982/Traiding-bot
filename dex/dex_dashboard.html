@@ -39,7 +39,11 @@
   .pill.warn { background:rgba(210,153,34,.15); color:var(--yellow); }
   .pill.run { background:rgba(88,166,255,.15); color:var(--blue); }
   .pill.house { background:rgba(212,160,23,.15); color:var(--gold); }
+  .pill.premium { background:rgba(212,160,23,.2); color:var(--gold); }
   .empty { color:var(--dim); padding:18px; text-align:center; font-style:italic; font-size:13px; }
+  .premium-row td { border-left:3px solid var(--gold); background:rgba(212,160,23,0.04); }
+  .premium-row:hover td { background:rgba(212,160,23,0.10); }
+  .num { color:var(--dim); font-size:11px; text-align:right; padding-right:6px; }
   .two { display:grid; grid-template-columns:1fr 1fr; gap:26px; }
   @media (max-width:840px){ .two { grid-template-columns:1fr; } }
 </style>
@@ -59,7 +63,7 @@
     <div>
       <h2>Offene Wetten</h2>
       <div class="wrap"><table>
-        <thead><tr><th>Symbol</th><th>Entry</th><th>Aktuell</th><th>P&L</th><th>Peak</th><th>Status</th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Symbol</th><th>Entry</th><th>Aktuell</th><th>P&L %</th><th>P&L $</th><th>Peak</th><th>Status</th></tr></thead>
         <tbody id="popen"></tbody>
       </table></div>
       <div class="empty" id="popen_e" style="display:none">Keine offenen Wetten — wartet auf Momentum-Token…</div>
@@ -67,7 +71,7 @@
     <div>
       <h2>Letzte Trades</h2>
       <div class="wrap"><table>
-        <thead><tr><th>Symbol</th><th>Ergebnis</th><th>$</th><th>Grund</th><th>Zeit</th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Symbol</th><th>Ergebnis %</th><th>Ergebnis $</th><th>Grund</th><th>Zeit</th></tr></thead>
         <tbody id="ptrades"></tbody>
       </table></div>
       <div class="empty" id="ptrades_e" style="display:none">Noch keine abgeschlossenen Trades.</div>
@@ -123,31 +127,42 @@ async function load(){
   const ob = document.getElementById("popen"); ob.innerHTML = "";
   document.getElementById("popen_e").style.display = pos.length ? "none" : "block";
   pos.sort((a,b)=> ((b.last_price/b.entry)||0)-((a.last_price/a.entry)||0));
-  for (const p of pos){
+  pos.forEach((p, i) => {
     const pl = p.entry>0 ? (p.last_price/p.entry-1)*100 : 0;
+    const plUsd = (p.shares||0)*(p.last_price||0) + (p.realized||0) - (p.bet||20);
     const fromPeak = p.peak>0 ? (p.last_price/p.peak-1)*100 : 0;
-    const st = p.scaled ? '<span class="pill house">House-Money</span>' : '<span class="pill run">läuft</span>';
-    ob.insertAdjacentHTML("beforeend", `<tr>
-      <td class="sym">${p.symbol||"?"}</td><td>${fmtPrice(p.entry)}</td>
-      <td>${fmtPrice(p.last_price)}</td><td class="${pl>=0?'pos':'neg'}">${pct(pl)}</td>
-      <td class="dim">${pct(fromPeak)}</td><td>${st}</td></tr>`);
-  }
+    const isPrem = p.premium === true;
+    const st = isPrem
+      ? (p.scaled ? '<span class="pill house">House-Money</span>' : '<span class="pill premium">🌟 Premium</span>')
+      : (p.scaled ? '<span class="pill house">House-Money</span>' : '<span class="pill run">läuft</span>');
+    ob.insertAdjacentHTML("beforeend", `<tr class="${isPrem?'premium-row':''}">
+      <td class="num">${i+1}</td>
+      <td class="sym">${p.symbol||"?"}</td>
+      <td>${fmtPrice(p.entry)}</td>
+      <td>${fmtPrice(p.last_price)}</td>
+      <td class="${pl>=0?'pos':'neg'}">${pct(pl)}</td>
+      <td class="${plUsd>=0?'pos':'neg'}">${plUsd>=0?'+':''}${usd2(plUsd)}</td>
+      <td class="dim">${pct(fromPeak)}</td>
+      <td>${st}</td></tr>`);
+  });
 
   // ── Recent paper trades ──
   const trs = (pt||[]).slice(-15).reverse();
   const tb = document.getElementById("ptrades"); tb.innerHTML = "";
   document.getElementById("ptrades_e").style.display = trs.length ? "none" : "block";
-  for (const t of trs){
+  trs.forEach((t, i) => {
     const win = (t.profit||0) > 0;
     const tag = t.reason==="RUG-TOTAL" ? "💀" : (win ? "🚀" : "");
     const rc = t.reason==="RUG-TOTAL" ? "neg" : "dim";
+    const profitStr = (t.profit>=0?'+':'') + usd2(t.profit);
     tb.insertAdjacentHTML("beforeend", `<tr>
+      <td class="num">${trs.length - i}</td>
       <td class="sym">${t.symbol||"?"} ${tag}</td>
       <td class="${(t.pct||0)>=0?'pos':'neg'}">${pct(t.pct)}</td>
-      <td class="${win?'pos':'neg'}">${usd2(t.profit)}</td>
+      <td class="${win?'pos':'neg'}">${profitStr}</td>
       <td class="${rc}">${t.reason||""}</td>
       <td class="dim">${(t.time||"").slice(5)}</td></tr>`);
-  }
+  });
 
   // ── Watchlist ──
   const rows = Object.values(wl||{}).map(t => {
