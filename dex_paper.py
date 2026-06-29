@@ -59,6 +59,12 @@ EARLY_EXIT_SEC = 180       # v3: Frueh-Exit-Fenster (3 Min = 9 Polls nach Kauf)
 EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort raus (statt -35% abwarten)
 TIMEOUT        = 10
 
+STALE_HOURS    = 2.0       # v4 Stale-Swap: nach 2h gehalten ohne je +10% Peak zu sehen
+STALE_PEAK     = 10.0      # ...Peak-Schwelle (%)
+STALE_PNL      = -5.0      # ...und aktuell im Minus (nicht nur flach)
+STALE_VOL_MIN  = 200_000   # frischer Kandidat muss >= $200k 6h-Volumen haben
+STALE_FRESH_H  = 1.0       # frischer Kandidat muss in letzter Stunde gesehen worden sein
+
 TG_TOKEN   = config.get("telegram_bot_token", "")
 TG_CHAT    = config.get("telegram_chat_id", "")
 TG_WIN_PCT = 25.0          # Telegram-Alert ab diesem Gewinn-% (Moonshots)
@@ -149,6 +155,40 @@ def _f(x):
         return 0.0
 
 
+def _has_fresh_candidate(state):
+    """True wenn ein frischer, filter-konformer Kandidat in der Watchlist wartet."""
+    try:
+        wl = json.load(open(WATCHLIST))
+    except Exception:
+        return False
+    held   = set(state["positions"])
+    traded = set()
+    for t in state.get("traded", []):
+        if isinstance(t, dict): traded.add(t.get("addr", ""))
+        elif isinstance(t, str): traded.add(t)
+    now = datetime.now()
+    for addr, t in wl.items():
+        if addr in held or addr in traded:
+            continue
+        chg1  = t.get("chg1", 0)
+        chg5  = t.get("chg5", 0)
+        volh6 = t.get("vol_h6", 0)
+        if chg1 < ENTRY_MOM or chg1 > ENTRY_MAX_CHG1:
+            continue
+        if chg5 > ENTRY_MAX_CHG5:
+            continue
+        if volh6 < STALE_VOL_MIN:
+            continue
+        try:
+            last_seen = datetime.strptime(t.get("last_seen", ""), "%Y-%m-%d %H:%M")
+            if (now - last_seen).total_seconds() / 3600 > STALE_FRESH_H:
+                continue
+        except Exception:
+            continue
+        return True
+    return False
+
+
 def close_paper(state, trades, addr, price, reason):
     pos = state["positions"].pop(addr, None)
     if not pos:
@@ -178,6 +218,13 @@ def close_paper(state, trades, addr, price, reason):
     if reason == "RUG-TOTAL":
         _tg("💀 <b>DEX-Rug</b>: " + pos["symbol"] + " " + str(round(pct, 1)) +
             "% = $" + str(round(profit, 2)) + " (Screening hat ihn durchgelassen)")
+    elif reason == "STALE-SWAP":
+        try:
+            _age_h = (datetime.now() - datetime.strptime(pos["time"], "%Y-%m-%d %H:%M")).total_seconds() / 3600
+        except Exception:
+            _age_h = 0
+        _tg("🔄 <b>DEX Stale-Swap</b>: " + pos["symbol"] + " " + str(round(pct, 1)) +
+            "% nach " + str(round(_age_h, 1)) + "h — Slot frei fuer frischen Kandidaten")
     elif pct >= TG_WIN_PCT:
         _tg("🚀 <b>DEX-Gewinn</b>: " + pos["symbol"] + " +" + str(round(pct, 1)) +
             "% = $" + str(round(profit, 2)) + " (" + reason + ")")
@@ -362,6 +409,11 @@ def run():
                     reason = "TRAIL"
                 elif age_h >= MAX_HOURS and -20 < pnl < 25:
                     reason = "TIMEOUT"
+                elif (age_h >= STALE_HOURS
+                      and peak_pct_val < STALE_PEAK
+                      and pnl < STALE_PNL
+                      and _has_fresh_candidate(state)):
+                    reason = "STALE-SWAP"
                 if reason:
                     close_paper(state, trades, addr, cur, reason)
 
