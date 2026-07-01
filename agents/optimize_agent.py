@@ -6,8 +6,11 @@ Runs automatically every Sunday at 00:00. Four analysis phases:
   1. Trade-history audit  — profitability, win rate, exit-reason breakdown per symbol
   2. Indicator block audit — which gates block the most entries (from skip-log snapshot)
   3. False-signal audit    — stop-loss rate as proxy for bad-entry rate per symbol
-  4. Parameter grid-search — RSI threshold × Supertrend mult × SL% × TP%
-                             on last 9 months of daily bars (stocks) / 120 days (crypto)
+  4. Walk-forward optimization — RSI threshold × Supertrend mult × SL% × TP%
+                             rolling in-sample grid-search → out-of-sample validation
+                             on multi-year daily bars. Sortino-scored. Reports the
+                             HONEST out-of-sample performance + parameter stability
+                             across folds (only stable params are recommended).
 
 Outputs:
   ~/trading_bot/agents/optimize_results.json  — full machine-readable results
@@ -93,6 +96,16 @@ CRYPTO_BASELINE = _read_current_params(CRYPTO_BOT_PATH, {
 
 MIN_BARS = 78   # Ichimoku minimum (52 lookback + 26 displacement)
 
+# ── Walk-forward config ────────────────────────────────────────────────────────
+WARMUP          = 100    # bars of history before trading starts (indicator warmup)
+MIN_WINDOW_BARS = 20     # minimum bars in a sim window to be meaningful
+SORTINO_CAP     = 5.0    # cap Sortino so degenerate (few-trade) combos can't dominate
+STABILITY_MIN   = 0.5    # a param axis' mode must win ≥50% of folds to be a candidate
+WF_IS_LEN       = 252    # in-sample (train) window ≈ 1 trading year
+WF_OOS_LEN      = 63     # out-of-sample (test) window ≈ 1 quarter (also the step)
+MIN_OOS_SORTINO_GAIN = 0.15  # adopt new params only on a real OOS Sortino gain (not noise)
+MIN_OOS_RETURN_GAIN  = 0.0   # …and only if OOS return does not drop
+
 # ── Utilities ────────────────────────────────────────────────────────────────────
 
 def log(msg):
@@ -165,7 +178,7 @@ def fetch_stock_bars(symbols, days=275):
         time.sleep(0.2)
     return dict(result)
 
-def fetch_crypto_bars_daily(symbols, days=220):
+def fetch_crypto_bars_daily(symbols, days=1100):
     """Fetch daily bars for crypto symbols. Returns {sym: [bar, ...]}."""
     start = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
     end   = datetime.utcnow().strftime("%Y-%m-%d")
@@ -196,6 +209,47 @@ def fetch_crypto_bars_daily(symbols, days=220):
             break
         time.sleep(0.2)
     return dict(result)
+
+def fetch_stock_bars_yf(symbols, years=4):
+    """Fetch daily adjusted ETF bars via yfinance. Preferred over Alpaca because the
+    Alpaca paper account returns null stock bars (known gotcha) and yfinance gives
+    reliable multi-year history — needed for meaningful walk-forward folds.
+    Returns {sym: [bar, ...]} oldest→newest."""
+    try:
+        import yfinance as yf
+    except Exception as e:
+        log(f"  [yf] yfinance nicht verfügbar: {e}")
+        return {}
+    result = {}
+    for sym in symbols:
+        try:
+            df = yf.download(sym, period=f"{years}y", interval="1d",
+                             auto_adjust=True, progress=False)
+            if df is None or len(df) == 0:
+                log(f"    {sym}: keine yfinance-Daten")
+                continue
+            multi = hasattr(df.columns, "levels")   # single-symbol → MultiIndex
+            def _col(name):
+                return df[(name, sym)] if multi else df[name]
+            highs  = _col("High").tolist()
+            lows   = _col("Low").tolist()
+            closes = _col("Close").tolist()
+            vols   = _col("Volume").tolist()
+            dates  = [d.strftime("%Y-%m-%d") for d in df.index]
+            bars = []
+            for i in range(len(dates)):
+                c, h, l, v = closes[i], highs[i], lows[i], vols[i]
+                if not (c > 0 and h > 0 and l > 0):   # skip NaN / bad rows
+                    continue
+                if v != v:                            # NaN volume → 0
+                    v = 0.0
+                bars.append({"t": dates[i], "h": float(h), "l": float(l),
+                             "c": float(c), "v": float(v)})
+            if bars:
+                result[sym] = bars
+        except Exception as e:
+            log(f"    [yf {sym}] error: {e}")
+    return result
 
 # ── Indicator engine (parameterized) ────────────────────────────────────────────
 
@@ -379,17 +433,22 @@ def precompute(bars, st_mult_list):
 
 # ── Mini simulator (uses pre-computed indicator arrays) ──────────────────────────
 
-def simulate(pc, params, warmup=100, cost=0.0):
+def simulate(pc, params, start=None, end=None, cost=0.0):
     """
-    Simulate a single symbol with given parameters on pre-computed indicators.
-    Returns performance dict or None if insufficient data.
+    Simulate a single symbol with given parameters over the bar window [start, end)
+    using pre-computed indicators. `start` must be ≥ WARMUP so indicators are stable.
+    Returns performance dict (incl. Sortino) or None if the window is too small.
 
     Gates used:  RSI<threshold · price>MA20 · MACD bullish · Supertrend+1 · OBV rising · Ichimoku
     Stops:       fixed SL% OR PSAR (whichever fires first) · trailing TP%
     No max_pos limit — single-symbol simulation.
     """
     n = pc["n"]
-    if n < warmup + MIN_BARS:
+    if start is None:
+        start = WARMUP
+    if end is None or end > n:
+        end = n
+    if end - start < MIN_WINDOW_BARS:
         return None
 
     rsi_th   = params["rsi_threshold"]
@@ -414,7 +473,7 @@ def simulate(pc, params, warmup=100, cost=0.0):
     position = None   # {"entry": float, "peak": float, "psar_stop": float}
     trades   = []
 
-    for i in range(warmup, n):
+    for i in range(start, end):
         price = closes[i]
 
         if position is not None:
@@ -467,20 +526,33 @@ def simulate(pc, params, warmup=100, cost=0.0):
                 "psar_stop": psar[i],   # PSAR at entry as initial stop
             }
 
-    # Close open position at last bar
+    # Close open position at the last bar of the window
     if position is not None:
-        pnl = (closes[-1] - position["entry"]) / position["entry"]
+        pnl = (closes[end - 1] - position["entry"]) / position["entry"]
         trades.append({"pnl": pnl - cost, "reason": "OPEN"})
         equity *= (1 + pnl - cost)
 
     if not trades:
         return {"return_pct": 0.0, "win_rate": 0.0, "trades": 0,
-                "max_drawdown": 0.0, "profit_factor": 0.0, "stop_loss_rate": 0.0}
+                "max_drawdown": 0.0, "profit_factor": 0.0, "stop_loss_rate": 0.0,
+                "sortino": 0.0}
 
     wins       = sum(1 for t in trades if t["pnl"] > 0)
     stop_count = sum(1 for t in trades if t["reason"] == "STOP-LOSS")
     gains_sum  = sum(t["pnl"] for t in trades if t["pnl"] > 0)
     loss_sum   = sum(abs(t["pnl"]) for t in trades if t["pnl"] < 0)
+
+    # Sortino ratio (trade-level): mean return / downside deviation. Capped so a
+    # combo with 1-2 lucky trades and no losers cannot dominate the ranking.
+    rets     = [t["pnl"] for t in trades]
+    mean_r   = sum(rets) / len(rets)
+    downside = [r for r in rets if r < 0]
+    if downside:
+        dstd    = (sum(r * r for r in downside) / len(downside)) ** 0.5
+        sortino = mean_r / dstd if dstd > 0 else 0.0
+    else:
+        sortino = SORTINO_CAP           # no losing trades → cap (not infinity)
+    sortino = max(-SORTINO_CAP, min(SORTINO_CAP, sortino))
 
     # Max drawdown from equity curve
     eq_curve  = [1.0]
@@ -502,118 +574,196 @@ def simulate(pc, params, warmup=100, cost=0.0):
         "max_drawdown":   round(max_dd * 100, 2),
         "profit_factor":  round(gains_sum / loss_sum, 2) if loss_sum > 0 else 99.0,
         "stop_loss_rate": round(stop_count / len(trades) * 100, 1),
+        "sortino":        round(sortino, 3),
     }
 
 # ── Grid search ──────────────────────────────────────────────────────────────────
 
-def run_grid_search(bars_by_sym, baseline, is_crypto, warmup=100):
-    """
-    Fetch bars, pre-compute indicators, test all parameter combos.
-    Returns {best_params, top5, baseline_result, improvement, full_grid}.
-    """
-    # Always include the live baseline values so baseline_result is found
-    # (fixes best_score=None) and the improvement diff is computable.
+def _build_grid(baseline, is_crypto):
+    """Parameter grid. Always includes the live baseline value per axis so the
+    baseline is inside the search space and directly comparable."""
     rsi_vals = sorted(set([65, 70, 75] + [baseline["rsi_threshold"]]))
     st_vals  = sorted(set([3.0, 3.5, 4.0] + [baseline["st_mult"]]))
     sl_vals  = sorted(set(([3.0, 4.0, 5.0] if is_crypto else [2.0, 3.0, 4.0]) + [baseline["stop_loss"]]))
     tp_vals  = sorted(set(([8.0, 10.0, 15.0] if is_crypto else [12.0, 15.0, 20.0]) + [baseline["take_profit"]]))
-
-    # Fee-aware: Roundtrip-Kosten pro Trade (Crypto 2x(0.26%+0.05%), Stocks 2x0.02%)
-    cost = (0.0026 + 0.0005) * 2 if is_crypto else 0.0002 * 2
-
-    total_combos = len(rsi_vals) * len(st_vals) * len(sl_vals) * len(tp_vals)
-    log(f"  Grid: {total_combos} combos × {len(bars_by_sym)} symbols")
-
-    # Pre-compute indicators once per symbol
-    precomps = {}
-    for sym, bars in bars_by_sym.items():
-        if len(bars) >= warmup + MIN_BARS:
-            precomps[sym] = precompute(bars, st_vals)
-            log(f"    {sym}: {len(bars)} bars pre-computed")
-        else:
-            log(f"    {sym}: only {len(bars)} bars — skipped (need {warmup + MIN_BARS})")
-
-    if not precomps:
-        log("  No symbols with sufficient data — grid search aborted")
-        return {}
-
-    grid = []
-    best_score  = -999.0
-    best_params = dict(baseline)
-    baseline_result = None
-
+    combos = []
     for rsi in rsi_vals:
         for st in st_vals:
             for sl in sl_vals:
                 for tp in tp_vals:
-                    params = {
+                    combos.append({
                         "rsi_threshold": rsi, "st_mult": st,
                         "stop_loss": sl, "take_profit": tp,
                         "trailing_stop": baseline["trailing_stop"],
-                    }
-                    sym_results = []
-                    for sym, pc in precomps.items():
-                        r = simulate(pc, params, warmup=warmup, cost=cost)
-                        if r is not None:
-                            sym_results.append(r)
+                    })
+    return combos, st_vals
 
-                    if not sym_results:
-                        continue
+def _aggregate(sym_metrics):
+    """Average a list of per-symbol metric dicts (None entries ignored)."""
+    rs = [m for m in sym_metrics if m is not None]
+    if not rs:
+        return None
+    k = len(rs)
+    return {
+        "return_pct": sum(m["return_pct"]     for m in rs) / k,
+        "win_rate":   sum(m["win_rate"]       for m in rs) / k,
+        "drawdown":   sum(m["max_drawdown"]   for m in rs) / k,
+        "sortino":    sum(m["sortino"]        for m in rs) / k,
+        "sl_rate":    sum(m["stop_loss_rate"] for m in rs) / k,
+        "trades":     sum(m["trades"]         for m in rs),
+    }
 
-                    n_sym = len(sym_results)
-                    avg_ret    = sum(r["return_pct"]    for r in sym_results) / n_sym
-                    avg_wr     = sum(r["win_rate"]      for r in sym_results) / n_sym
-                    avg_dd     = sum(r["max_drawdown"]  for r in sym_results) / n_sym
-                    avg_pf     = sum(r["profit_factor"] for r in sym_results) / n_sym
-                    avg_sl_rt  = sum(r["stop_loss_rate"] for r in sym_results) / n_sym
-                    total_t    = sum(r["trades"]        for r in sym_results)
+def _score(agg):
+    """Sortino-primary composite, penalised when too few trades (unreliable)."""
+    if agg is None or agg["trades"] == 0:
+        return -999.0
+    penalty = max(0.3, min(1.0, agg["trades"] / 20.0))
+    return agg["sortino"] * penalty
 
-                    # Score: return + win-rate weighted, penalise high drawdown and
-                    # very few trades (unreliable). Capped to prevent 99× PF distortion.
-                    trade_penalty = max(0.3, min(1.0, total_t / 20))
-                    score = (avg_ret * 0.35 + avg_wr * 0.45 - avg_dd * 0.20) * trade_penalty
+def _round_agg(agg):
+    if agg is None:
+        return None
+    return {"return_pct": round(agg["return_pct"], 2), "win_rate": round(agg["win_rate"], 1),
+            "drawdown": round(agg["drawdown"], 2), "sortino": round(agg["sortino"], 3),
+            "sl_rate": round(agg["sl_rate"], 1), "trades": agg["trades"]}
 
-                    entry = {
-                        "params":          params,
-                        "avg_return_pct":  round(avg_ret,   2),
-                        "avg_win_rate":    round(avg_wr,    1),
-                        "avg_drawdown":    round(avg_dd,    2),
-                        "avg_pf":          round(min(avg_pf, 20.0), 2),
-                        "avg_sl_rate":     round(avg_sl_rt, 1),
-                        "total_trades":    total_t,
-                        "score":           round(score, 3),
-                    }
-                    grid.append(entry)
+def run_walkforward(bars_by_sym, baseline, is_crypto,
+                    warmup=WARMUP, is_len=WF_IS_LEN, oos_len=WF_OOS_LEN):
+    """
+    Walk-forward optimization. Rolling folds: on each in-sample window the full
+    grid is searched (Sortino-scored) and the winning params are validated on the
+    following out-of-sample window. The reported numbers are the HONEST
+    out-of-sample result — not the in-sample fit. Parameters are only recommended
+    if they are stable (chosen in ≥STABILITY_MIN of folds); otherwise the live
+    baseline is kept for that axis.
+    """
+    combos, st_vals = _build_grid(baseline, is_crypto)
+    # Fee-aware roundtrip cost per trade (Crypto 2×(0.26%+0.05%), Stocks 2×0.02%)
+    cost = (0.0026 + 0.0005) * 2 if is_crypto else 0.0002 * 2
 
-                    if score > best_score:
-                        best_score  = score
-                        best_params = dict(params)
+    # Qualify symbols with enough history, then align all to the most-recent common
+    # window (last n_ref bars) so a given bar index ≈ the same calendar date across
+    # symbols — required for coherent portfolio-level fold selection.
+    qualifying = {sym: bars for sym, bars in bars_by_sym.items()
+                  if len(bars) >= warmup + MIN_WINDOW_BARS}
+    for sym, bars in bars_by_sym.items():
+        if len(bars) < warmup + MIN_WINDOW_BARS:
+            log(f"    {sym}: nur {len(bars)} Bars — übersprungen (min {warmup + MIN_WINDOW_BARS})")
+    if not qualifying:
+        log("  Walk-Forward: keine Symbole mit genug Daten — abgebrochen")
+        return {}
 
-                    # Track baseline combo
-                    if (rsi == baseline["rsi_threshold"] and
-                            abs(st - baseline["st_mult"]) < 0.01 and
-                            abs(sl - baseline["stop_loss"]) < 0.01 and
-                            abs(tp - baseline["take_profit"]) < 0.01):
-                        baseline_result = entry
+    n_ref = min(len(bars) for bars in qualifying.values())
+    precomps = {}
+    for sym, bars in qualifying.items():
+        precomps[sym] = precompute(bars[-n_ref:], st_vals)
+        log(f"    {sym}: {len(bars)} Bars → letzte {n_ref} aligned")
 
-    grid.sort(key=lambda x: x["score"], reverse=True)
+    def _make_folds(is_l, oos_l):
+        f, s = [], warmup
+        while s + is_l + oos_l <= n_ref:
+            f.append((s, s + is_l, s + is_l + oos_l))
+            s += oos_l
+        return f
 
-    # Improvement vs baseline
-    improvement = {}
-    if baseline_result and grid:
-        best = grid[0]
-        improvement = {
-            "return_delta":   round(best["avg_return_pct"] - baseline_result["avg_return_pct"], 2),
-            "wr_delta":       round(best["avg_win_rate"]   - baseline_result["avg_win_rate"],   1),
-            "dd_delta":       round(best["avg_drawdown"]   - baseline_result["avg_drawdown"],   2),
-        }
+    folds = _make_folds(is_len, oos_len)
+    if len(folds) < 2:
+        # Not enough history for the default windows — shrink adaptively.
+        avail = n_ref - warmup
+        if avail < 90:
+            log(f"  Walk-Forward: nur {avail} handelbare Bars — zu wenig für Folds")
+            return {"insufficient_data": True, "tradeable_bars": avail,
+                    "best_params": dict(baseline), "symbols_tested": list(precomps.keys())}
+        oos_len = max(20, avail // 5)
+        is_len  = max(40, avail // 2)
+        folds   = _make_folds(is_len, oos_len)
+
+    log(f"  Walk-Forward: {len(folds)} Folds (IS={is_len}/OOS={oos_len}), "
+        f"{len(precomps)} Symbole, {len(combos)} Combos/Fold, n_ref={n_ref}")
+
+    param_keys   = ["rsi_threshold", "st_mult", "stop_loss", "take_profit"]
+    chosen       = {k: [] for k in param_keys}
+    fold_records = []
+
+    for fi, (is_s, is_e, oos_e) in enumerate(folds):
+        best_sc, best_p = -999.0, dict(baseline)
+        for combo in combos:
+            agg = _aggregate([simulate(pc, combo, is_s, is_e, cost) for pc in precomps.values()])
+            sc  = _score(agg)
+            if sc > best_sc:
+                best_sc, best_p = sc, dict(combo)
+        oos_best = _aggregate([simulate(pc, best_p,   is_e, oos_e, cost) for pc in precomps.values()])
+        oos_base = _aggregate([simulate(pc, baseline, is_e, oos_e, cost) for pc in precomps.values()])
+        for k in param_keys:
+            chosen[k].append(best_p[k])
+        fold_records.append({
+            "fold": fi, "is": [is_s, is_e], "oos": [is_e, oos_e],
+            "chosen": {k: best_p[k] for k in param_keys},
+            "oos_best": _round_agg(oos_best), "oos_base": _round_agg(oos_base),
+        })
+
+    # Candidate params from per-axis stability (mode must win ≥STABILITY_MIN of folds)
+    stability, cand_params = {}, dict(baseline)
+    for k in param_keys:
+        vals   = chosen[k]
+        counts = {}
+        for v in vals:
+            counts[v] = counts.get(v, 0) + 1
+        mode_v = max(counts, key=counts.get)
+        stab   = counts[mode_v] / len(vals)
+        stability[k] = {"mode": mode_v, "stability_pct": round(stab * 100),
+                        "stable": stab >= STABILITY_MIN, "chosen": vals}
+        cand_params[k] = mode_v if stab >= STABILITY_MIN else baseline[k]
+    cand_params["trailing_stop"] = baseline["trailing_stop"]
+
+    # Pooled OOS over ALL out-of-sample windows: candidate vs current baseline
+    def _pooled(params):
+        return _round_agg(_aggregate([
+            simulate(pc, params, is_e, oos_e, cost)
+            for (is_s, is_e, oos_e) in folds for pc in precomps.values()
+        ]))
+    base_oos = _pooled(baseline) or {"return_pct": 0.0, "win_rate": 0.0, "drawdown": 0.0,
+                                     "sortino": 0.0, "sl_rate": 0.0, "trades": 0}
+    cand_oos = _pooled(cand_params) or dict(base_oos)
+
+    improvement = {
+        "return_delta":  round(cand_oos["return_pct"] - base_oos["return_pct"], 2),
+        "wr_delta":      round(cand_oos["win_rate"]   - base_oos["win_rate"], 1),
+        "dd_delta":      round(cand_oos["drawdown"]   - base_oos["drawdown"], 2),
+        "sortino_delta": round(cand_oos["sortino"]    - base_oos["sortino"], 3),
+    }
+
+    # Adopt the candidate ONLY on a MEANINGFUL out-of-sample gain (not noise): a real
+    # Sortino improvement AND no loss of return. Otherwise keep the live baseline —
+    # that is the whole point of walk-forward (never ship in-sample-overfit params).
+    cand_differs = any(cand_params[k] != baseline[k] for k in param_keys)
+    adopted = (cand_differs
+               and improvement["sortino_delta"] >= MIN_OOS_SORTINO_GAIN
+               and improvement["return_delta"]  >= MIN_OOS_RETURN_GAIN)
+    rec_params = dict(cand_params) if adopted else dict(baseline)
+
+    # Adaptive (re-fit each fold) OOS — informative upper bound of what tuning could do
+    def _favg(field):
+        xs = [fr["oos_best"][field] for fr in fold_records if fr["oos_best"]]
+        return round(sum(xs) / len(xs), 2) if xs else 0.0
+    wf_oos = {f: _favg(f) for f in ["return_pct", "win_rate", "drawdown", "sortino", "sl_rate"]}
 
     return {
-        "best_params":      best_params,
-        "top5":             grid[:5],
-        "baseline_result":  baseline_result,
-        "improvement":      improvement,
-        "symbols_tested":   list(precomps.keys()),
+        "best_params":     rec_params,     # what /apply reads — baseline unless a real OOS win
+        "candidate":       cand_params,    # stable grid pick (adopted only if it beats baseline OOS)
+        "adopted":         adopted,
+        "changed":         adopted and cand_differs,
+        "n_folds":         len(folds),
+        "is_len":          is_len,
+        "oos_len":         oos_len,
+        "candidate_oos":   cand_oos,       # OOS of the stable grid pick
+        "recommended_oos": cand_oos if adopted else base_oos,
+        "baseline_oos":    base_oos,       # OOS of current live params (pooled)
+        "walkforward_oos": wf_oos,         # adaptive re-fit OOS (informative)
+        "improvement":     improvement,    # candidate vs baseline (pooled OOS)
+        "stability":       stability,
+        "folds":           fold_records,
+        "symbols_tested":  list(precomps.keys()),
     }
 
 # ── Trade-history analysis ───────────────────────────────────────────────────────
@@ -737,35 +887,36 @@ def generate_suggestions(ta_super, ta_crypto, ia_super, ia_crypto,
         ("Crypto Bot", ta_crypto, ia_crypto, gs_crypto, CRYPTO_BASELINE),
     ]:
         # ── Grid-based parameter changes ──────────────────────────────────────
-        bp = gs.get("best_params") if gs else None
-        if bp:
-            changes = []
-            if bp["rsi_threshold"] != baseline["rsi_threshold"]:
-                changes.append(
-                    f"RSI-Threshold: {baseline['rsi_threshold']} → {bp['rsi_threshold']}")
-            if abs(bp["st_mult"] - baseline["st_mult"]) >= 0.4:
-                changes.append(
-                    f"Supertrend-Mult: {baseline['st_mult']} → {bp['st_mult']}")
-            if abs(bp["stop_loss"] - baseline["stop_loss"]) >= 0.5:
-                changes.append(
-                    f"Stop-Loss: {baseline['stop_loss']}% → {bp['stop_loss']}%")
-            if abs(bp["take_profit"] - baseline["take_profit"]) >= 1.5:
-                changes.append(
-                    f"Take-Profit: {baseline['take_profit']}% → {bp['take_profit']}%")
-
+        if gs and gs.get("insufficient_data"):
+            sugg.append(f"<b>{bot_name}</b>: Zu wenig Historie für Walk-Forward — "
+                        f"keine belastbare Parameter-Empfehlung")
+        elif gs and gs.get("candidate"):
             impr = gs.get("improvement", {})
-            if changes:
-                delta = ""
-                if impr:
-                    delta = (f" → erwartete Verbesserung: "
-                             f"Return {impr.get('return_delta',0):+.1f}% · "
-                             f"WR {impr.get('wr_delta',0):+.1f}% · "
-                             f"DD {impr.get('dd_delta',0):+.1f}%")
-                sugg.append(f"<b>{bot_name}</b>: Empfohlene Parameteränderungen — "
+            cand = gs["candidate"]
+            changes = []
+            if cand["rsi_threshold"] != baseline["rsi_threshold"]:
+                changes.append(f"RSI-Threshold: {baseline['rsi_threshold']} → {cand['rsi_threshold']}")
+            if abs(cand["st_mult"] - baseline["st_mult"]) >= 0.4:
+                changes.append(f"Supertrend-Mult: {baseline['st_mult']} → {cand['st_mult']}")
+            if abs(cand["stop_loss"] - baseline["stop_loss"]) >= 0.5:
+                changes.append(f"Stop-Loss: {baseline['stop_loss']}% → {cand['stop_loss']}%")
+            if abs(cand["take_profit"] - baseline["take_profit"]) >= 1.5:
+                changes.append(f"Take-Profit: {baseline['take_profit']}% → {cand['take_profit']}%")
+
+            if gs.get("adopted") and changes:
+                delta = (f" → OOS-Verbesserung: "
+                         f"Return {impr.get('return_delta',0):+.1f}% · "
+                         f"Sortino {impr.get('sortino_delta',0):+.2f} · "
+                         f"DD {impr.get('dd_delta',0):+.1f}%")
+                sugg.append(f"<b>{bot_name}</b>: Parameteränderung übernommen (Walk-Forward) — "
                             + ", ".join(changes) + delta)
+            elif changes:
+                sugg.append(f"<b>{bot_name}</b>: Grid-Pick ({', '.join(changes)}) brachte KEINE "
+                            f"belastbare OOS-Verbesserung (Sortino {impr.get('sortino_delta',0):+.2f}) — "
+                            f"Baseline behalten, Overfitting vermieden")
             else:
-                sugg.append(f"<b>{bot_name}</b>: Aktuelle Parameter bereits optimal "
-                            f"im getesteten Grid (kein Änderungsbedarf)")
+                sugg.append(f"<b>{bot_name}</b>: Parameter im Walk-Forward bestätigt "
+                            f"(stabil, kein Änderungsbedarf)")
 
         # ── High false-signal rate ────────────────────────────────────────────
         fs = ta.get("false_signal_rate", 0)
@@ -874,47 +1025,49 @@ def format_report(ta_s, ta_c, ia_s, ia_c, gs_s, gs_c, suggestions):
     L.append("")
 
     # ── Section 3: Grid search results ───────────────────────────────────────
-    L.append("<b>3️⃣ Parameter-Optimierung (Grid-Search, letzte 9 Monate)</b>")
+    L.append("<b>3️⃣ Walk-Forward-Optimierung (Out-of-Sample)</b>")
+    IND_ABBR = {"rsi_threshold": "RSI", "st_mult": "ST×", "stop_loss": "SL", "take_profit": "TP"}
     for name, gs, baseline in [
         ("Super Bot",  gs_s, SUPER_BASELINE),
         ("Crypto Bot", gs_c, CRYPTO_BASELINE),
     ]:
-        if not gs or not gs.get("top5"):
-            L.append(f"  {name}: Keine Backtest-Daten (Alpaca nicht erreichbar?)")
+        if not gs:
+            L.append(f"  {name}: Keine Daten (Datenquelle nicht erreichbar?)")
+            continue
+        if gs.get("insufficient_data"):
+            L.append(f"  {name}: zu wenig Historie für Walk-Forward "
+                     f"({gs.get('tradeable_bars', 0)} handelbare Bars)")
             continue
 
-        bp   = gs["best_params"]
-        top  = gs["top5"][0]
-        base = gs.get("baseline_result")
-        impr = gs.get("improvement", {})
+        cand = gs.get("candidate", gs.get("best_params", {}))
+        coos = gs.get("candidate_oos", {})
+        base = gs.get("baseline_oos", {})
+        stab = gs.get("stability", {})
 
-        # Mark changed params
-        def mk(key, bl):
-            v = bp[key]
-            return f"<u>{v}</u>" if abs(v - bl[key]) > 0.01 else str(v)
+        L.append(f"  <b>{name}</b> — {gs.get('n_folds', 0)} Folds "
+                 f"(IS {gs.get('is_len', '?')}/OOS {gs.get('oos_len', '?')} Bars · "
+                 f"{len(gs.get('symbols_tested', []))} Symbole)")
 
-        L.append(f"  <b>{name}</b> — Beste Parameter:")
-        L.append(
-            f"    RSI&lt;{mk('rsi_threshold',baseline)} · "
-            f"ST×{mk('st_mult',baseline)} · "
-            f"SL {mk('stop_loss',baseline)}% · "
-            f"TP {mk('take_profit',baseline)}%"
-        )
-        L.append(
-            f"    Ergebnis: Rtn {top['avg_return_pct']:+.1f}% · "
-            f"WR {top['avg_win_rate']:.0f}% · "
-            f"DD -{top['avg_drawdown']:.1f}% · "
-            f"SL-Rate {top['avg_sl_rate']:.0f}%"
-        )
-        if base and impr:
+        # Grid's stable pick — underline axes differing from live + per-axis stability %
+        parts = []
+        for key in ["rsi_threshold", "st_mult", "stop_loss", "take_profit"]:
+            v       = cand.get(key, baseline[key])
+            changed = abs(v - baseline[key]) > 0.01
+            tag     = f"<u>{v}</u>" if changed else f"{v}"
+            parts.append(f"{IND_ABBR[key]}{tag}({stab.get(key, {}).get('stability_pct', 0):.0f}%)")
+        L.append("    Grid-Pick: " + " · ".join(parts))
+
+        if base and coos:
             L.append(
-                f"    vs. aktuell: "
-                f"Rtn {impr.get('return_delta',0):+.1f}% · "
-                f"WR {impr.get('wr_delta',0):+.1f}% · "
-                f"DD {impr.get('dd_delta',0):+.1f}%"
+                f"    OOS aktuell→Pick: "
+                f"Rtn {base.get('return_pct', 0):+.1f}%→{coos.get('return_pct', 0):+.1f}% · "
+                f"Sortino {base.get('sortino', 0):.2f}→{coos.get('sortino', 0):.2f} · "
+                f"DD {base.get('drawdown', 0):.1f}%→{coos.get('drawdown', 0):.1f}%"
             )
-        syms = gs.get("symbols_tested", [])
-        L.append(f"    Symbole getestet: {len(syms)}")
+        if gs.get("adopted"):
+            L.append("    ✅ übernommen — belastbare OOS-Verbesserung")
+        else:
+            L.append("    → NICHT übernommen — keine belastbare OOS-Verbesserung, Baseline bleibt")
     L.append("")
 
     # ── Section 4: Suggestions ───────────────────────────────────────────────
@@ -957,30 +1110,28 @@ def run_optimization():
     gs_super  = {}
     gs_crypto = {}
 
-    if ALPACA_KEY:
-        # Super bot — daily ETF bars (last 275 calendar days ≈ 195 trading days)
-        log("Lade ETF Tagesbars...")
-        super_bars = fetch_stock_bars(ETF_SYMBOLS, days=275)
-        log(f"  {len(super_bars)} Symbole geladen: "
-            + ", ".join(f"{s}({len(b)})" for s, b in super_bars.items()))
-        if super_bars:
-            log("Starte Grid-Search Super Bot...")
-            gs_super = run_grid_search(super_bars, SUPER_BASELINE,
-                                       is_crypto=False, warmup=100)
-            log(f"  Bestes Ergebnis: {gs_super.get('best_params')}")
+    # Super bot — ETF daily bars via yfinance (multi-year; Alpaca paper has no stock bars)
+    log("Lade ETF Tagesbars (yfinance, 4J)...")
+    super_bars = fetch_stock_bars_yf(ETF_SYMBOLS, years=4)
+    log(f"  {len(super_bars)} Symbole geladen: "
+        + ", ".join(f"{s}({len(b)})" for s, b in super_bars.items()))
+    if super_bars:
+        log("Starte Walk-Forward Super Bot...")
+        gs_super = run_walkforward(super_bars, SUPER_BASELINE, is_crypto=False)
+        log(f"  Empfohlene Params: {gs_super.get('best_params')}")
 
-        # Crypto bot — daily bars (last 150 calendar days)
-        log("Lade Crypto Tagesbars...")
-        crypto_bars = fetch_crypto_bars_daily(CRYPTO_SYMBOLS, days=220)
+    # Crypto bot — daily bars via Alpaca (needs key; crypto data available on free tier)
+    if ALPACA_KEY:
+        log("Lade Crypto Tagesbars (Alpaca, ~3J)...")
+        crypto_bars = fetch_crypto_bars_daily(CRYPTO_SYMBOLS, days=1100)
         log(f"  {len(crypto_bars)} Symbole geladen: "
             + ", ".join(f"{s}({len(b)})" for s, b in crypto_bars.items()))
         if crypto_bars:
-            log("Starte Grid-Search Crypto Bot...")
-            gs_crypto = run_grid_search(crypto_bars, CRYPTO_BASELINE,
-                                        is_crypto=True, warmup=100)
-            log(f"  Bestes Ergebnis: {gs_crypto.get('best_params')}")
+            log("Starte Walk-Forward Crypto Bot...")
+            gs_crypto = run_walkforward(crypto_bars, CRYPTO_BASELINE, is_crypto=True)
+            log(f"  Empfohlene Params: {gs_crypto.get('best_params')}")
     else:
-        log("Kein Alpaca-Key konfiguriert — Grid-Search übersprungen")
+        log("Kein Alpaca-Key — Crypto Walk-Forward übersprungen")
 
     # Phase 5 — generate suggestions ───────────────────────────────────────────
     suggestions = generate_suggestions(
@@ -1022,10 +1173,21 @@ def _is_sunday_midnight():
     return now.weekday() == 6 and now.hour == 0
 
 def main():
+    global RESULTS_FILE, LOG_FILE, TELEGRAM_TOKEN
     parser = argparse.ArgumentParser(description="Optimization Agent")
     parser.add_argument("--now", action="store_true",
                         help="Run optimization immediately instead of waiting for Sunday")
+    parser.add_argument("--test", action="store_true",
+                        help="Test mode: results/log to /tmp, NO Telegram; runs now. "
+                             "Safe to run alongside the live optimize session.")
     args = parser.parse_args()
+
+    if args.test:
+        RESULTS_FILE   = "/tmp/optimize_results_test.json"
+        LOG_FILE       = "/tmp/optimize_log_test.txt"
+        TELEGRAM_TOKEN = ""       # send_telegram() early-returns when empty
+        args.now       = True     # test implies an immediate run
+        print("[TEST-MODUS] Ausgabe → /tmp, kein Telegram, sofortiger Lauf")
 
     log("=" * 60)
     log("Optimization Agent gestartet")
