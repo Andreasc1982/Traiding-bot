@@ -44,7 +44,7 @@ ENTRY_VOL_H6   = 5000      # zusaetzlich: >=$5k 6h(~5h)-Volumen — echtes Inter
 ENTRY_MIN_LIQ  = 20000     # v5: min $20k Liquiditaet beim Entry — Daten: $20-50k=33% Win vs <$20k=16%
 ENTRY_MIN_CHG5 = -5.0      # v5: 5m-Untergrenze — keine aktiv fallenden Coins (chg5<0 = 19% Win, Haupt-EARLY-EXIT-Quelle)
 ENTRY_MAX_CHG5 = 25.0      # v5 (war 15): 5m-Obergrenze — Sweet-Spot 0-25% = 27% Win; Kauf-Fenster jetzt [-5,+25]
-ENTRY_MAX_CHG1 = 200.0     # v5 (war 100): Anti-Parabolic gelockert — Continuation chg1 100-200 lief +37% (FROGBULL/FABLE/REDBULL)
+ENTRY_MAX_CHG1 = 100.0     # v6 zurueck auf 100: chg1->200 ergab 33% Rug-Rate (v5, 5/15) — der Deckel ist ein RUG-FILTER, keine Vorsicht (v4: 0 Rugs/185)
 ENTRY_SLIP     = 0.05      # 5% Kauf-Slippage
 EXIT_SLIP      = 0.05      # 5% Verkauf-Slippage
 HARD           = 0.35      # harter Stop -35% (DEX-Noise verlangt Luft)
@@ -280,7 +280,7 @@ def run():
           " | Entry >=" + str(ENTRY_MOM) + "% 1h-Mom + >=$" + str(ENTRY_VOL_H6) + " 5h-Vol")
     print("  Stop -" + str(int(HARD * 100)) + "% | Trail " + str(int(TRAIL * 100)) +
           "% | Slippage " + str(int(ENTRY_SLIP * 100)) + "%/Seite | Rug<$" + str(RUG_LIQ))
-    print("  v5: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
+    print("  v6: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
           "% | 5m-Fenster " + str(int(ENTRY_MIN_CHG5)) + ".." + str(int(ENTRY_MAX_CHG5)) +
           "% | Liq>=$" + str(int(ENTRY_MIN_LIQ / 1000)) + "k | BE-Floor +10% | Early-Exit -" +
           str(int(EARLY_EXIT_DROP)) + "%/" + str(EARLY_EXIT_SEC) + "s | ProgTrail 30/25/20/15%")
