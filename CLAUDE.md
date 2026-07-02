@@ -1152,7 +1152,7 @@ screen -r tgrouter   # attach; Ctrl+A D to detach
 
 ## Optimization Agent (`agents/optimize_agent.py`)
 
-Runs as its own `optimize` screen session. Wakes up every Sunday at 00:00, analyzes both bots' trade history and current skip-log snapshot, runs an 81-combo parameter grid search on recent Alpaca data, generates suggestions, sends a Telegram report, and saves results to `optimize_results.json`.
+Runs as its own `optimize` screen session. Wakes up every Sunday at 00:00, analyzes both bots' trade history and current skip-log snapshot, runs a **walk-forward parameter optimization** (rolling in-sample grid-search → out-of-sample validation, Sortino-scored) on multi-year daily bars, generates suggestions, sends a Telegram report, and saves results to `optimize_results.json`.
 
 ### Start the agent
 
@@ -1186,9 +1186,11 @@ screen -r optimize              # attach; Ctrl+A D to detach
 | 1. Trade audit | Win rate, P&L, exit-reason breakdown per symbol | `trades_history.json` (both bots) |
 | 2. Indicator block audit | Which gates block the most entries, avg RSI at skip | `dashboard.json` skip log (live snapshot) |
 | 3. False-signal audit | STOP-LOSS rate per symbol (proxy for bad-entry rate) | Same trade history |
-| 4. Grid search | 81-combo parameter sweep on recent market data | Alpaca daily bars (live fetch) |
+| 4. Walk-forward | Rolling in-sample grid-search → out-of-sample validation, Sortino-scored | yfinance ETF bars (4y) + Alpaca crypto (~3y) |
 
-### Parameter grid (81 combos per bot)
+### Walk-forward optimization
+
+Rolling folds (train ≈252 bars / test ≈63 bars, step 63) over the most-recent common window; all symbols are aligned to the shortest history so a bar index ≈ the same calendar date. On each **in-sample** window the full grid is searched (Sortino-scored, fee-aware); the winner is validated on the following **out-of-sample** window. Reported numbers are the OOS result — never the in-sample fit.
 
 | Parameter | Super Bot values | Crypto Bot values |
 |-----------|-----------------|-------------------|
@@ -1197,18 +1199,19 @@ screen -r optimize              # attach; Ctrl+A D to detach
 | Stop-loss % | 2.0, 3.0, 4.0 | 3.0, 4.0, 5.0 |
 | Take-profit % | 12.0, 15.0, 20.0 | 8.0, 10.0, 15.0 |
 
-Trailing-stop stays fixed. Scores each combo as `(avg_return×0.35 + avg_win_rate×0.45 − avg_drawdown×0.20) × trade_count_penalty`.
+The live baseline value is always added to each axis; trailing-stop stays fixed. **Parameter stability**: a per-axis winning value must recur in ≥50 % of folds to be a *candidate* — otherwise the baseline is kept for that axis. **Adoption gate**: the candidate is written to `best_params` (what `/apply` reads) only if it beats the baseline out-of-sample by ≥0.15 Sortino AND does not lose return; otherwise `best_params` = live baseline. This is the anti-overfitting guard — the report states explicitly when a grid pick was rejected.
 
 ### Data window
 
-- **Super Bot**: last 275 calendar days of daily ETF bars (≈189 trading days) via Alpaca IEX — all 10 ETFs fetched in one call
-- **Crypto Bot**: last 220 calendar days of daily crypto bars (≈221 bars; crypto trades 7d/week) — all 9 liquid symbols
-- **Warmup**: first 100 bars per symbol for indicator stabilisation; Ichimoku requires minimum 78 bars
-- Data is fetched fresh each Sunday — no caching between runs
+- **Super Bot**: ~4 years of daily ETF bars via **yfinance** (Alpaca paper returns null stock bars). Aligned to the shortest symbol (e.g. IBIT since 2024 → ~618 bars → 4 folds).
+- **Crypto Bot**: ~3 years of daily crypto bars via Alpaca (`days=1100`). Aligned to the shortest symbol (e.g. SOL → ~685 bars → 5 folds).
+- **Warmup**: first 100 bars per symbol for indicator stabilisation; Ichimoku requires minimum 78 bars.
+- **Test run**: `python3 optimize_agent.py --test` → results/log to `/tmp`, NO Telegram (safe to run alongside the live session).
+- Data is fetched fresh each Sunday — no caching between runs.
 
 ### Efficiency
 
-All indicators pre-computed once per symbol per run (RSI, MA20, MACD, OBV, Ichimoku, PSAR, Supertrend × 3 mult values). The 81-combo grid runs in < 2 seconds for each bot (no repeated API calls during grid iteration).
+All indicators pre-computed once per symbol per run (RSI, MA20, MACD, OBV, Ichimoku, PSAR, Supertrend × N mult values). The full walk-forward (folds × grid combos × symbols) runs in a few seconds per bot on the Pi — data is fetched once up front, no API calls during the search.
 
 ### Scoring and suggestions
 
@@ -1342,7 +1345,7 @@ Output files: `agents/backtest_results.json` (full data) · `agents/backtest_rep
 
 - [x] **Backtesting Agent** — `agents/backtest_agent.py` — 2024 full-year results: +18.5% ETFs, +280% crypto
 - [x] **Risk Agent** — `agents/risk_agent.py` — daily −5% / drawdown −15% halt, auto-resume after 4h cooldown (not fixed 09:30 — crypto trades 24/7)
-- [x] **Optimierung Agent** — `agents/optimize_agent.py` — 81-combo weekly grid search (RSI · ST-mult · SL · TP) on live Alpaca data; indicator block analysis; Telegram report every Sunday 00:00
+- [x] **Optimierung Agent** — `agents/optimize_agent.py` — **Walk-Forward-Optimierung** (rollende IS→OOS-Folds, Sortino-Score, Parameter-Stabilität ≥50 %, Adoption nur bei OOS-Sortino-Gewinn ≥0.15 → Overfitting-Schutz); Daten yfinance ETFs 4J + Alpaca Crypto ~3J; `--test`-Flag (Output→/tmp, kein Telegram); indicator block analysis; Telegram-Report So 00:00. *(War davor: 81-combo In-Sample-Grid-Search — Vorschläge galten als überfittet)*
 - [x] **Kraken WebSocket** (`wss://ws.kraken.com`) — `_kraken_ws_run/on_open/on_message()` daemon thread; public trade channel (no auth); `KRAKEN_WS_PAIR_MAP` maps internal symbols to WS pair names (BTC/USD→XBT/USD etc.); `KRAKEN_WS_REVERSE` for reverse lookup; `start_websocket()` now branches on EXCHANGE: alpaca→Alpaca WS, kraken→Kraken WS; trade ticks update `ws_prices` and call `_ws_check_price()` same as Alpaca; spike detection disabled for Kraken (volume format incompatible); activates automatically when `"exchange": "kraken"` set in config.py
 - [x] **GitHub Backup** — `agents/github_backup.py` nightly at 02:00; git repo initialised on server (branch `main`); `.gitignore` excludes all secrets (`config.*`), state files, live feeds; push activates when `"github_repo"` key is added to `config.py`
 - [x] **Telegram Steuerung** — `telegram_router.py` standalone router (single `getUpdates` caller) fixes race condition where two bots polled the same token; communicates via `bot_control.json` / `crypto/crypto_control.json`; adds `/stop_super`, `/stop_crypto`, `/start_super`, `/start_crypto` per-bot controls
