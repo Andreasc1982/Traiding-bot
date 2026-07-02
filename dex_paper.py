@@ -41,8 +41,10 @@ BET            = 20.0      # $20 Mini-Wette pro Token (kleine Betraege = Strateg
 MAX_POS        = 12        # max gleichzeitige Wetten
 ENTRY_MOM      = 12.0      # Trigger: >=12% 1h-Momentum (sustained, kein 5-min-Flash)
 ENTRY_VOL_H6   = 5000      # zusaetzlich: >=$5k 6h(~5h)-Volumen — echtes Interesse, kein toter Flash
-ENTRY_MAX_CHG5 = 15.0      # v2 Anti-Chase: NICHT mitten im 5m-Spike kaufen — Daten v1: 5m-Mom 25%+ -> ~0% Win (Top-Kauf)
-ENTRY_MAX_CHG1 = 100.0     # v2.1 Anti-Parabolic: 1h-Momentum-Deckel — schon >100% gelaufen = Top (CALVIN +256% -> -18.7%); Startwert, aus chg1-Daten zu schaerfen
+ENTRY_MIN_LIQ  = 20000     # v5: min $20k Liquiditaet beim Entry — Daten: $20-50k=33% Win vs <$20k=16%
+ENTRY_MIN_CHG5 = -5.0      # v5: 5m-Untergrenze — keine aktiv fallenden Coins (chg5<0 = 19% Win, Haupt-EARLY-EXIT-Quelle)
+ENTRY_MAX_CHG5 = 25.0      # v5 (war 15): 5m-Obergrenze — Sweet-Spot 0-25% = 27% Win; Kauf-Fenster jetzt [-5,+25]
+ENTRY_MAX_CHG1 = 200.0     # v5 (war 100): Anti-Parabolic gelockert — Continuation chg1 100-200 lief +37% (FROGBULL/FABLE/REDBULL)
 ENTRY_SLIP     = 0.05      # 5% Kauf-Slippage
 EXIT_SLIP      = 0.05      # 5% Verkauf-Slippage
 HARD           = 0.35      # harter Stop -35% (DEX-Noise verlangt Luft)
@@ -179,9 +181,11 @@ def _has_fresh_candidate(state):
         volh6 = t.get("vol_h6", 0)
         if chg1 < ENTRY_MOM or chg1 > ENTRY_MAX_CHG1:
             continue
-        if chg5 > ENTRY_MAX_CHG5:
+        if chg5 > ENTRY_MAX_CHG5 or chg5 < ENTRY_MIN_CHG5:
             continue
         if volh6 < STALE_VOL_MIN:
+            continue
+        if (t.get("liq", 0) or 0) < ENTRY_MIN_LIQ:
             continue
         try:
             last_seen = datetime.strptime(t.get("last_seen", ""), "%Y-%m-%d %H:%M")
@@ -276,8 +280,9 @@ def run():
           " | Entry >=" + str(ENTRY_MOM) + "% 1h-Mom + >=$" + str(ENTRY_VOL_H6) + " 5h-Vol")
     print("  Stop -" + str(int(HARD * 100)) + "% | Trail " + str(int(TRAIL * 100)) +
           "% | Slippage " + str(int(ENTRY_SLIP * 100)) + "%/Seite | Rug<$" + str(RUG_LIQ))
-    print("  v4: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
-          "% | Anti-Chase 5m<=" + str(ENTRY_MAX_CHG5) + "% | BE-Floor +10% | Early-Exit -" +
+    print("  v5: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
+          "% | 5m-Fenster " + str(int(ENTRY_MIN_CHG5)) + ".." + str(int(ENTRY_MAX_CHG5)) +
+          "% | Liq>=$" + str(int(ENTRY_MIN_LIQ / 1000)) + "k | BE-Floor +10% | Early-Exit -" +
           str(int(EARLY_EXIT_DROP)) + "%/" + str(EARLY_EXIT_SEC) + "s | ProgTrail 30/25/20/15%")
     print("  Slots: " + str(MAX_POS) + " normal + " + str(MAX_POS_PREMIUM) +
           " Premium (>=" + str(int(PREMIUM_MOM)) + "% mom + $" + str(int(PREMIUM_VOL/1000)) + "k vol) | Stale-Swap >" +
@@ -329,11 +334,14 @@ def run():
                 mom   = t.get("chg1", t.get("chg5", 0)) or 0
                 volh6 = t.get("vol_h6", 0) or 0
                 chg5  = t.get("chg5", 0) or 0
-                if mom < ENTRY_MOM or mom > ENTRY_MAX_CHG1:   # 1h-Momentum im Band: genug Trend, aber nicht schon parabolisch (CALVIN)
+                liq   = t.get("liq", 0) or 0
+                if mom < ENTRY_MOM or mom > ENTRY_MAX_CHG1:   # 1h-Momentum im Band 12-200%: Trend, aber nicht extrem-parabolisch
                     continue
                 if volh6 < ENTRY_VOL_H6:                      # genug 5h-Volumen
                     continue
-                if chg5 > ENTRY_MAX_CHG5:                     # v2 Anti-Chase: nicht mitten im 5m-Spike (Top-Kauf)
+                if liq < ENTRY_MIN_LIQ:                       # v5: Liquiditaets-Floor ($20k+ verdoppelt die Win-Rate)
+                    continue
+                if chg5 > ENTRY_MAX_CHG5 or chg5 < ENTRY_MIN_CHG5:   # v5: 5m-Fenster [-5,+25] — kein Top-Kauf UND kein fallender Dip
                     continue
                 # v4 Premium-Slots: normaler Slot voll -> nur Premium-Kandidaten (>=60% mom + $500k vol)
                 is_premium = (mom >= PREMIUM_MOM and volh6 >= PREMIUM_VOL)
