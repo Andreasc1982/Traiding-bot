@@ -52,9 +52,19 @@ TRAIL          = 0.30      # Trailing 30% vom Hoch (Moonshot: Gewinner laufen la
 RUG_LIQ        = 2500      # Liquiditaet < $2.5k = gerugged -> Fill zum Ist-Preis (Totalverlust)
 RUG_CONFIRM    = 3         # so viele aufeinanderfolgende Rug-Belege noetig (gegen API-Hiccups -> keine Fake-Verluste)
 RUG_RECOVERY   = 0.05      # komplett verschwundener Token: Restwert-Annahme (5% = -95%, ehrlich pessimistisch)
-SCALE_AT       = 1.00      # bei +100%: Einsatz rausnehmen (House-Money), Rest laeuft
-BE_TRIGGER     = 0.25      # ab +25% Peak -> Break-Even-Schutz aktiv
-BE_FLOOR       = 0.10      # v3: Floor bei Entry+10% (deckt 5% Exit-Slippage + Buffer ab; vorher Entry -> avg -8.6%)
+SCALE_AT       = 1.00      # v7 DEAKTIVIERT (kein Einsatz-Rausnehmen mehr) — volle Position laeuft, Pyramiding statt Scale-Out
+BE_TRIGGER     = 0.25      # ab +25% Peak -> Gewinn-Floor Stufe 1 aktiv
+BE_FLOOR       = 0.10      # Floor-Stufe 1: Entry+10% (deckt 5% Exit-Slippage + Buffer ab)
+# v7 Pyramiding: zu Gewinnern dazukaufen im rug-freien Fenster (>+25% Peak = 0 Rugs in 300+ Trades); Tranchen SCHRUMPFEN (Turtle-Regel)
+PYR_ADD1_AT    = 50.0      # bei +50% vom Ersteinstieg -> Nachkauf 1
+PYR_ADD1_BET   = 10.0      # ...$10 (halbe Basis)
+PYR_ADD2_AT    = 150.0     # bei +150% -> Nachkauf 2
+PYR_ADD2_BET   = 5.0       # ...$5 (viertel Basis)
+# v7 ratchetierender Gewinn-Floor (garantierter Mindest-Exit, waechst mit dem Peak)
+FLOOR_L2_PEAK  = 100.0     # Peak >=+100% -> Floor +50%
+FLOOR_L2_VAL   = 50.0
+FLOOR_L3_PEAK  = 200.0     # Peak >=+200% -> Floor +120%
+FLOOR_L3_VAL   = 120.0
 MAX_HOURS      = 48        # Zeit-Exit fuer Zombies (steht weder hoch noch tief)
 POLL_SEC       = 20        # Held-Positionen alle 20s pruefen
 EARLY_EXIT_SEC = 180       # v3: Frueh-Exit-Fenster (3 Min = 9 Polls nach Kauf)
@@ -254,6 +264,36 @@ def scale_out(state, trades, addr, price):
         str(round(proceeds, 2)) + " gesichert, Rest laeuft 🎰")
 
 
+def pyramid(state, pos, price, add_bet, tag):
+    """v7: auf Staerke nachlegen — kleinere Tranche zum Live-Preis, Ø-Einstieg steigt.
+    True wenn nachgelegt (genug Bankroll), sonst False (naechster Zyklus erneut)."""
+    if state["bankroll"] < add_bet:
+        return False
+    fill = price * (1 + ENTRY_SLIP)
+    add_shares = add_bet / fill
+    total_cost = pos["entry"] * pos["shares"] + fill * add_shares
+    pos["shares"] += add_shares
+    pos["bet"]    += add_bet
+    pos["entry"]   = total_cost / pos["shares"] if pos["shares"] > 0 else pos["entry"]
+    state["bankroll"] -= add_bet
+    print("[PAPER-PYRAMID] " + pos["symbol"] + " Nachkauf" + tag + " $" +
+          str(add_bet) + " @ $" + str(price) + " -> avg-Entry $" + str(round(pos["entry"], 10)))
+    _tg("📈 <b>DEX Pyramide</b>: " + pos["symbol"] + " Nachkauf" + tag + " $" +
+        str(add_bet) + " — Position laeuft weiter, avg-Entry steigt")
+    return True
+
+
+def floor_pct_for(peak_pct):
+    """v7: ratchetierender Gewinn-Floor — garantierter Mindest-Exit je Peak-Stufe."""
+    if peak_pct >= FLOOR_L3_PEAK:
+        return FLOOR_L3_VAL
+    if peak_pct >= FLOOR_L2_PEAK:
+        return FLOOR_L2_VAL
+    if peak_pct >= BE_TRIGGER * 100:
+        return BE_FLOOR * 100
+    return 0.0
+
+
 def equity(state):
     open_val = sum(p["shares"] * p.get("last_price", p["entry"]) for p in state["positions"].values())
     return state["bankroll"] + open_val
@@ -280,10 +320,13 @@ def run():
           " | Entry >=" + str(ENTRY_MOM) + "% 1h-Mom + >=$" + str(ENTRY_VOL_H6) + " 5h-Vol")
     print("  Stop -" + str(int(HARD * 100)) + "% | Trail " + str(int(TRAIL * 100)) +
           "% | Slippage " + str(int(ENTRY_SLIP * 100)) + "%/Seite | Rug<$" + str(RUG_LIQ))
-    print("  v6: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
+    print("  v7: 1h-Mom " + str(int(ENTRY_MOM)) + "-" + str(int(ENTRY_MAX_CHG1)) +
           "% | 5m-Fenster " + str(int(ENTRY_MIN_CHG5)) + ".." + str(int(ENTRY_MAX_CHG5)) +
-          "% | Liq>=$" + str(int(ENTRY_MIN_LIQ / 1000)) + "k | BE-Floor +10% | Early-Exit -" +
-          str(int(EARLY_EXIT_DROP)) + "%/" + str(EARLY_EXIT_SEC) + "s | ProgTrail 30/25/20/15%")
+          "% | Liq>=$" + str(int(ENTRY_MIN_LIQ / 1000)) + "k | Early-Exit -" +
+          str(int(EARLY_EXIT_DROP)) + "%/" + str(EARLY_EXIT_SEC) + "s")
+    print("  v7 NEU: Pyramide +$" + str(int(PYR_ADD1_BET)) + "@+" + str(int(PYR_ADD1_AT)) +
+          "% /+$" + str(int(PYR_ADD2_BET)) + "@+" + str(int(PYR_ADD2_AT)) +
+          "% | Scale-Out AUS | Gewinn-Floor +10/+50/+120%@Peak+25/+100/+200% | ProgTrail 30/25/20/15%")
     print("  Slots: " + str(MAX_POS) + " normal + " + str(MAX_POS_PREMIUM) +
           " Premium (>=" + str(int(PREMIUM_MOM)) + "% mom + $" + str(int(PREMIUM_VOL/1000)) + "k vol) | Stale-Swap >" +
           str(STALE_HOURS) + "h / Peak<" + str(int(STALE_PEAK)) + "%")
@@ -300,6 +343,9 @@ def run():
                 _p.setdefault("realized", 0.0)
                 _p.setdefault("scaled", False)
                 _p.setdefault("rug_misses", 0)
+                _p.setdefault("entry0", _p.get("entry", 0))
+                _p.setdefault("added1", False)
+                _p.setdefault("added2", False)
             print("[STATE] wiederhergestellt: Bankroll $" + str(round(state["bankroll"], 2)) +
                   ", " + str(len(state["positions"])) + " offene Wetten")
         except Exception:
@@ -355,9 +401,9 @@ def run():
                 shares = BET / fill
                 state["bankroll"] -= BET
                 state["positions"][addr] = {
-                    "symbol": t.get("symbol", "?"), "entry": fill, "shares": shares,
+                    "symbol": t.get("symbol", "?"), "entry": fill, "entry0": fill, "shares": shares,
                     "peak": fill, "last_price": fill, "bet": BET, "realized": 0.0,
-                    "scaled": False, "rug_misses": 0,
+                    "scaled": False, "rug_misses": 0, "added1": False, "added2": False,
                     "entry_ts": time.time(),                       # v3: Frueh-Exit-Uhr
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "premium": is_premium,
@@ -405,12 +451,18 @@ def run():
                 except (ValueError, KeyError):
                     age_h = 0.0
 
-                # House-Money: Einsatz bei +100% sichern (einmal)
-                if not pos["scaled"] and pnl >= SCALE_AT * 100:
-                    scale_out(state, trades, addr, cur)
+                # v7: Pyramiding statt Scale-Out — auf Staerke nachlegen (Tranchen schrumpfen),
+                # im rug-freien Fenster (Daten: 0 Rugs ueber +25% Peak). Trigger vom Ersteinstieg.
+                e0 = pos.get("entry0", pos["entry"])
+                if not pos.get("added1") and cur >= e0 * (1 + PYR_ADD1_AT / 100):
+                    if pyramid(state, pos, cur, PYR_ADD1_BET, "1"):
+                        pos["added1"] = True
+                elif pos.get("added1") and not pos.get("added2") and cur >= e0 * (1 + PYR_ADD2_AT / 100):
+                    if pyramid(state, pos, cur, PYR_ADD2_BET, "2"):
+                        pos["added2"] = True
+                pnl = (cur - pos["entry"]) / pos["entry"] * 100 if pos["entry"] > 0 else 0   # nach evtl. Nachkauf neu
 
                 reason = None
-                be_armed = pos["peak"] >= pos["entry"] * (1 + BE_TRIGGER)   # war je >= +25%?
                 # Progressives Trailing: grosse Gewinner enger fassen
                 peak_pct_val = (pos["peak"] / pos["entry"] - 1) * 100 if pos["entry"] > 0 else 0
                 if peak_pct_val >= 200:
@@ -422,13 +474,13 @@ def run():
                 else:
                     trail_now = TRAIL        # 0.30 default
 
-                # Fix 1: Frueh-Exit — sofort-tote Entries in 3 Min abschneiden
+                # v7 ratchetierender Gewinn-Floor (ersetzt Break-Even): garantierter Mindest-Exit je Peak-Stufe
+                floor_v = floor_pct_for(peak_pct_val)
                 age_s = time.time() - pos.get("entry_ts", time.time())
                 if age_s < EARLY_EXIT_SEC and pnl <= -EARLY_EXIT_DROP:
                     reason = "EARLY-EXIT"
-                # Fix 2: BREAKEVEN-Floor bei Entry+10% (deckt Slippage ab)
-                elif be_armed and cur <= pos["entry"] * (1 + BE_FLOOR):
-                    reason = "BREAKEVEN"
+                elif floor_v > 0 and cur <= pos["entry"] * (1 + floor_v / 100):
+                    reason = "FLOOR"
                 elif cur <= pos["entry"] * (1 - HARD):
                     reason = "HARD-STOP"
                 elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - trail_now):
