@@ -30,10 +30,16 @@ except ImportError:
 
 DEX_DIR   = "/home/trading2025/trading_bot/dex"
 os.makedirs(DEX_DIR, exist_ok=True)
-WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")
-PSTATE    = os.path.join(DEX_DIR, "paper_state.json")
-PTRADES   = os.path.join(DEX_DIR, "paper_trades.json")
-PHB       = os.path.join(DEX_DIR, "paper_heartbeat.json")
+# v8 Clone-Support: optionales Variant-Arg -> eigene State-Files + Singleton + Live-Gate-Toggle.
+# "baseline" (Default, kein Arg) = unveraendert (v7, monitored). "livegate" = v8 mit Live-Momentum-Gate.
+VARIANT   = sys.argv[1] if (len(sys.argv) > 1 and not sys.argv[1].startswith("-")) else "baseline"
+_SUF      = "" if VARIANT == "baseline" else "_" + VARIANT
+LIVE_GATE = (VARIANT == "livegate")
+SINGLETON = "dex_paper" + _SUF
+WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
+PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
+PTRADES   = os.path.join(DEX_DIR, "paper_trades"    + _SUF + ".json")
+PHB       = os.path.join(DEX_DIR, "paper_heartbeat" + _SUF + ".json")
 
 # ── Parameter ────────────────────────────────────────────────────────────────
 START_BANKROLL = 500.0     # Paper-Kapital (realistische Mini-Kasse)
@@ -135,7 +141,8 @@ def token_now(addr):
     except (TypeError, ValueError):
         price = 0.0
     liq = (p.get("liquidity") or {}).get("usd", 0) or 0
-    return {"price": price, "liq": liq}
+    pc  = p.get("priceChange") or {}
+    return {"price": price, "liq": liq, "chg5": _f(pc.get("m5")), "chg1": _f(pc.get("h1"))}
 
 
 def tokens_now(addrs):
@@ -327,6 +334,9 @@ def run():
     print("  v7 NEU: Pyramide +$" + str(int(PYR_ADD1_BET)) + "@+" + str(int(PYR_ADD1_AT)) +
           "% /+$" + str(int(PYR_ADD2_BET)) + "@+" + str(int(PYR_ADD2_AT)) +
           "% | Scale-Out AUS | Gewinn-Floor +10/+50/+120%@Peak+25/+100/+200% | ProgTrail 30/25/20/15%")
+    print("  VARIANTE: " + VARIANT + " | Live-Momentum-Gate: " +
+          ("AN (v8 — kauft nur bei LIVE intaktem Momentum)" if LIVE_GATE else "AUS (v7-baseline)") +
+          " | State: " + os.path.basename(PSTATE))
     print("  Slots: " + str(MAX_POS) + " normal + " + str(MAX_POS_PREMIUM) +
           " Premium (>=" + str(int(PREMIUM_MOM)) + "% mom + $" + str(int(PREMIUM_VOL/1000)) + "k vol) | Stale-Swap >" +
           str(STALE_HOURS) + "h / Peak<" + str(int(STALE_PEAK)) + "%")
@@ -396,6 +406,15 @@ def run():
                 live = token_now(addr)        # gleiche Live-Quelle wie der Exit -> kein Freshness-Phantom
                 if not live or live.get("price", 0) <= 0 or live.get("liq", 0) < RUG_LIQ:
                     continue                  # weg/illiquide/geruggt zwischen Screening und Entry -> nicht kaufen
+                if LIVE_GATE:
+                    # v8: Momentum+Liq LIVE gegenpruefen — die Watchlist-Werte sind im Schnitt ~18h alt!
+                    lc1 = live.get("chg1", 0); lc5 = live.get("chg5", 0)
+                    if lc1 < ENTRY_MOM or lc1 > ENTRY_MAX_CHG1:      # 1h-Momentum JETZT nicht mehr im Band
+                        continue
+                    if lc5 > ENTRY_MAX_CHG5 or lc5 < ENTRY_MIN_CHG5:  # 5m JETZT ausserhalb [-5,+25]
+                        continue
+                    if live.get("liq", 0) < ENTRY_MIN_LIQ:           # Liq JETZT zu duenn
+                        continue
                 price = live["price"]
                 fill = price * (1 + ENTRY_SLIP)        # Kauf-Slippage auf LIVE-Preis
                 shares = BET / fill
@@ -524,11 +543,11 @@ def run():
 if __name__ == "__main__":
     try:
         import health
-        if health.acquire_singleton("dex_paper") is None:
-            health.log("dex_paper", "DUPLICATE_BLOCKED", "")
-            print("[SINGLETON] dex_paper laeuft bereits — Instanz beendet sich.")
+        if health.acquire_singleton(SINGLETON) is None:
+            health.log(SINGLETON, "DUPLICATE_BLOCKED", "")
+            print("[SINGLETON] " + SINGLETON + " laeuft bereits — Instanz beendet sich.")
             raise SystemExit(0)
-        health.log("dex_paper", "START", "")
+        health.log(SINGLETON, "START", "")
     except SystemExit:
         raise
     except Exception as _e:
