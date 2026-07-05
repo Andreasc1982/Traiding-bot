@@ -30,10 +30,16 @@ except ImportError:
 
 DEX_DIR   = "/home/trading2025/trading_bot/dex"
 os.makedirs(DEX_DIR, exist_ok=True)
-WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")
-PSTATE    = os.path.join(DEX_DIR, "paper_state.json")
-PTRADES   = os.path.join(DEX_DIR, "paper_trades.json")
-PHB       = os.path.join(DEX_DIR, "paper_heartbeat.json")
+# v8 Clone-Support: optionales Variant-Arg -> eigene State-Files + Singleton + Live-Gate-Toggle.
+# "baseline" (Default, kein Arg) = unveraendert (v7, monitored). "livegate" = v8 mit Live-Momentum-Gate.
+VARIANT   = sys.argv[1] if (len(sys.argv) > 1 and not sys.argv[1].startswith("-")) else "baseline"
+_SUF      = "" if VARIANT == "baseline" else "_" + VARIANT
+LIVE_GATE = (VARIANT == "livegate")
+SINGLETON = "dex_paper" + _SUF
+WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
+PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
+PTRADES   = os.path.join(DEX_DIR, "paper_trades"    + _SUF + ".json")
+PHB       = os.path.join(DEX_DIR, "paper_heartbeat" + _SUF + ".json")
 
 # ── Parameter ────────────────────────────────────────────────────────────────
 START_BANKROLL = 500.0     # Paper-Kapital (realistische Mini-Kasse)
@@ -84,16 +90,17 @@ PREMIUM_VOL     = 500_000  # Premium: >= $500k 6h-Volumen (echtes Interesse, kei
 TG_TOKEN   = config.get("telegram_bot_token", "")
 TG_CHAT    = config.get("telegram_chat_id", "")
 TG_WIN_PCT = 25.0          # Telegram-Alert ab diesem Gewinn-% (Moonshots)
-SUMMARY_H  = 6             # Telegram-Zusammenfassung alle 6h
+SUMMARY_H  = 3             # Telegram-Zusammenfassung alle 3h
 
 
 def _tg(msg):
-    """Telegram-Nachricht (gleicher Chat wie Live-Bots). Graceful ohne Config."""
+    """Telegram-Nachricht mit Variant-Label vorn (🟦 Baseline / 🟩 Livegate). Graceful ohne Config."""
     if not TG_TOKEN or not TG_CHAT:
         return
+    head = ("🟩 <b>Livegate v8</b>\n" if LIVE_GATE else "🟦 <b>Baseline v7</b>\n")
     try:
         requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
-                      data={"chat_id": TG_CHAT, "text": msg, "parse_mode": "HTML"}, timeout=TIMEOUT)
+                      data={"chat_id": TG_CHAT, "text": head + msg, "parse_mode": "HTML"}, timeout=TIMEOUT)
     except Exception as e:
         print("[TG] " + str(e)[:60])
 
@@ -135,7 +142,8 @@ def token_now(addr):
     except (TypeError, ValueError):
         price = 0.0
     liq = (p.get("liquidity") or {}).get("usd", 0) or 0
-    return {"price": price, "liq": liq}
+    pc  = p.get("priceChange") or {}
+    return {"price": price, "liq": liq, "chg5": _f(pc.get("m5")), "chg1": _f(pc.get("h1"))}
 
 
 def tokens_now(addrs):
@@ -278,8 +286,10 @@ def pyramid(state, pos, price, add_bet, tag):
     state["bankroll"] -= add_bet
     print("[PAPER-PYRAMID] " + pos["symbol"] + " Nachkauf" + tag + " $" +
           str(add_bet) + " @ $" + str(price) + " -> avg-Entry $" + str(round(pos["entry"], 10)))
-    _tg("📈 <b>DEX Pyramide</b>: " + pos["symbol"] + " Nachkauf" + tag + " $" +
-        str(add_bet) + " — Position laeuft weiter, avg-Entry steigt")
+    g = (price / pos.get("entry0", price) - 1) * 100 if pos.get("entry0") else 0
+    _tg("📈 <b>Pyramide</b> — " + pos["symbol"] + ": Nachkauf" + tag + " +$" + str(int(add_bet)) +
+        " bei <b>+" + str(round(g)) + "%</b>\nEinsatz jetzt $" + str(int(pos["bet"])) +
+        " · Position läuft weiter (avg-Entry steigt)")
     return True
 
 
@@ -300,17 +310,33 @@ def equity(state):
 
 
 def _tg_summary(state, trades):
-    eq = equity(state)
-    n = len(trades)
+    from collections import Counter
+    eq   = equity(state)
+    n    = len(trades)
     wins = sum(1 for tr in trades if tr.get("profit", 0) > 0)
     rugs = sum(1 for tr in trades if tr.get("reason") == "RUG-TOTAL")
-    wr = (wins / n * 100) if n else 0
+    wr   = (wins / n * 100) if n else 0
+    net  = sum(tr.get("profit", 0) for tr in trades)
     best = max((tr.get("pct", 0) for tr in trades), default=0)
-    _tg("🛰️ <b>DEX Paper-Moonshot</b>\n"
-        "Equity: $" + str(round(eq, 2)) + " (" + ("%+.1f" % ((eq / START_BANKROLL - 1) * 100)) + "%)\n"
-        "Offen: " + str(len(state["positions"])) + " | Trades: " + str(n) +
-        " | Win-Rate: " + str(round(wr)) + "%\n"
-        "Rugs: " + str(rugs) + " | Bester Trade: +" + str(round(best, 1)) + "%")
+    worst= min((tr.get("pct", 0) for tr in trades), default=0)
+    mix  = Counter(tr.get("reason", "?") for tr in trades)
+    mix_str = " · ".join(k + ":" + str(v) for k, v in mix.most_common(4)) if mix else "—"
+    opos = state.get("positions", {})
+    op_lines = []
+    for p in sorted(opos.values(),
+                    key=lambda x: (x.get("last_price", x["entry"]) / x["entry"] - 1) if x["entry"] else 0,
+                    reverse=True)[:5]:
+        pct = (p.get("last_price", p["entry"]) / p["entry"] - 1) * 100 if p["entry"] > 0 else 0
+        op_lines.append("  " + p.get("symbol", "?") + " " + ("%+.0f" % pct) + "%" +
+                        (" ⚡pyr" if p.get("added1") else ""))
+    op_str = ("\n" + "\n".join(op_lines)) if op_lines else " —"
+    _tg("🛰️ <b>6h-Übersicht</b>\n"
+        "💰 Equity <b>$" + str(round(eq, 2)) + "</b> (" +
+        ("%+.1f" % ((eq / START_BANKROLL - 1) * 100)) + "% · Netto $" + ("%+.0f" % net) + ")\n"
+        "📊 " + str(n) + " Trades · WR <b>" + str(round(wr)) + "%</b> · 💀 " + str(rugs) + " Rugs\n"
+        "🏆 Bester +" + str(round(best)) + "% · Schlechtester " + str(round(worst)) + "%\n"
+        "🎯 Exits: " + mix_str + "\n"
+        "📈 Offen (" + str(len(opos)) + "):" + op_str)
 
 
 def run():
@@ -327,6 +353,9 @@ def run():
     print("  v7 NEU: Pyramide +$" + str(int(PYR_ADD1_BET)) + "@+" + str(int(PYR_ADD1_AT)) +
           "% /+$" + str(int(PYR_ADD2_BET)) + "@+" + str(int(PYR_ADD2_AT)) +
           "% | Scale-Out AUS | Gewinn-Floor +10/+50/+120%@Peak+25/+100/+200% | ProgTrail 30/25/20/15%")
+    print("  VARIANTE: " + VARIANT + " | Live-Momentum-Gate: " +
+          ("AN (v8 — kauft nur bei LIVE intaktem Momentum)" if LIVE_GATE else "AUS (v7-baseline)") +
+          " | State: " + os.path.basename(PSTATE))
     print("  Slots: " + str(MAX_POS) + " normal + " + str(MAX_POS_PREMIUM) +
           " Premium (>=" + str(int(PREMIUM_MOM)) + "% mom + $" + str(int(PREMIUM_VOL/1000)) + "k vol) | Stale-Swap >" +
           str(STALE_HOURS) + "h / Peak<" + str(int(STALE_PEAK)) + "%")
@@ -396,6 +425,15 @@ def run():
                 live = token_now(addr)        # gleiche Live-Quelle wie der Exit -> kein Freshness-Phantom
                 if not live or live.get("price", 0) <= 0 or live.get("liq", 0) < RUG_LIQ:
                     continue                  # weg/illiquide/geruggt zwischen Screening und Entry -> nicht kaufen
+                if LIVE_GATE:
+                    # v8: Momentum+Liq LIVE gegenpruefen — die Watchlist-Werte sind im Schnitt ~18h alt!
+                    lc1 = live.get("chg1", 0); lc5 = live.get("chg5", 0)
+                    if lc1 < ENTRY_MOM or lc1 > ENTRY_MAX_CHG1:      # 1h-Momentum JETZT nicht mehr im Band
+                        continue
+                    if lc5 > ENTRY_MAX_CHG5 or lc5 < ENTRY_MIN_CHG5:  # 5m JETZT ausserhalb [-5,+25]
+                        continue
+                    if live.get("liq", 0) < ENTRY_MIN_LIQ:           # Liq JETZT zu duenn
+                        continue
                 price = live["price"]
                 fill = price * (1 + ENTRY_SLIP)        # Kauf-Slippage auf LIVE-Preis
                 shares = BET / fill
@@ -524,11 +562,11 @@ def run():
 if __name__ == "__main__":
     try:
         import health
-        if health.acquire_singleton("dex_paper") is None:
-            health.log("dex_paper", "DUPLICATE_BLOCKED", "")
-            print("[SINGLETON] dex_paper laeuft bereits — Instanz beendet sich.")
+        if health.acquire_singleton(SINGLETON) is None:
+            health.log(SINGLETON, "DUPLICATE_BLOCKED", "")
+            print("[SINGLETON] " + SINGLETON + " laeuft bereits — Instanz beendet sich.")
             raise SystemExit(0)
-        health.log("dex_paper", "START", "")
+        health.log(SINGLETON, "START", "")
     except SystemExit:
         raise
     except Exception as _e:
