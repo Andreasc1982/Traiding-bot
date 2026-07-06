@@ -242,6 +242,9 @@ def close_paper(state, trades, addr, price, reason):
         "peak_pct": round((pos.get("peak", pos["entry"]) / pos["entry"] - 1) * 100, 1) if pos["entry"] > 0 else 0,
         "opened": pos["time"], "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "scaled": pos.get("scaled", False),
+        "premium": pos.get("premium", False),
+        "adds": (1 if pos.get("added1") else 0) + (1 if pos.get("added2") else 0),
+        "bet": pos.get("bet", BET),
     })
     tag = "💀" if reason == "RUG-TOTAL" else ("🚀" if profit > 0 else "")
     print("[PAPER-CLOSE] " + reason + " " + pos["symbol"] + " " +
