@@ -245,6 +245,7 @@ def close_paper(state, trades, addr, price, reason):
         "premium": pos.get("premium", False),
         "adds": (1 if pos.get("added1") else 0) + (1 if pos.get("added2") else 0),
         "bet": pos.get("bet", BET),
+        "esnap": pos.get("esnap", {}),
     })
     tag = "💀" if reason == "RUG-TOTAL" else ("🚀" if profit > 0 else "")
     print("[PAPER-CLOSE] " + reason + " " + pos["symbol"] + " " +
@@ -461,6 +462,9 @@ def run():
                     "entry_ts": time.time(),                       # v3: Frueh-Exit-Uhr
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "premium": is_premium,
+                    "esnap": {"chg1": round(mom, 1), "chg5": round(chg5, 1), "liq": int(liq),
+                              "buys": t.get("buys", 0) or 0, "sells": t.get("sells", 0) or 0,
+                              "vol_h6": int(volh6), "age_h": t.get("age_h", 0)},
                 }
                 state["traded"].append(addr)
                 slot_tag = " [PREMIUM 🌟]" if is_premium else ""
