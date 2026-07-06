@@ -35,6 +35,7 @@ os.makedirs(DEX_DIR, exist_ok=True)
 VARIANT   = sys.argv[1] if (len(sys.argv) > 1 and not sys.argv[1].startswith("-")) else "baseline"
 _SUF      = "" if VARIANT == "baseline" else "_" + VARIANT
 LIVE_GATE = (VARIANT == "livegate")
+TUNED     = (VARIANT == "tuned")
 SINGLETON = "dex_paper" + _SUF
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
 PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
@@ -51,6 +52,9 @@ ENTRY_MIN_LIQ  = 20000     # v5: min $20k Liquiditaet beim Entry — Daten: $20-
 ENTRY_MIN_CHG5 = -5.0      # v5: 5m-Untergrenze — keine aktiv fallenden Coins (chg5<0 = 19% Win, Haupt-EARLY-EXIT-Quelle)
 ENTRY_MAX_CHG5 = 25.0      # v5 (war 15): 5m-Obergrenze — Sweet-Spot 0-25% = 27% Win; Kauf-Fenster jetzt [-5,+25]
 ENTRY_MAX_CHG1 = 100.0     # v6 zurueck auf 100: chg1->200 ergab 33% Rug-Rate (v5, 5/15) — der Deckel ist ein RUG-FILTER, keine Vorsicht (v4: 0 Rugs/185)
+# v9 tuned-Variante (nur wenn VARIANT=="tuned"): Fine-Tuning aus Winner/Loser-Daten (46 Live-Trades)
+TUNED_MIN_BS   = 1.5       # min Buy/Sell-Ratio (Winner-Median 1.80 vs Loser 1.46)
+TUNED_MIN_CHG5 = 0.0       # nur positives 5m-Momentum (0-25% = 45% WR vs <0% = 31%)
 ENTRY_SLIP     = 0.05      # 5% Kauf-Slippage
 EXIT_SLIP      = 0.05      # 5% Verkauf-Slippage
 HARD           = 0.35      # harter Stop -35% (DEX-Noise verlangt Luft)
@@ -97,7 +101,9 @@ def _tg(msg):
     """Telegram-Nachricht mit Variant-Label vorn (🟦 Baseline / 🟩 Livegate). Graceful ohne Config."""
     if not TG_TOKEN or not TG_CHAT:
         return
-    head = ("🟩 <b>Livegate v8</b>\n" if LIVE_GATE else "🟦 <b>Baseline v7</b>\n")
+    head = ("🟩 <b>Livegate v8</b>\n" if LIVE_GATE
+            else "🟨 <b>Tuned v9</b>\n" if TUNED
+            else "🟦 <b>Baseline v7</b>\n")
     try:
         requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
                       data={"chat_id": TG_CHAT, "text": head + msg, "parse_mode": "HTML"}, timeout=TIMEOUT)
@@ -353,9 +359,10 @@ def run():
     print("  v7 NEU: Pyramide +$" + str(int(PYR_ADD1_BET)) + "@+" + str(int(PYR_ADD1_AT)) +
           "% /+$" + str(int(PYR_ADD2_BET)) + "@+" + str(int(PYR_ADD2_AT)) +
           "% | Scale-Out AUS | Gewinn-Floor +10/+50/+120%@Peak+25/+100/+200% | ProgTrail 30/25/20/15%")
-    print("  VARIANTE: " + VARIANT + " | Live-Momentum-Gate: " +
-          ("AN (v8 — kauft nur bei LIVE intaktem Momentum)" if LIVE_GATE else "AUS (v7-baseline)") +
-          " | State: " + os.path.basename(PSTATE))
+    _gate = ("AN (v8 LIVE-Momentum)" if LIVE_GATE
+             else "TUNED v9 (Buy/Sell>=" + str(TUNED_MIN_BS) + " & chg5>=" + str(TUNED_MIN_CHG5) + ")" if TUNED
+             else "AUS (v7-baseline)")
+    print("  VARIANTE: " + VARIANT + " | Gate: " + _gate + " | State: " + os.path.basename(PSTATE))
     print("  Slots: " + str(MAX_POS) + " normal + " + str(MAX_POS_PREMIUM) +
           " Premium (>=" + str(int(PREMIUM_MOM)) + "% mom + $" + str(int(PREMIUM_VOL/1000)) + "k vol) | Stale-Swap >" +
           str(STALE_HOURS) + "h / Peak<" + str(int(STALE_PEAK)) + "%")
@@ -418,6 +425,12 @@ def run():
                     continue
                 if chg5 > ENTRY_MAX_CHG5 or chg5 < ENTRY_MIN_CHG5:   # v5: 5m-Fenster [-5,+25] — kein Top-Kauf UND kein fallender Dip
                     continue
+                if TUNED:
+                    # v9 Fine-Tuning (Winner/Loser-Daten): mehr Kaufdruck + nur positives 5m-Momentum
+                    if (t.get("buys", 0) or 0) / max(t.get("sells", 0) or 0, 1) < TUNED_MIN_BS:
+                        continue
+                    if chg5 < TUNED_MIN_CHG5:
+                        continue
                 # v4 Premium-Slots: normaler Slot voll -> nur Premium-Kandidaten (>=60% mom + $500k vol)
                 is_premium = (mom >= PREMIUM_MOM and volh6 >= PREMIUM_VOL)
                 if n_pos >= MAX_POS and not is_premium:
