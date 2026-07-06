@@ -182,6 +182,35 @@ def run():
                           " chg5=" + str(s["chg5"]) + "% buys/sells=" + str(s["buys"]) + "/" +
                           str(s["sells"]) + " rug=" + s["rug_risk"])
 
+            # ── Watchlist-Refresh: bestehende Eintraege auf LIVE-Daten bringen ──
+            # Behebt das Stale-Problem: sonst friert chg1/chg5/liq/price beim Entdecken ein
+            # (Median-Alter war ~26h -> jetzt <~1min). Tote/verschwundene/illiquide fliegen raus.
+            refreshed = removed = 0
+            fresh_set = set(addrs)   # in diesem Zyklus schon frisch gescreent -> nicht doppelt holen
+            refresh_addrs = [a for a in list(watchlist.keys()) if a not in fresh_set]
+            for i in range(0, len(refresh_addrs), 30):
+                chunk = refresh_addrs[i:i + 30]
+                rb = _get("https://api.dexscreener.com/latest/dex/tokens/" + ",".join(chunk))
+                if rb is None:
+                    continue          # API-Ausfall -> Chunk ueberspringen, NICHTS loeschen (transient)
+                rpairs = rb.get("pairs") or []
+                for a in chunk:
+                    p = _best_pair(rpairs, a)
+                    if p is None:                       # aus API verschwunden -> geruggt/delisted -> raus
+                        watchlist.pop(a, None); removed += 1; continue
+                    fs = screen_pair(p, a)              # FRISCHE Werte + neu bewertete reasons
+                    if fs["reasons"]:                   # Basis-Screen nicht mehr erfuellt -> raus
+                        watchlist.pop(a, None); removed += 1; continue
+                    prev = watchlist.get(a, {})
+                    fs["first_seen"]  = prev.get("first_seen", now)
+                    fs["first_price"] = prev.get("first_price", fs["price"])
+                    fs["last_seen"]   = now             # JETZT frisch gesehen
+                    fs["rug_risk"]    = prev.get("rug_risk", "ok")   # RugCheck-Label vom Erst-Screen behalten
+                    fs["passed"]      = True
+                    watchlist[a] = fs
+                    refreshed += 1
+                time.sleep(0.3)                          # DexScreener-Schonung zwischen Chunks
+
             # Watchlist auf zuletzt 200 begrenzen (aelteste raus)
             if len(watchlist) > 200:
                 items = sorted(watchlist.items(), key=lambda kv: kv[1].get("last_seen", ""))
@@ -190,9 +219,11 @@ def run():
             _atomic_write(WATCHLIST, watchlist)
             _atomic_write(HEARTBEAT, {"cycle": cycle, "ts": time.time(),
                                       "screened": screened, "passed": passed,
+                                      "refreshed": refreshed, "removed": removed,
                                       "watchlist": len(watchlist)})
             print("[DEX] Zyklus " + str(cycle) + " | " + str(screened) + " gescreent, " +
-                  str(passed) + " bestanden | Watchlist " + str(len(watchlist)))
+                  str(passed) + " neu | refresh " + str(refreshed) + " / raus " + str(removed) +
+                  " | Watchlist " + str(len(watchlist)))
         except Exception as e:
             print("[DEX-LOOP] " + str(e))
         time.sleep(POLL_SEC)
