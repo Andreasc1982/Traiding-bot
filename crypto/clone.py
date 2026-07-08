@@ -14,7 +14,9 @@ Varianten:
   F_contrarian_vix28: Deep-Fear — kauft RSI<20 + Supertrend bullish NUR bei F&G<25
                       (Crypto-Adaption des 10J-ETF-Backtests: RSI2<10 + VIX>28 → 80% Win)
 
-Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28>
+  G_core            : Momentum, OHNE Spikes/Memes/BTC/ETH — isoliert den Mid-Cap-Kern (Trade-Log-Erkenntnis)
+
+Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28|G_core>
 """
 import os, sys, json, time, threading
 from datetime import datetime
@@ -43,6 +45,9 @@ VARIANTS = {
     # Deep-Fear Contrarian: RSI<20 + Supertrend bullish + F&G<25 (Extreme Fear)
     # Crypto-Adaption des 10J-ETF-Backtests (VIX>28 = F&G<25, RSI2<10 ≈ RSI14<20)
     "F_contrarian_vix28":  {"spikes": False, "memes": False, "contrarian": False, "fear_contrarian": True, "score_min": 0.1, "port": 8097},
+    # G_core: Trade-Log-Erkenntnisse umgesetzt — Momentum, OHNE Spikes/Memes UND ohne BTC/ETH
+    # (verlieren auf beiden Entry-Arten, -$228). Isoliert den Mid-Cap-Kern (RENDER/SOL/LINK/ADA/UNI/AAVE/ARB…).
+    "G_core":              {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1, "exclude": {"BTC/USD", "ETH/USD"}, "port": 8098},
 }
 
 # Moonshot-Parameter (10J-Backtest 2026-06-18): Trailing schlaegt gedeckeltes TP 6.5x
@@ -82,6 +87,8 @@ class CloneBot(CryptoBot):
         # Variant tuning ------------------------------------------------------
         if not cfg["memes"]:
             self.excluded_symbols = set(self.excluded_symbols) | set(CRYPTO_MEME)
+        if cfg.get("exclude"):
+            self.excluded_symbols = set(self.excluded_symbols) | set(cfg["exclude"])
         self._entry_score_min = cfg["score_min"]
         self._consumed_spikes = set()
         print("[CLONE-" + variant + "] init | spikes=" + str(cfg["spikes"]) +
