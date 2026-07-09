@@ -24,6 +24,7 @@ VARIANTS = [
     ("Baseline v7",   "paper_trades.json",     "paper_heartbeat.json"),
     ("v8 Aggro-Pyr",  "paper_trades_v8.json",  "paper_heartbeat_v8.json"),
     ("v9 Fade-Cut",   "paper_trades_v9.json",  "paper_heartbeat_v9.json"),
+    ("v10 Velocity",  "paper_trades_v10.json", "paper_heartbeat_v10.json"),
 ]
 
 
@@ -54,7 +55,7 @@ def analyze(trades_f, hb_f):
 
 def build_msg():
     rows = [(name, analyze(tf, hf)) for name, tf, hf in VARIANTS]
-    L = ["\U0001F9EA <b>DEX-Vergleich — v7 Baseline / v8 Aggro-Pyramid / v9 Fade-Cut</b>", ""]
+    L = ["\U0001F9EA <b>DEX-Vergleich — v7 / v8 Pyramid / v9 Fade-Cut / v10 Velocity</b>", ""]
     for name, s in rows:
         L.append("<b>%s</b>  (Start $500)" % name)
         L.append("  Equity <b>$%.0f</b> | %d Trades | WR %.0f%%" % (s["eq"], s["n"], s["wr"]))

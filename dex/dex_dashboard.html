@@ -111,11 +111,12 @@ function pct(n){ n=Number(n)||0; return (n>=0?"+":"")+n.toFixed(1)+"%"; }
 async function getJSON(f){ try { return await (await fetch(f+"?_="+Date.now())).json(); } catch(e){ return null; } }
 
 async function load(){
-  const [ph, ps, pt, wl, hb, ph8, pt8, ph9, pt9] = await Promise.all([
+  const [ph, ps, pt, wl, hb, ph8, pt8, ph9, pt9, ph10, pt10] = await Promise.all([
     getJSON("paper_heartbeat.json"), getJSON("paper_state.json"),
     getJSON("paper_trades.json"), getJSON("watchlist.json"), getJSON("heartbeat.json"),
     getJSON("paper_heartbeat_v8.json"), getJSON("paper_trades_v8.json"),
-    getJSON("paper_heartbeat_v9.json"), getJSON("paper_trades_v9.json")
+    getJSON("paper_heartbeat_v9.json"), getJSON("paper_trades_v9.json"),
+    getJSON("paper_heartbeat_v10.json"), getJSON("paper_trades_v10.json")
   ]);
 
   // ── A/B: Baseline v7 vs v8 Aggro-Pyramid ──
@@ -130,7 +131,7 @@ async function load(){
     <td class="num ${s.net>=0?'pos':'neg'}">${usd0(s.net)}</td>
     <td class="num ${s.avg>=0?'pos':'neg'}">${usd2(s.avg)}</td></tr>`;
   document.getElementById("abrows").innerHTML =
-    abrow("Baseline v7", vstat(ph,pt)) + abrow("v8 Aggro-Pyramid", vstat(ph8,pt8)) + abrow("v9 Fade-Cut", vstat(ph9,pt9));
+    abrow("Baseline v7", vstat(ph,pt)) + abrow("v8 Aggro-Pyramid", vstat(ph8,pt8)) + abrow("v9 Fade-Cut", vstat(ph9,pt9)) + abrow("v10 Velocity", vstat(ph10,pt10));
 
   // ── Paper KPIs ──
   const eq = ph ? ph.equity : 500, start = 500;
