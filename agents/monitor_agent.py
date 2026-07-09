@@ -180,6 +180,26 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u clone.py F_contrarian_vix28 > /tmp/clone_F.log 2>&1"
         ),
     },
+    "clone_G_core": {
+        "name":         "Clone G (mid-cap core)",
+        "session":      "clone_G_core",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py G_core > /tmp/clone_G_core.log 2>&1"
+        ),
+    },
+    "clone_H_contra_refined": {
+        "name":         "Clone H (refined contrarian)",
+        "session":      "clone_H_contra_refined",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py H_contra_refined > /tmp/clone_H_contra_refined.log 2>&1"
+        ),
+    },
     "clones_dashboard": {
         "name":         "Clones Dashboard HTTP :8090",
         "session":      "clones_dashboard",
