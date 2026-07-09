@@ -23,6 +23,7 @@ TG_CHAT  = config.get("telegram_chat_id", "")
 VARIANTS = [
     ("Baseline v7",   "paper_trades.json",     "paper_heartbeat.json"),
     ("v8 Aggro-Pyr",  "paper_trades_v8.json",  "paper_heartbeat_v8.json"),
+    ("v9 Fade-Cut",   "paper_trades_v9.json",  "paper_heartbeat_v9.json"),
 ]
 
 
@@ -53,23 +54,26 @@ def analyze(trades_f, hb_f):
 
 def build_msg():
     rows = [(name, analyze(tf, hf)) for name, tf, hf in VARIANTS]
-    L = ["\U0001F9EA <b>DEX A/B — Baseline v7 vs v8 Aggro-Pyramid</b>", ""]
+    L = ["\U0001F9EA <b>DEX-Vergleich — v7 Baseline / v8 Aggro-Pyramid / v9 Fade-Cut</b>", ""]
     for name, s in rows:
         L.append("<b>%s</b>  (Start $500)" % name)
         L.append("  Equity <b>$%.0f</b> | %d Trades | WR %.0f%%" % (s["eq"], s["n"], s["wr"]))
         L.append("  NET $%+.0f (avg $%+.2f) | Rugs %d" % (s["net"], s["avg"], s["rugs"]))
         L.append("  Pyramide: %d Trades, net $%+.0f | Ø-Rückgabe %.0f pp" % (s["pyr_n"], s["pyr_net"], s["gb"]))
         L.append("")
-    b, v = rows[0][1], rows[1][1]
-    if v["n"] < 20:
-        L.append("→ v8 sammelt noch (%d Trades) — Urteil folgt in 1-2 Tagen" % v["n"])
+    b = rows[0][1]
+    challengers = [(nm, s) for nm, s in rows[1:] if s["n"] >= 20]
+    if not challengers:
+        pend = ", ".join("%s %d" % (nm, s["n"]) for nm, s in rows[1:])
+        L.append("→ Herausforderer sammeln noch (Trades: %s) — Urteil folgt in 1-2 Tagen" % pend)
     else:
-        d = v["avg"] - b["avg"]
-        de = v["eq"] - b["eq"]
-        if d > 0:
-            L.append("→ ✅ <b>v8 führt</b>: avg $%+.2f vs $%+.2f (+$%.2f/Trade, Equity %+.0f$)" % (v["avg"], b["avg"], d, de))
+        best_nm, best = max(challengers, key=lambda x: x[1]["avg"])
+        if best["avg"] > b["avg"]:
+            L.append("→ ✅ <b>%s führt</b>: avg $%+.2f vs Baseline $%+.2f (Equity %+.0f$)"
+                     % (best_nm, best["avg"], b["avg"], best["eq"] - b["eq"]))
         else:
-            L.append("→ ❌ Baseline führt: v8 avg $%+.2f vs $%+.2f (%+.0f$ Equity)" % (v["avg"], b["avg"], de))
+            L.append("→ ❌ Baseline führt: bester ist %s (avg $%+.2f vs $%+.2f)"
+                     % (best_nm, best["avg"], b["avg"]))
     return "\n".join(L)
 
 

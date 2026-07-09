@@ -37,6 +37,7 @@ _SUF      = "" if VARIANT == "baseline" else "_" + VARIANT
 LIVE_GATE = (VARIANT == "livegate")
 TUNED     = (VARIANT == "tuned")
 V8        = (VARIANT == "v8")       # Aggro-Pyramid: frueher+groesser nachlegen + Rueckgabe-Fix
+V9        = (VARIANT == "v9")       # Fade-Cut: No-Progress-Exit (nie gelaufen -> frueh raus, tail-sicher)
 SINGLETON = "dex_paper" + _SUF
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
 PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
@@ -87,6 +88,11 @@ MAX_HOURS      = 48        # Zeit-Exit fuer Zombies (steht weder hoch noch tief)
 POLL_SEC       = 20        # Held-Positionen alle 20s pruefen
 EARLY_EXIT_SEC = 180       # v3: Frueh-Exit-Fenster (3 Min = 9 Polls nach Kauf)
 EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort raus (statt -35% abwarten)
+# v9 „Fade-Cut" (nur VARIANT=="v9"): Token, die nach NOPROG_MIN Minuten nicht gelaufen sind
+# (Peak < NOPROG_PEAK%), sofort raus. Daten: 63 „nie gelaufene" Fader = -$347, sterben erst bei -24%.
+# Tail-sicher: echte Gewinner laufen schnell hoch -> Peak>=10% -> werden NIE getroffen.
+NOPROG_MIN     = 12.0      # Minuten ohne Lauf
+NOPROG_PEAK    = 10.0      # % — wenn Peak drunter bleibt -> Fader
 TIMEOUT        = 10
 
 STALE_HOURS    = 2.0       # v4 Stale-Swap: nach 2h gehalten ohne je +10% Peak zu sehen
@@ -112,6 +118,7 @@ def _tg(msg):
     head = ("🟩 <b>Livegate v8</b>\n" if LIVE_GATE
             else "🟨 <b>Tuned v9</b>\n" if TUNED
             else "🟧 <b>v8 Aggro-Pyramid</b>\n" if V8
+            else "🟪 <b>v9 Fade-Cut</b>\n" if V9
             else "🟦 <b>Baseline v7</b>\n")
     try:
         requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
@@ -377,6 +384,9 @@ def run():
     if V8:
         print("  v8 AGGRO: Pyramide frueher+groesser (s.o.) | NEU +50%-Peak-Floor +25% | "
               "ProgTrail 30/18/18/15% (enger ab +50% gegen die 36pp-Rueckgabe)")
+    if V9:
+        print("  v9 FADE-CUT: No-Progress-Exit nach " + str(int(NOPROG_MIN)) + " Min wenn Peak < " +
+              str(int(NOPROG_PEAK)) + "% (nie gelaufene Fader raus, Tail bleibt)")
     _gate = ("AN (v8 LIVE-Momentum)" if LIVE_GATE
              else "TUNED v9 (Buy/Sell>=" + str(TUNED_MIN_BS) + " & chg5>=" + str(TUNED_MIN_CHG5) + ")" if TUNED
              else "AUS (v7-baseline)")
@@ -557,6 +567,8 @@ def run():
                     reason = "HARD-STOP"
                 elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - trail_now):
                     reason = "TRAIL"
+                elif V9 and age_s / 60 >= NOPROG_MIN and peak_pct_val < NOPROG_PEAK:
+                    reason = "NO-PROGRESS"   # v9: nach X Min nicht gelaufen -> Fader raus (tail-sicher)
                 elif age_h >= MAX_HOURS and -20 < pnl < 25:
                     reason = "TIMEOUT"
                 elif (age_h >= STALE_HOURS
