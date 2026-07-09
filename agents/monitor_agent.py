@@ -210,6 +210,7 @@ BOTS = {
             "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
             "A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json "
             "D_contrarian_dashboard.json E_moonshot_dashboard.json F_contrarian_vix28_dashboard.json "
+            "G_core_dashboard.json H_contra_refined_dashboard.json "
             "> /tmp/clones_dashboard.log 2>&1"
         ),
     },
