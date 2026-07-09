@@ -109,6 +109,11 @@ screen -dmS dex_paper bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1'
+# DEX Paper v8 (Aggro-Pyramid) — A/B gegen Baseline v7
+screen -dmS dex_paper_v8 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v8 > /tmp/dex_paper_v8.log 2>&1'
 screen -dmS dex_dashboard bash -c '
   fuser -k 8091/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/dex &&

@@ -36,6 +36,7 @@ VARIANT   = sys.argv[1] if (len(sys.argv) > 1 and not sys.argv[1].startswith("-"
 _SUF      = "" if VARIANT == "baseline" else "_" + VARIANT
 LIVE_GATE = (VARIANT == "livegate")
 TUNED     = (VARIANT == "tuned")
+V8        = (VARIANT == "v8")       # Aggro-Pyramid: frueher+groesser nachlegen + Rueckgabe-Fix
 SINGLETON = "dex_paper" + _SUF
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
 PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
@@ -75,6 +76,13 @@ FLOOR_L2_PEAK  = 100.0     # Peak >=+100% -> Floor +50%
 FLOOR_L2_VAL   = 50.0
 FLOOR_L3_PEAK  = 200.0     # Peak >=+200% -> Floor +120%
 FLOOR_L3_VAL   = 120.0
+
+# v8 „Aggro-Pyramid" (nur VARIANT=="v8"): frueher + groesser nachlegen. Daten-Grund: der
+# +50%-Trigger feuert nahe dem Ø-Winner-Peak (+52%) -> zu spaet (oft am Top); adds=2 = +$32/Trade.
+# A/B gegen Baseline v7. Zusaetzlich engeres Trailing bei +50% (Floor+Trail) gegen die 36pp-Rueckgabe.
+if V8:
+    PYR_ADD1_AT,  PYR_ADD1_BET = 30.0, 15.0    # frueher (war 50%) + groesser (war $10)
+    PYR_ADD2_AT,  PYR_ADD2_BET = 80.0, 15.0    # frueher (war 150%) + groesser (war $5)
 MAX_HOURS      = 48        # Zeit-Exit fuer Zombies (steht weder hoch noch tief)
 POLL_SEC       = 20        # Held-Positionen alle 20s pruefen
 EARLY_EXIT_SEC = 180       # v3: Frueh-Exit-Fenster (3 Min = 9 Polls nach Kauf)
@@ -103,6 +111,7 @@ def _tg(msg):
         return
     head = ("🟩 <b>Livegate v8</b>\n" if LIVE_GATE
             else "🟨 <b>Tuned v9</b>\n" if TUNED
+            else "🟧 <b>v8 Aggro-Pyramid</b>\n" if V8
             else "🟦 <b>Baseline v7</b>\n")
     try:
         requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
@@ -309,6 +318,8 @@ def floor_pct_for(peak_pct):
         return FLOOR_L3_VAL
     if peak_pct >= FLOOR_L2_PEAK:
         return FLOOR_L2_VAL
+    if V8 and peak_pct >= 50:            # v8: bewiesener +50%-Laeufer lockt +25% statt +10%
+        return 25.0
     if peak_pct >= BE_TRIGGER * 100:
         return BE_FLOOR * 100
     return 0.0
@@ -363,6 +374,9 @@ def run():
     print("  v7 NEU: Pyramide +$" + str(int(PYR_ADD1_BET)) + "@+" + str(int(PYR_ADD1_AT)) +
           "% /+$" + str(int(PYR_ADD2_BET)) + "@+" + str(int(PYR_ADD2_AT)) +
           "% | Scale-Out AUS | Gewinn-Floor +10/+50/+120%@Peak+25/+100/+200% | ProgTrail 30/25/20/15%")
+    if V8:
+        print("  v8 AGGRO: Pyramide frueher+groesser (s.o.) | NEU +50%-Peak-Floor +25% | "
+              "ProgTrail 30/18/18/15% (enger ab +50% gegen die 36pp-Rueckgabe)")
     _gate = ("AN (v8 LIVE-Momentum)" if LIVE_GATE
              else "TUNED v9 (Buy/Sell>=" + str(TUNED_MIN_BS) + " & chg5>=" + str(TUNED_MIN_CHG5) + ")" if TUNED
              else "AUS (v7-baseline)")
@@ -526,9 +540,9 @@ def run():
                 if peak_pct_val >= 200:
                     trail_now = 0.15
                 elif peak_pct_val >= 100:
-                    trail_now = 0.20
+                    trail_now = 0.18 if V8 else 0.20
                 elif peak_pct_val >= 50:
-                    trail_now = 0.25
+                    trail_now = 0.18 if V8 else 0.25   # v8: +50%-Peak enger (36pp-Rueckgabe-Fix)
                 else:
                     trail_now = TRAIL        # 0.30 default
 
