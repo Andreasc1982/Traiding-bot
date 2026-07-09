@@ -15,8 +15,10 @@ Varianten:
                       (Crypto-Adaption des 10J-ETF-Backtests: RSI2<10 + VIX>28 → 80% Win)
 
   G_core            : Momentum, OHNE Spikes/Memes/BTC/ETH — isoliert den Mid-Cap-Kern (Trade-Log-Erkenntnis)
+  H_contra_refined  : Contrarian MIT Supertrend-Bestaetigung (kauft oversold-UND-drehend, kein Messerfangen)
+                      — Daten-Fix fuer D: D hatte besten WR (54%) aber schlechteste Expectancy (avgLoss -$8.79)
 
-Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28|G_core>
+Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28|G_core|H_contra_refined>
 """
 import os, sys, json, time, threading
 from datetime import datetime
@@ -48,6 +50,10 @@ VARIANTS = {
     # G_core: Trade-Log-Erkenntnisse umgesetzt — Momentum, OHNE Spikes/Memes UND ohne BTC/ETH
     # (verlieren auf beiden Entry-Arten, -$228). Isoliert den Mid-Cap-Kern (RENDER/SOL/LINK/ADA/UNI/AAVE/ARB…).
     "G_core":              {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1, "exclude": {"BTC/USD", "ETH/USD"}, "port": 8098},
+    # H_contra_refined: Daten-Fix fuer D — D hatte besten WR (54%) aber schlechteste Expectancy (-$2.30/Trade),
+    # weil avgLoss -$8.79 (Messer gefangen: oversold UND weiter fallend). Refined verlangt Supertrend==1
+    # (bullish = Umkehr hat BEGONNEN) -> kauft oversold-und-drehend, keine Memes. Ziel: avgLoss -> ~-$3.5 -> Plus.
+    "H_contra_refined":    {"spikes": False, "memes": False, "contrarian": True,  "refined": True, "score_min": 0.1, "port": 8099},
 }
 
 # Moonshot-Parameter (10J-Backtest 2026-06-18): Trailing schlaegt gedeckeltes TP 6.5x
@@ -417,9 +423,10 @@ class CloneBot(CryptoBot):
         (RSI<35, Preis am/unter unterem Bollinger-Band) in Angst-Phasen."""
         if self.tg_paused:
             return
+        tag = "[CLONE-" + self.variant.split("_")[0] + "]"
         fg = self.last_fg.get("value", 50)
         if fg > 55:                       # nur in Angst/Neutral kaufen, nicht in Gier
-            print("[CLONE-D] F&G=" + str(fg) + " > 55 (Gier) — Contrarian wartet")
+            print(tag + " F&G=" + str(fg) + " > 55 (Gier) — Contrarian wartet")
             return
         dd_mult, dd_zone, dd_allow_meme = self._get_drawdown_mult()
         if dd_mult == 0.0 or self._btc_crash_mode:
@@ -443,7 +450,10 @@ class CloneBot(CryptoBot):
             # Schluss hinkt nach -> sonst Phantom-Gewinn aus Entry/Exit-Preis-Mismatch)
             price    = self.ws_prices.get(sym) or ind.get("price")
             bb_lower = ind.get("bb_lower")
-            if price and bb_lower and rsi < 35 and price <= bb_lower * 1.02:
+            # Refined (H): Supertrend muss bullish sein — kauft oversold-UND-drehend statt
+            # oversold-und-fallend (kein Messer fangen -> killt die -$8.79-Verluste von D)
+            st_ok = (ind.get("supertrend") == 1) if self.cfg.get("refined") else True
+            if price and bb_lower and rsi < 35 and price <= bb_lower * 1.02 and st_ok:
                 candidates.append((sym, rsi, ind, float(price)))
 
         candidates.sort(key=lambda x: x[1])     # most oversold first
@@ -470,7 +480,7 @@ class CloneBot(CryptoBot):
                     "contrarian": True,
                 }
             self._save_state()
-            print("[CLONE-D] CONTRARIAN-BUY " + sym + " RSI=" + str(rsi) +
+            print(tag + " CONTRARIAN-BUY " + sym + " RSI=" + str(rsi) +
                   " $" + str(round(price, 6)) + " | Bal $" + str(round(self.balance, 0)))
 
 
