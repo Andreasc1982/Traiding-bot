@@ -58,6 +58,11 @@
 <!-- ─────────── PAPER-MOONSHOT ─────────── -->
 <section>
   <h2>🚀 Paper-Moonshot <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— realistisch: 5% Slippage/Seite · ehrliche Rug-Verluste</span></h2>
+  <div class="wrap" style="margin-bottom:14px"><table>
+    <thead><tr><th>A/B-Vergleich (Start $500)</th><th class="num">Equity</th><th class="num">Rendite</th><th class="num">Trades</th><th class="num">WR</th><th class="num">NET</th><th class="num">Ø/Trade</th></tr></thead>
+    <tbody id="abrows"></tbody>
+  </table></div>
+  <div style="color:var(--dim);font-size:12px;margin:-6px 0 14px">Tabellen unten = Baseline v7 (Kontrolle) · v8 = Aggro-Pyramid (früher+größer nachlegen)</div>
   <div class="cards" id="pcards"></div>
   <div class="two">
     <div>
@@ -106,10 +111,25 @@ function pct(n){ n=Number(n)||0; return (n>=0?"+":"")+n.toFixed(1)+"%"; }
 async function getJSON(f){ try { return await (await fetch(f+"?_="+Date.now())).json(); } catch(e){ return null; } }
 
 async function load(){
-  const [ph, ps, pt, wl, hb] = await Promise.all([
+  const [ph, ps, pt, wl, hb, ph8, pt8] = await Promise.all([
     getJSON("paper_heartbeat.json"), getJSON("paper_state.json"),
-    getJSON("paper_trades.json"), getJSON("watchlist.json"), getJSON("heartbeat.json")
+    getJSON("paper_trades.json"), getJSON("watchlist.json"), getJSON("heartbeat.json"),
+    getJSON("paper_heartbeat_v8.json"), getJSON("paper_trades_v8.json")
   ]);
+
+  // ── A/B: Baseline v7 vs v8 Aggro-Pyramid ──
+  const vstat = (h,tr)=>{ tr=tr||[]; const e=h?h.equity:500, n=h?h.trades:0,
+    net=tr.reduce((a,t)=>a+(t.profit||0),0);
+    return {eq:e, ret:(e/500-1)*100, n, wr:(h&&h.trades)?(h.wins/h.trades*100):0, net, avg:n?net/n:0}; };
+  const abrow = (nm,s)=>`<tr><td><b>${nm}</b></td>
+    <td class="num ${s.ret>=0?'pos':'neg'}">${usd2(s.eq)}</td>
+    <td class="num ${s.ret>=0?'pos':'neg'}">${pct(s.ret)}</td>
+    <td class="num">${s.n}</td>
+    <td class="num ${s.wr>=50?'pos':'dim'}">${s.wr.toFixed(0)}%</td>
+    <td class="num ${s.net>=0?'pos':'neg'}">${usd0(s.net)}</td>
+    <td class="num ${s.avg>=0?'pos':'neg'}">${usd2(s.avg)}</td></tr>`;
+  document.getElementById("abrows").innerHTML =
+    abrow("Baseline v7", vstat(ph,pt)) + abrow("v8 Aggro-Pyramid", vstat(ph8,pt8));
 
   // ── Paper KPIs ──
   const eq = ph ? ph.equity : 500, start = 500;
