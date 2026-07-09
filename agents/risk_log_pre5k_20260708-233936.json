@@ -1,0 +1,712 @@
+{
+  "peak_value": 81070.47613960099,
+  "day_start_value": 105341.43559023943,
+  "day_start_date": "2026-06-03",
+  "halted": true,
+  "resume_at": null,
+  "events": [
+    {
+      "time": "2026-05-18 22:55:09",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-18 22:55:09",
+      "type": "DAY_START",
+      "date": "2026-05-18",
+      "value": 110000.0
+    },
+    {
+      "time": "2026-05-19 00:00:09",
+      "type": "DAY_START",
+      "date": "2026-05-19",
+      "value": 199998.53
+    },
+    {
+      "time": "2026-05-20 00:00:13",
+      "type": "DAY_START",
+      "date": "2026-05-20",
+      "value": 200011.61
+    },
+    {
+      "time": "2026-05-21 22:34:01",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-21 22:34:02",
+      "type": "DAY_START",
+      "date": "2026-05-21",
+      "value": 199999.99
+    },
+    {
+      "time": "2026-05-21 22:34:47",
+      "type": "HALT",
+      "reason": "DAILY_LOSS -10.61% (limit -5.0%)",
+      "daily_pct": -10.61,
+      "drawdown_pct": -10.64,
+      "portfolio_value": 178775.17,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-22 09:30"
+    },
+    {
+      "time": "2026-05-22 00:00:18",
+      "type": "DAY_START",
+      "date": "2026-05-22",
+      "value": 178775.17
+    },
+    {
+      "time": "2026-05-22 09:30:21",
+      "type": "RESUME",
+      "portfolio_value": 178766.74,
+      "new_day_start": 178766.74
+    },
+    {
+      "time": "2026-05-23 00:00:27",
+      "type": "DAY_START",
+      "date": "2026-05-23",
+      "value": 178766.74
+    },
+    {
+      "time": "2026-05-23 00:17:12",
+      "type": "HALT",
+      "reason": "DAILY_LOSS -8.15% (limit -5.0%)",
+      "daily_pct": -8.15,
+      "drawdown_pct": -17.93,
+      "portfolio_value": 164190.84,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-24 09:30"
+    },
+    {
+      "time": "2026-05-23 02:38:17",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-24 00:00:21",
+      "type": "DAY_START",
+      "date": "2026-05-24",
+      "value": 156525.34
+    },
+    {
+      "time": "2026-05-24 09:30:23",
+      "type": "RESUME",
+      "portfolio_value": 156517.55,
+      "new_day_start": 156517.55
+    },
+    {
+      "time": "2026-05-24 09:31:08",
+      "type": "HALT",
+      "reason": "DRAWDOWN -21.76% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": -0.0,
+      "drawdown_pct": -21.76,
+      "portfolio_value": 156516.92,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-24 13:30"
+    },
+    {
+      "time": "2026-05-24 13:30:10",
+      "type": "RESUME",
+      "portfolio_value": 156543.91,
+      "new_day_start": 156543.91
+    },
+    {
+      "time": "2026-05-24 13:30:55",
+      "type": "HALT",
+      "reason": "DRAWDOWN -21.75% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -21.75,
+      "portfolio_value": 156543.91,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-24 17:30"
+    },
+    {
+      "time": "2026-05-24 17:30:27",
+      "type": "RESUME",
+      "portfolio_value": 156543.91,
+      "new_day_start": 156543.91
+    },
+    {
+      "time": "2026-05-24 17:31:12",
+      "type": "HALT",
+      "reason": "DRAWDOWN -21.75% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -21.75,
+      "portfolio_value": 156543.91,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-24 21:30"
+    },
+    {
+      "time": "2026-05-24 21:30:14",
+      "type": "RESUME",
+      "portfolio_value": 156452.83,
+      "new_day_start": 156452.83
+    },
+    {
+      "time": "2026-05-24 21:30:59",
+      "type": "HALT",
+      "reason": "DRAWDOWN -21.79% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -21.79,
+      "portfolio_value": 156452.83,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 01:30"
+    },
+    {
+      "time": "2026-05-25 00:00:00",
+      "type": "DAY_START",
+      "date": "2026-05-25",
+      "value": 114063.09
+    },
+    {
+      "time": "2026-05-25 01:30:00",
+      "type": "RESUME",
+      "portfolio_value": 115038.9,
+      "new_day_start": 115038.9
+    },
+    {
+      "time": "2026-05-25 01:30:56",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.50% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": -0.0,
+      "drawdown_pct": -42.5,
+      "portfolio_value": 115037.8,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 05:30"
+    },
+    {
+      "time": "2026-05-25 05:30:08",
+      "type": "RESUME",
+      "portfolio_value": 115037.8,
+      "new_day_start": 115037.8
+    },
+    {
+      "time": "2026-05-25 05:30:53",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.50% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.5,
+      "portfolio_value": 115037.8,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 09:30"
+    },
+    {
+      "time": "2026-05-25 09:30:05",
+      "type": "RESUME",
+      "portfolio_value": 115037.8,
+      "new_day_start": 115037.8
+    },
+    {
+      "time": "2026-05-25 09:30:50",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.50% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.5,
+      "portfolio_value": 115037.8,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 13:30"
+    },
+    {
+      "time": "2026-05-25 13:30:22",
+      "type": "RESUME",
+      "portfolio_value": 115132.75,
+      "new_day_start": 115132.75
+    },
+    {
+      "time": "2026-05-25 13:31:07",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.45% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.45,
+      "portfolio_value": 115132.75,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 17:30"
+    },
+    {
+      "time": "2026-05-25 17:30:09",
+      "type": "RESUME",
+      "portfolio_value": 115132.75,
+      "new_day_start": 115132.75
+    },
+    {
+      "time": "2026-05-25 17:30:54",
+      "type": "HALT",
+      "reason": "DRAWDOWN -42.45% from peak $200,054.24 (limit -15.0%)",
+      "daily_pct": 0.0,
+      "drawdown_pct": -42.45,
+      "portfolio_value": 115132.75,
+      "peak_value": 200054.24,
+      "resume_at": "2026-05-25 21:30"
+    },
+    {
+      "type": "PEAK_RESET",
+      "time": "2026-05-25 19:01:28",
+      "reason": "Manuell korrigiert \u2014 falscher Peak-Wert (00k war ein Datenfehler)",
+      "portfolio_value": 111342.54000000001
+    },
+    {
+      "time": "2026-05-25 19:03:14",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-25 19:03:32",
+      "type": "START",
+      "daily_loss_limit": -5.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-05-26 00:00:03",
+      "type": "DAY_START",
+      "date": "2026-05-26",
+      "value": 115146.6
+    },
+    {
+      "time": "2026-05-27 00:00:08",
+      "type": "DAY_START",
+      "date": "2026-05-27",
+      "value": 115145.1
+    },
+    {
+      "time": "2026-05-28 00:00:13",
+      "type": "DAY_START",
+      "date": "2026-05-28",
+      "value": 115088.6
+    },
+    {
+      "time": "2026-05-29 00:00:19",
+      "type": "DAY_START",
+      "date": "2026-05-29",
+      "value": 115072.48
+    },
+    {
+      "time": "2026-05-30 00:00:25",
+      "type": "DAY_START",
+      "date": "2026-05-30",
+      "value": 115099.21
+    },
+    {
+      "time": "2026-05-31 00:00:01",
+      "type": "DAY_START",
+      "date": "2026-05-31",
+      "value": 115195.37
+    },
+    {
+      "time": "2026-05-31 15:22:19",
+      "type": "HALT",
+      "reason": "DAILY_LOSS -8.37% (limit -5.0%)",
+      "daily_pct": -8.37,
+      "drawdown_pct": -8.4,
+      "portfolio_value": 105552.04,
+      "peak_value": 115229.4,
+      "resume_at": "2026-05-31 19:22"
+    },
+    {
+      "time": "2026-05-31 19:22:21",
+      "type": "RESUME",
+      "portfolio_value": 105552.04,
+      "new_day_start": 105552.04
+    },
+    {
+      "time": "2026-06-01 00:00:23",
+      "type": "DAY_START",
+      "date": "2026-06-01",
+      "value": 105526.08
+    },
+    {
+      "time": "2026-06-02 00:00:28",
+      "type": "DAY_START",
+      "date": "2026-06-02",
+      "value": 105510.68
+    },
+    {
+      "time": "2026-06-03 00:00:04",
+      "type": "DAY_START",
+      "date": "2026-06-03",
+      "value": 105341.44
+    },
+    {
+      "time": "2026-06-03 00:18:49",
+      "type": "HALT",
+      "reason": "DAILY_LOSS -5.45% (limit -5.0%)",
+      "daily_pct": -5.45,
+      "drawdown_pct": -13.56,
+      "portfolio_value": 99602.71,
+      "peak_value": 115229.4,
+      "resume_at": "2026-06-03 04:18"
+    },
+    {
+      "time": "2026-06-03 00:46:40",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-03 00:59:56",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-06 23:39:20",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-08 17:36:45",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -27.42% (Limit -15.0%)",
+      "drawdown_pct": -27.42,
+      "combined": 83637.94,
+      "peak": 115229.4,
+      "resume": "2026-06-08 21:36"
+    },
+    {
+      "time": "2026-06-08 20:47:49",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-08 21:36:00",
+      "type": "RESUME_SUPER",
+      "value": 83637.94
+    },
+    {
+      "time": "2026-06-08 21:36:06",
+      "type": "RESUME_CRYPTO",
+      "value": 14552.37
+    },
+    {
+      "time": "2026-06-08 21:36:57",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -17.57% (Limit -15.0%)",
+      "drawdown_pct": -17.57,
+      "combined": 94978.05,
+      "peak": 115229.4,
+      "resume": "2026-06-09 01:36"
+    },
+    {
+      "time": "2026-06-08 23:20:37",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:09:16",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:10:20",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:11:59",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:19:38",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-09 00:21:01",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-10 00:12:15",
+      "type": "RESUME_SUPER",
+      "value": 80432.98,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-10 01:09:17",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-10 01:33:45",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-11 00:12:26",
+      "type": "RESUME_CRYPTO",
+      "value": 14535.27,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-06-11 00:13:23",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -17.59% (Limit -15.0%)",
+      "drawdown_pct": -17.59,
+      "combined": 94960.43,
+      "peak": 115229.4,
+      "halt_btc": 61202.18,
+      "halt_spy": 724.73
+    },
+    {
+      "time": "2026-06-11 21:31:36",
+      "type": "RESUME_SUPER",
+      "value": 80425.16,
+      "reason": "SPY +2.0% erholt ($724.73 -> $739.29)"
+    },
+    {
+      "time": "2026-06-12 17:13:31",
+      "type": "RESUME_CRYPTO",
+      "value": 14535.27,
+      "reason": "BTC +5.1% erholt ($61,202 -> $64,320)"
+    },
+    {
+      "time": "2026-06-12 17:14:08",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -20.27% (Limit -15.0%)",
+      "drawdown_pct": -20.27,
+      "combined": 91872.19,
+      "peak": 115229.4,
+      "halt_btc": 64337.6,
+      "halt_spy": 742.88
+    },
+    {
+      "time": "2026-06-13 17:13:26",
+      "type": "RESUME_SUPER",
+      "value": 77336.1,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-14 17:13:12",
+      "type": "RESUME_CRYPTO",
+      "value": 14534.19,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-06-14 17:14:29",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -20.27% (Limit -15.0%)",
+      "drawdown_pct": -20.27,
+      "combined": 91869.23,
+      "peak": 115229.4,
+      "halt_btc": 64103.45,
+      "halt_spy": 741.67
+    },
+    {
+      "time": "2026-06-14 21:16:39",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-14 21:41:10",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-18 07:16:05",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -22.64% (Limit -15.0%)",
+      "drawdown_pct": -22.64,
+      "combined": 71065.29,
+      "peak": 91859.91,
+      "halt_btc": 63853.79,
+      "halt_spy": 742.43
+    },
+    {
+      "time": "2026-06-19 07:14:14",
+      "type": "RESUME_SUPER",
+      "value": 71065.29,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-20 07:14:21",
+      "type": "RESUME_CRYPTO",
+      "value": 14659.09,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-06-22 08:08:39",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -82.75% (Limit -15.0%)",
+      "drawdown_pct": -82.75,
+      "combined": 14574.46,
+      "peak": 84469.09,
+      "halt_btc": 64097.95,
+      "halt_spy": 748.46
+    },
+    {
+      "time": "2026-06-23 08:07:26",
+      "type": "RESUME_SUPER",
+      "value": 66620.46,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-23 23:50:23",
+      "type": "START",
+      "super_limit": -8.0,
+      "crypto_limit": -8.0,
+      "drawdown_limit": -15.0
+    },
+    {
+      "time": "2026-06-24 08:07:20",
+      "type": "RESUME_CRYPTO",
+      "value": 14574.46,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-06-24 12:35:03",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -17.95% (Limit -15.0%)",
+      "drawdown_pct": -17.95,
+      "combined": 66554.22,
+      "peak": 81114.68,
+      "halt_btc": 62538.1,
+      "halt_spy": 733.62
+    },
+    {
+      "time": "2026-06-25 12:33:20",
+      "type": "RESUME_SUPER",
+      "value": 66554.22,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-26 12:33:10",
+      "type": "RESUME_CRYPTO",
+      "value": 14543.25,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-06-27 06:35:17",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -82.07% (Limit -15.0%)",
+      "drawdown_pct": -82.07,
+      "combined": 14550.46,
+      "peak": 81143.47,
+      "halt_btc": 60355.37,
+      "halt_spy": 732.14
+    },
+    {
+      "time": "2026-06-28 06:34:12",
+      "type": "RESUME_SUPER",
+      "value": 66570.24,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-06-29 06:34:17",
+      "type": "RESUME_CRYPTO",
+      "value": 14550.46,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-07-03 01:42:05",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -17.94% (Limit -15.0%)",
+      "drawdown_pct": -17.94,
+      "combined": 66581.67,
+      "peak": 81137.93,
+      "halt_btc": 61428.52,
+      "halt_spy": 744.07
+    },
+    {
+      "time": "2026-07-04 01:41:28",
+      "type": "RESUME_SUPER",
+      "value": 66581.67,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-07-05 01:41:14",
+      "type": "RESUME_CRYPTO",
+      "value": 14512.35,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-07-05 02:06:41",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -17.89% (Limit -15.0%)",
+      "drawdown_pct": -17.89,
+      "combined": 66581.67,
+      "peak": 81085.04,
+      "halt_btc": 63063.5,
+      "halt_spy": 744.07
+    },
+    {
+      "time": "2026-07-06 02:05:06",
+      "type": "RESUME_SUPER",
+      "value": 66581.67,
+      "reason": "24h Safety-Net"
+    },
+    {
+      "time": "2026-07-07 02:05:29",
+      "type": "RESUME_CRYPTO",
+      "value": 14498.45,
+      "reason": "48h Safety-Net"
+    },
+    {
+      "time": "2026-07-07 18:57:11",
+      "type": "HALT_BOTH",
+      "reason": "DRAWDOWN -17.87% (Limit -15.0%)",
+      "drawdown_pct": -17.87,
+      "combined": 66581.67,
+      "peak": 81070.48,
+      "halt_btc": 64052.2,
+      "halt_spy": 748.61
+    },
+    {
+      "time": "2026-07-08 18:55:27",
+      "type": "RESUME_SUPER",
+      "value": 66581.67,
+      "reason": "24h Safety-Net"
+    }
+  ],
+  "super_day_start": 66581.67,
+  "super_day_date": "2026-07-08",
+  "super_halted": false,
+  "super_resume_at": null,
+  "crypto_day_start": 14453.71720556493,
+  "crypto_day_date": "2026-07-08",
+  "crypto_halted": true,
+  "crypto_resume_at": null,
+  "halt_btc_price": 64052.2,
+  "halt_time": "2026-07-07 18:55",
+  "halt_spy_price": 748.61,
+  "rolling_peak": 94971.84,
+  "manual_hold": false,
+  "drawdown_halt_times": [
+    "2026-06-18 07:14",
+    "2026-06-22 08:07",
+    "2026-06-24 12:33",
+    "2026-06-27 06:34",
+    "2026-07-03 01:41",
+    "2026-07-05 02:05",
+    "2026-07-07 18:55"
+  ]
+}
