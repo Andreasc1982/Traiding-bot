@@ -100,6 +100,36 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1"
         ),
     },
+    "dex_paper_v8": {
+        "name":         "DEX Paper v8 (Aggro-Pyramid)",
+        "session":      "dex_paper_v8",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v8 > /tmp/dex_paper_v8.log 2>&1"
+        ),
+    },
+    "dex_paper_v9": {
+        "name":         "DEX Paper v9 (Fade-Cut)",
+        "session":      "dex_paper_v9",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v9 > /tmp/dex_paper_v9.log 2>&1"
+        ),
+    },
+    "dex_paper_v10": {
+        "name":         "DEX Paper v10 (Velocity-Filter)",
+        "session":      "dex_paper_v10",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v10 > /tmp/dex_paper_v10.log 2>&1"
+        ),
+    },
     "dex_dashboard": {
         "name":         "DEX Dashboard HTTP :8091",
         "session":      "dex_dashboard",
@@ -107,7 +137,7 @@ BOTS = {
         "cmd": (
             "fuser -k 8091/tcp 2>/dev/null; sleep 1; "
             "cd /home/trading2025/trading_bot/dex && "
-            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json > /tmp/dex_dashboard.log 2>&1"
+            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v8.json paper_state_v8.json paper_trades_v8.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json > /tmp/dex_dashboard.log 2>&1"
         ),
     },
     "gateway": {
@@ -180,6 +210,26 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u clone.py F_contrarian_vix28 > /tmp/clone_F.log 2>&1"
         ),
     },
+    "clone_G_core": {
+        "name":         "Clone G (mid-cap core)",
+        "session":      "clone_G_core",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py G_core > /tmp/clone_G_core.log 2>&1"
+        ),
+    },
+    "clone_H_contra_refined": {
+        "name":         "Clone H (refined contrarian)",
+        "session":      "clone_H_contra_refined",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py H_contra_refined > /tmp/clone_H_contra_refined.log 2>&1"
+        ),
+    },
     "clones_dashboard": {
         "name":         "Clones Dashboard HTTP :8090",
         "session":      "clones_dashboard",
@@ -190,6 +240,7 @@ BOTS = {
             "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
             "A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json "
             "D_contrarian_dashboard.json E_moonshot_dashboard.json F_contrarian_vix28_dashboard.json "
+            "G_core_dashboard.json H_contra_refined_dashboard.json "
             "> /tmp/clones_dashboard.log 2>&1"
         ),
     },

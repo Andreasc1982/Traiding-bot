@@ -36,6 +36,9 @@ VARIANT   = sys.argv[1] if (len(sys.argv) > 1 and not sys.argv[1].startswith("-"
 _SUF      = "" if VARIANT == "baseline" else "_" + VARIANT
 LIVE_GATE = (VARIANT == "livegate")
 TUNED     = (VARIANT == "tuned")
+V8        = (VARIANT == "v8")       # Aggro-Pyramid: frueher+groesser nachlegen + Rueckgabe-Fix
+V9        = (VARIANT == "v9")       # Fade-Cut: No-Progress-Exit (nie gelaufen -> frueh raus, tail-sicher)
+V10       = (VARIANT == "v10")      # Velocity-Filter: Frantic-FOMO-Pumps (buys/h zu hoch) meiden, tail-sicher
 SINGLETON = "dex_paper" + _SUF
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
 PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
@@ -75,10 +78,26 @@ FLOOR_L2_PEAK  = 100.0     # Peak >=+100% -> Floor +50%
 FLOOR_L2_VAL   = 50.0
 FLOOR_L3_PEAK  = 200.0     # Peak >=+200% -> Floor +120%
 FLOOR_L3_VAL   = 120.0
+
+# v8 „Aggro-Pyramid" (nur VARIANT=="v8"): frueher + groesser nachlegen. Daten-Grund: der
+# +50%-Trigger feuert nahe dem Ø-Winner-Peak (+52%) -> zu spaet (oft am Top); adds=2 = +$32/Trade.
+# A/B gegen Baseline v7. Zusaetzlich engeres Trailing bei +50% (Floor+Trail) gegen die 36pp-Rueckgabe.
+if V8:
+    PYR_ADD1_AT,  PYR_ADD1_BET = 30.0, 15.0    # frueher (war 50%) + groesser (war $10)
+    PYR_ADD2_AT,  PYR_ADD2_BET = 80.0, 15.0    # frueher (war 150%) + groesser (war $5)
 MAX_HOURS      = 48        # Zeit-Exit fuer Zombies (steht weder hoch noch tief)
 POLL_SEC       = 20        # Held-Positionen alle 20s pruefen
 EARLY_EXIT_SEC = 180       # v3: Frueh-Exit-Fenster (3 Min = 9 Polls nach Kauf)
 EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort raus (statt -35% abwarten)
+# v9 „Fade-Cut" (nur VARIANT=="v9"): Token, die nach NOPROG_MIN Minuten nicht gelaufen sind
+# (Peak < NOPROG_PEAK%), sofort raus. Daten: 63 „nie gelaufene" Fader = -$347, sterben erst bei -24%.
+# Tail-sicher: echte Gewinner laufen schnell hoch -> Peak>=10% -> werden NIE getroffen.
+NOPROG_MIN     = 12.0      # Minuten ohne Lauf
+NOPROG_PEAK    = 10.0      # % — wenn Peak drunter bleibt -> Fader
+# v10 „Velocity-Filter" (nur VARIANT=="v10"): Token mit zu hoher Kaufrate (buys/age_h) meiden.
+# Daten (pendu-WIN 308/h vs PUDGYBULL-LOSS 740/h): Frantic-FOMO = Dump-Risiko. Tail-sicher:
+# 600 laesst pendu (308) UND TOLYHOOD durch, entfernt nur triviale Gewinner (groesster geopfert +$0.90).
+MAXVEL         = 600.0     # max buys/Stunde beim Entry
 TIMEOUT        = 10
 
 STALE_HOURS    = 2.0       # v4 Stale-Swap: nach 2h gehalten ohne je +10% Peak zu sehen
@@ -103,6 +122,9 @@ def _tg(msg):
         return
     head = ("🟩 <b>Livegate v8</b>\n" if LIVE_GATE
             else "🟨 <b>Tuned v9</b>\n" if TUNED
+            else "🟧 <b>v8 Aggro-Pyramid</b>\n" if V8
+            else "🟪 <b>v9 Fade-Cut</b>\n" if V9
+            else "🟫 <b>v10 Velocity-Filter</b>\n" if V10
             else "🟦 <b>Baseline v7</b>\n")
     try:
         requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
@@ -309,6 +331,8 @@ def floor_pct_for(peak_pct):
         return FLOOR_L3_VAL
     if peak_pct >= FLOOR_L2_PEAK:
         return FLOOR_L2_VAL
+    if V8 and peak_pct >= 50:            # v8: bewiesener +50%-Laeufer lockt +25% statt +10%
+        return 25.0
     if peak_pct >= BE_TRIGGER * 100:
         return BE_FLOOR * 100
     return 0.0
@@ -363,6 +387,15 @@ def run():
     print("  v7 NEU: Pyramide +$" + str(int(PYR_ADD1_BET)) + "@+" + str(int(PYR_ADD1_AT)) +
           "% /+$" + str(int(PYR_ADD2_BET)) + "@+" + str(int(PYR_ADD2_AT)) +
           "% | Scale-Out AUS | Gewinn-Floor +10/+50/+120%@Peak+25/+100/+200% | ProgTrail 30/25/20/15%")
+    if V8:
+        print("  v8 AGGRO: Pyramide frueher+groesser (s.o.) | NEU +50%-Peak-Floor +25% | "
+              "ProgTrail 30/18/18/15% (enger ab +50% gegen die 36pp-Rueckgabe)")
+    if V9:
+        print("  v9 FADE-CUT: No-Progress-Exit nach " + str(int(NOPROG_MIN)) + " Min wenn Peak < " +
+              str(int(NOPROG_PEAK)) + "% (nie gelaufene Fader raus, Tail bleibt)")
+    if V10:
+        print("  v10 VELOCITY: skip wenn buys/h > " + str(int(MAXVEL)) +
+              " (Frantic-FOMO-Pumps meiden; pendu 308/h bleibt, tail-sicher)")
     _gate = ("AN (v8 LIVE-Momentum)" if LIVE_GATE
              else "TUNED v9 (Buy/Sell>=" + str(TUNED_MIN_BS) + " & chg5>=" + str(TUNED_MIN_CHG5) + ")" if TUNED
              else "AUS (v7-baseline)")
@@ -429,6 +462,8 @@ def run():
                     continue
                 if chg5 > ENTRY_MAX_CHG5 or chg5 < ENTRY_MIN_CHG5:   # v5: 5m-Fenster [-5,+25] — kein Top-Kauf UND kein fallender Dip
                     continue
+                if V10 and (t.get("buys", 0) or 0) / max(t.get("age_h", 0.1) or 0.1, 0.1) > MAXVEL:
+                    continue   # v10: Frantic-FOMO-Pump (zu hohe Kaufrate) -> Dump-Risiko meiden
                 if TUNED:
                     # v9 Fine-Tuning (Winner/Loser-Daten): mehr Kaufdruck + nur positives 5m-Momentum
                     if (t.get("buys", 0) or 0) / max(t.get("sells", 0) or 0, 1) < TUNED_MIN_BS:
@@ -526,9 +561,9 @@ def run():
                 if peak_pct_val >= 200:
                     trail_now = 0.15
                 elif peak_pct_val >= 100:
-                    trail_now = 0.20
+                    trail_now = 0.18 if V8 else 0.20
                 elif peak_pct_val >= 50:
-                    trail_now = 0.25
+                    trail_now = 0.18 if V8 else 0.25   # v8: +50%-Peak enger (36pp-Rueckgabe-Fix)
                 else:
                     trail_now = TRAIL        # 0.30 default
 
@@ -543,6 +578,8 @@ def run():
                     reason = "HARD-STOP"
                 elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - trail_now):
                     reason = "TRAIL"
+                elif V9 and age_s / 60 >= NOPROG_MIN and peak_pct_val < NOPROG_PEAK:
+                    reason = "NO-PROGRESS"   # v9: nach X Min nicht gelaufen -> Fader raus (tail-sicher)
                 elif age_h >= MAX_HOURS and -20 < pnl < 25:
                     reason = "TIMEOUT"
                 elif (age_h >= STALE_HOURS

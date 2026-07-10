@@ -82,13 +82,13 @@ screen -dmS backup bash -c '
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u github_backup.py > /tmp/backup.log 2>&1'
 
-# ── Clone-Experiment: Gateway + 4 Clones + Dashboard ──────────────────────────
+# ── Clone-Experiment: Gateway + Clones (A–H) + Dashboard ──────────────────────
 screen -dmS gateway bash -c '
   cd /home/trading2025/trading_bot/crypto &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1'
 sleep 3
-for V in A_baseline B_nospikes C_conservative D_contrarian E_moonshot F_contrarian_vix28; do
+for V in A_baseline B_nospikes C_conservative D_contrarian E_moonshot F_contrarian_vix28 G_core H_contra_refined; do
   screen -dmS clone_$V bash -c "
     cd /home/trading2025/trading_bot/crypto &&
     source /home/trading2025/trading_bot_env/bin/activate &&
@@ -97,7 +97,7 @@ done
 screen -dmS clones_dashboard bash -c '
   fuser -k 8090/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/crypto/clones &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json D_contrarian_dashboard.json E_moonshot_dashboard.json F_contrarian_vix28_dashboard.json > /tmp/clones_dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json D_contrarian_dashboard.json E_moonshot_dashboard.json F_contrarian_vix28_dashboard.json G_core_dashboard.json H_contra_refined_dashboard.json > /tmp/clones_dashboard.log 2>&1'
 
 # DEX-Monitor (Solana, read-only)
 screen -dmS dex bash -c '
@@ -109,10 +109,25 @@ screen -dmS dex_paper bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1'
+# DEX Paper v8 (Aggro-Pyramid) — A/B gegen Baseline v7
+screen -dmS dex_paper_v8 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v8 > /tmp/dex_paper_v8.log 2>&1'
+# DEX Paper v9 (Fade-Cut) — A/B gegen Baseline v7
+screen -dmS dex_paper_v9 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v9 > /tmp/dex_paper_v9.log 2>&1'
+# DEX Paper v10 (Velocity-Filter) — A/B gegen Baseline v7
+screen -dmS dex_paper_v10 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v10 > /tmp/dex_paper_v10.log 2>&1'
 screen -dmS dex_dashboard bash -c '
   fuser -k 8091/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/dex &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json > /tmp/dex_dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v8.json paper_state_v8.json paper_trades_v8.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json > /tmp/dex_dashboard.log 2>&1'
 
 echo "[start_all] All screen sessions launched."
 screen -list
