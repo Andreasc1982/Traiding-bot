@@ -40,6 +40,7 @@ V8        = (VARIANT == "v8")       # Aggro-Pyramid: frueher+groesser nachlegen 
 V9        = (VARIANT == "v9")       # Fade-Cut: No-Progress-Exit (nie gelaufen -> frueh raus, tail-sicher)
 V10       = (VARIANT == "v10")      # Velocity-Filter: Frantic-FOMO-Pumps (buys/h zu hoch) meiden, tail-sicher
 V11       = (VARIANT == "v11")      # Kombi: Velocity-Filter + Fade-Cut (Retro-Sim-Sieger im 2x2-Faktorial)
+V12       = (VARIANT == "v12")      # wie v11, aber Fills via ECHTER Jupiter-Quote (ausfuehrbare Kurse, kein Geld)
 SINGLETON = "dex_paper" + _SUF
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
 PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
@@ -100,6 +101,11 @@ NOPROG_PEAK    = 10.0      # % — wenn Peak drunter bleibt -> Fader
 # Deckel (ungefiltert -555 -> vel300 -143); Tail-Median der grossen Gewinner nur 73 buys/h,
 # Verlierer-Median 216/h. 600 war zu locker -> 300 (Sim-Sieger im 2x2 zusammen mit Fade-Cut).
 MAXVEL         = 300.0     # max buys/Stunde beim Entry
+# v12 „Jupiter-Fill": Fills zu echten, ausfuehrbaren Jupiter-Quotes (lite-api, kein Key, kein Wallet).
+# Live-Messung 2026-07-12: BONK-Roundtrip 0.07%, Watchlist-Micro-Cap 1.55% — vs. 10.5% Pauschal-Modell.
+# v11 vs v12 isoliert exakt den Kosten-Unterschied; v12 = das live-praediktive Ergebnis.
+JUP_URL        = "https://lite-api.jup.ag/swap/v1/quote"
+USDC_MINT      = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 TIMEOUT        = 10
 
 STALE_HOURS    = 2.0       # v4 Stale-Swap: nach 2h gehalten ohne je +10% Peak zu sehen
@@ -128,6 +134,7 @@ def _tg(msg):
             else "🟪 <b>v9 Fade-Cut</b>\n" if V9
             else "🟫 <b>v10 Velocity-Filter</b>\n" if V10
             else "🟥 <b>v11 Vel+Fade</b>\n" if V11
+            else "🟨 <b>v12 Jupiter-Fill</b>\n" if V12
             else "🟦 <b>Baseline v7</b>\n")
     try:
         requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
@@ -203,6 +210,19 @@ def tokens_now(addrs):
     return out
 
 
+def jup_quote(inp, out, amount, bps=300):
+    """Echte ausfuehrbare Jupiter-Quote (lite-api, kein Key). outAmount:int oder None (nicht routbar/Fehler)."""
+    try:
+        r = requests.get(JUP_URL, params={"inputMint": inp, "outputMint": out,
+                                          "amount": str(int(amount)), "slippageBps": bps},
+                         timeout=TIMEOUT)
+        if r.status_code != 200:
+            return None
+        return int(r.json().get("outAmount"))
+    except Exception:
+        return None
+
+
 def _f(x):
     try:
         return float(x)
@@ -255,6 +275,15 @@ def close_paper(state, trades, addr, price, reason):
     else:
         fill = price * (1 - EXIT_SLIP)
     proceeds = pos["shares"] * fill
+    jup_fill = None
+    if pos.get("shares_raw"):
+        # v12: echter ausfuehrbarer Verkaufserloes via Jupiter-Quote (beim Rug = echter Staub-Wert)
+        _out = jup_quote(addr, USDC_MINT, int(pos["shares_raw"]))
+        if _out is not None:
+            proceeds = _out / 1e6
+            jup_fill = True
+        else:
+            jup_fill = False   # nicht mehr routbar -> Pauschal-Fallback oben bleibt
     # bereits via Scale-Out entnommener Einsatz zaehlt zum Ergebnis
     realized = pos.get("realized", 0.0)
     profit = (proceeds + realized) - pos["bet"]
@@ -271,6 +300,7 @@ def close_paper(state, trades, addr, price, reason):
         "adds": (1 if pos.get("added1") else 0) + (1 if pos.get("added2") else 0),
         "bet": pos.get("bet", BET),
         "esnap": pos.get("esnap", {}),
+        "jup": jup_fill, "rt_entry": pos.get("rt_entry"),
     })
     tag = "💀" if reason == "RUG-TOTAL" else ("🚀" if profit > 0 else "")
     print("[PAPER-CLOSE] " + reason + " " + pos["symbol"] + " " +
@@ -312,7 +342,15 @@ def pyramid(state, pos, price, add_bet, tag):
     True wenn nachgelegt (genug Bankroll), sonst False (naechster Zyklus erneut)."""
     if state["bankroll"] < add_bet:
         return False
-    fill = price * (1 + ENTRY_SLIP)
+    if pos.get("shares_raw") is not None:
+        # v12: Nachkauf zu echter Jupiter-Quote (raw-Shares akkumulieren)
+        _add_raw = jup_quote(USDC_MINT, pos.get("addr", ""), add_bet * 1e6)
+        if _add_raw is None:
+            return False        # gerade nicht routbar -> naechster Zyklus erneut
+        pos["shares_raw"] = int(pos["shares_raw"]) + _add_raw
+        fill = price            # Kosten landen real im Exit-Quote
+    else:
+        fill = price * (1 + ENTRY_SLIP)
     add_shares = add_bet / fill
     total_cost = pos["entry"] * pos["shares"] + fill * add_shares
     pos["shares"] += add_shares
@@ -402,6 +440,9 @@ def run():
     if V11:
         print("  v11 KOMBI (Retro-Sim-Sieger): Velocity-Skip buys/h > " + str(int(MAXVEL)) +
               " + Fade-Cut nach " + str(int(NOPROG_MIN)) + " Min wenn Peak < " + str(int(NOPROG_PEAK)) + "%")
+    if V12:
+        print("  v12 JUPITER-FILL: v11-Regeln, aber Fills zu ECHTEN ausfuehrbaren Jupiter-Quotes")
+        print("    (lite-api, kein Wallet/Key; nicht routbar = kein Kauf; Rug = echter Staub-Erloes)")
     _gate = ("AN (v8 LIVE-Momentum)" if LIVE_GATE
              else "TUNED v9 (Buy/Sell>=" + str(TUNED_MIN_BS) + " & chg5>=" + str(TUNED_MIN_CHG5) + ")" if TUNED
              else "AUS (v7-baseline)")
@@ -468,8 +509,8 @@ def run():
                     continue
                 if chg5 > ENTRY_MAX_CHG5 or chg5 < ENTRY_MIN_CHG5:   # v5: 5m-Fenster [-5,+25] — kein Top-Kauf UND kein fallender Dip
                     continue
-                if (V10 or V11) and (t.get("buys", 0) or 0) / max(t.get("age_h", 0.1) or 0.1, 0.1) > MAXVEL:
-                    continue   # v10/v11: Frantic-FOMO-Pump (zu hohe Kaufrate) -> Dump-Risiko meiden
+                if (V10 or V11 or V12) and (t.get("buys", 0) or 0) / max(t.get("age_h", 0.1) or 0.1, 0.1) > MAXVEL:
+                    continue   # v10/v11/v12: Frantic-FOMO-Pump (zu hohe Kaufrate) -> Dump-Risiko meiden
                 if TUNED:
                     # v9 Fine-Tuning (Winner/Loser-Daten): mehr Kaufdruck + nur positives 5m-Momentum
                     if (t.get("buys", 0) or 0) / max(t.get("sells", 0) or 0, 1) < TUNED_MIN_BS:
@@ -493,7 +534,17 @@ def run():
                     if live.get("liq", 0) < ENTRY_MIN_LIQ:           # Liq JETZT zu duenn
                         continue
                 price = live["price"]
-                fill = price * (1 + ENTRY_SLIP)        # Kauf-Slippage auf LIVE-Preis
+                if V12:
+                    # echter ausfuehrbarer Kauf: $BET USDC -> Token via Jupiter (kein Geld, nur Quote)
+                    _raw = jup_quote(USDC_MINT, addr, BET * 1e6)
+                    if _raw is None:
+                        print("[V12] " + str(t.get("symbol", "?")) + " nicht auf Jupiter routbar -> skip (Live-Filter)")
+                        continue
+                    _back = jup_quote(addr, USDC_MINT, _raw)   # sofortige Rueckrichtung = realer Roundtrip-Cost
+                    _rt = round((1 - (_back / 1e6) / BET) * 100, 2) if _back else None
+                    fill = price                     # Ausfuehrungskosten landen real im Exit-Quote
+                else:
+                    fill = price * (1 + ENTRY_SLIP)  # Kauf-Slippage auf LIVE-Preis (Pauschal-Modell)
                 shares = BET / fill
                 state["bankroll"] -= BET
                 state["positions"][addr] = {
@@ -507,6 +558,8 @@ def run():
                               "buys": t.get("buys", 0) or 0, "sells": t.get("sells", 0) or 0,
                               "vol_h6": int(volh6), "age_h": t.get("age_h", 0)},
                 }
+                if V12:
+                    state["positions"][addr].update({"shares_raw": _raw, "rt_entry": _rt, "addr": addr})
                 state["traded"].append(addr)
                 slot_tag = " [PREMIUM 🌟]" if is_premium else ""
                 print("[PAPER-BUY] " + t.get("symbol", "?") + " @ $" +
@@ -584,8 +637,8 @@ def run():
                     reason = "HARD-STOP"
                 elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - trail_now):
                     reason = "TRAIL"
-                elif (V9 or V11) and age_s / 60 >= NOPROG_MIN and peak_pct_val < NOPROG_PEAK:
-                    reason = "NO-PROGRESS"   # v9/v11: nach X Min nicht gelaufen -> Fader raus (tail-sicher)
+                elif (V9 or V11 or V12) and age_s / 60 >= NOPROG_MIN and peak_pct_val < NOPROG_PEAK:
+                    reason = "NO-PROGRESS"   # v9/v11/v12: nach X Min nicht gelaufen -> Fader raus (tail-sicher)
                 elif age_h >= MAX_HOURS and -20 < pnl < 25:
                     reason = "TIMEOUT"
                 elif (age_h >= STALE_HOURS
