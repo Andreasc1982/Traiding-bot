@@ -100,14 +100,14 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1"
         ),
     },
-    "dex_paper_v8": {
-        "name":         "DEX Paper v8 (Aggro-Pyramid)",
-        "session":      "dex_paper_v8",
+    "dex_paper_v11": {
+        "name":         "DEX Paper v11 (Vel+Fade)",
+        "session":      "dex_paper_v11",
         "trading_only": False,
         "cmd": (
             "cd /home/trading2025/trading_bot && "
             "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v8 > /tmp/dex_paper_v8.log 2>&1"
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v11 > /tmp/dex_paper_v11.log 2>&1"
         ),
     },
     "dex_paper_v9": {
@@ -137,7 +137,7 @@ BOTS = {
         "cmd": (
             "fuser -k 8091/tcp 2>/dev/null; sleep 1; "
             "cd /home/trading2025/trading_bot/dex && "
-            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v8.json paper_state_v8.json paper_trades_v8.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json > /tmp/dex_dashboard.log 2>&1"
+            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json paper_heartbeat_v11.json paper_state_v11.json paper_trades_v11.json > /tmp/dex_dashboard.log 2>&1"
         ),
     },
     "gateway": {

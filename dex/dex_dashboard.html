@@ -62,7 +62,7 @@
     <thead><tr><th>A/B-Vergleich (Start $500)</th><th class="num">Equity</th><th class="num">Rendite</th><th class="num">Trades</th><th class="num">WR</th><th class="num">NET</th><th class="num">Ø/Trade</th></tr></thead>
     <tbody id="abrows"></tbody>
   </table></div>
-  <div style="color:var(--dim);font-size:12px;margin:-6px 0 14px">Tabellen unten = Baseline v7 (Kontrolle) · v8 = Aggro-Pyramid (früher+größer nachlegen)</div>
+  <div style="color:var(--dim);font-size:12px;margin:-6px 0 14px">2×2-Experiment: v9 = Fade-Cut · v10 = Velocity≤300 · v11 = beides · Tabellen unten = v7 Kontrolle (Reset 11.07.)</div>
   <div class="cards" id="pcards"></div>
   <div class="two">
     <div>
@@ -111,12 +111,12 @@ function pct(n){ n=Number(n)||0; return (n>=0?"+":"")+n.toFixed(1)+"%"; }
 async function getJSON(f){ try { return await (await fetch(f+"?_="+Date.now())).json(); } catch(e){ return null; } }
 
 async function load(){
-  const [ph, ps, pt, wl, hb, ph8, pt8, ph9, pt9, ph10, pt10] = await Promise.all([
+  const [ph, ps, pt, wl, hb, ph9, pt9, ph10, pt10, ph11, pt11] = await Promise.all([
     getJSON("paper_heartbeat.json"), getJSON("paper_state.json"),
     getJSON("paper_trades.json"), getJSON("watchlist.json"), getJSON("heartbeat.json"),
-    getJSON("paper_heartbeat_v8.json"), getJSON("paper_trades_v8.json"),
     getJSON("paper_heartbeat_v9.json"), getJSON("paper_trades_v9.json"),
-    getJSON("paper_heartbeat_v10.json"), getJSON("paper_trades_v10.json")
+    getJSON("paper_heartbeat_v10.json"), getJSON("paper_trades_v10.json"),
+    getJSON("paper_heartbeat_v11.json"), getJSON("paper_trades_v11.json")
   ]);
 
   // ── A/B: Baseline v7 vs v8 Aggro-Pyramid ──
@@ -131,7 +131,7 @@ async function load(){
     <td class="num ${s.net>=0?'pos':'neg'}">${usd0(s.net)}</td>
     <td class="num ${s.avg>=0?'pos':'neg'}">${usd2(s.avg)}</td></tr>`;
   document.getElementById("abrows").innerHTML =
-    abrow("Baseline v7", vstat(ph,pt)) + abrow("v8 Aggro-Pyramid", vstat(ph8,pt8)) + abrow("v9 Fade-Cut", vstat(ph9,pt9)) + abrow("v10 Velocity", vstat(ph10,pt10));
+    abrow("v7 Kontrolle", vstat(ph,pt)) + abrow("v9 Fade-Cut", vstat(ph9,pt9)) + abrow("v10 Vel300", vstat(ph10,pt10)) + abrow("v11 Vel+Fade", vstat(ph11,pt11));
 
   // ── Paper KPIs ──
   const eq = ph ? ph.equity : 500, start = 500;

@@ -39,6 +39,7 @@ TUNED     = (VARIANT == "tuned")
 V8        = (VARIANT == "v8")       # Aggro-Pyramid: frueher+groesser nachlegen + Rueckgabe-Fix
 V9        = (VARIANT == "v9")       # Fade-Cut: No-Progress-Exit (nie gelaufen -> frueh raus, tail-sicher)
 V10       = (VARIANT == "v10")      # Velocity-Filter: Frantic-FOMO-Pumps (buys/h zu hoch) meiden, tail-sicher
+V11       = (VARIANT == "v11")      # Kombi: Velocity-Filter + Fade-Cut (Retro-Sim-Sieger im 2x2-Faktorial)
 SINGLETON = "dex_paper" + _SUF
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (gleicher Markt fuer beide Varianten)
 PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
@@ -94,10 +95,11 @@ EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort r
 # Tail-sicher: echte Gewinner laufen schnell hoch -> Peak>=10% -> werden NIE getroffen.
 NOPROG_MIN     = 12.0      # Minuten ohne Lauf
 NOPROG_PEAK    = 10.0      # % — wenn Peak drunter bleibt -> Fader
-# v10 „Velocity-Filter" (nur VARIANT=="v10"): Token mit zu hoher Kaufrate (buys/age_h) meiden.
-# Daten (pendu-WIN 308/h vs PUDGYBULL-LOSS 740/h): Frantic-FOMO = Dump-Risiko. Tail-sicher:
-# 600 laesst pendu (308) UND TOLYHOOD durch, entfernt nur triviale Gewinner (groesster geopfert +$0.90).
-MAXVEL         = 600.0     # max buys/Stunde beim Entry
+# v10/v11 „Velocity-Filter": Token mit zu hoher Kaufrate (buys/age_h) meiden.
+# Retro-Sim auf echten Trajektorien (141 Entries, 2026-07-11): Verlust faellt monoton mit dem
+# Deckel (ungefiltert -555 -> vel300 -143); Tail-Median der grossen Gewinner nur 73 buys/h,
+# Verlierer-Median 216/h. 600 war zu locker -> 300 (Sim-Sieger im 2x2 zusammen mit Fade-Cut).
+MAXVEL         = 300.0     # max buys/Stunde beim Entry
 TIMEOUT        = 10
 
 STALE_HOURS    = 2.0       # v4 Stale-Swap: nach 2h gehalten ohne je +10% Peak zu sehen
@@ -125,6 +127,7 @@ def _tg(msg):
             else "🟧 <b>v8 Aggro-Pyramid</b>\n" if V8
             else "🟪 <b>v9 Fade-Cut</b>\n" if V9
             else "🟫 <b>v10 Velocity-Filter</b>\n" if V10
+            else "🟥 <b>v11 Vel+Fade</b>\n" if V11
             else "🟦 <b>Baseline v7</b>\n")
     try:
         requests.post("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage",
@@ -395,7 +398,10 @@ def run():
               str(int(NOPROG_PEAK)) + "% (nie gelaufene Fader raus, Tail bleibt)")
     if V10:
         print("  v10 VELOCITY: skip wenn buys/h > " + str(int(MAXVEL)) +
-              " (Frantic-FOMO-Pumps meiden; pendu 308/h bleibt, tail-sicher)")
+              " (Frantic-FOMO-Pumps meiden; Tail-Median 73/h bleibt, tail-sicher)")
+    if V11:
+        print("  v11 KOMBI (Retro-Sim-Sieger): Velocity-Skip buys/h > " + str(int(MAXVEL)) +
+              " + Fade-Cut nach " + str(int(NOPROG_MIN)) + " Min wenn Peak < " + str(int(NOPROG_PEAK)) + "%")
     _gate = ("AN (v8 LIVE-Momentum)" if LIVE_GATE
              else "TUNED v9 (Buy/Sell>=" + str(TUNED_MIN_BS) + " & chg5>=" + str(TUNED_MIN_CHG5) + ")" if TUNED
              else "AUS (v7-baseline)")
@@ -462,8 +468,8 @@ def run():
                     continue
                 if chg5 > ENTRY_MAX_CHG5 or chg5 < ENTRY_MIN_CHG5:   # v5: 5m-Fenster [-5,+25] — kein Top-Kauf UND kein fallender Dip
                     continue
-                if V10 and (t.get("buys", 0) or 0) / max(t.get("age_h", 0.1) or 0.1, 0.1) > MAXVEL:
-                    continue   # v10: Frantic-FOMO-Pump (zu hohe Kaufrate) -> Dump-Risiko meiden
+                if (V10 or V11) and (t.get("buys", 0) or 0) / max(t.get("age_h", 0.1) or 0.1, 0.1) > MAXVEL:
+                    continue   # v10/v11: Frantic-FOMO-Pump (zu hohe Kaufrate) -> Dump-Risiko meiden
                 if TUNED:
                     # v9 Fine-Tuning (Winner/Loser-Daten): mehr Kaufdruck + nur positives 5m-Momentum
                     if (t.get("buys", 0) or 0) / max(t.get("sells", 0) or 0, 1) < TUNED_MIN_BS:
@@ -578,8 +584,8 @@ def run():
                     reason = "HARD-STOP"
                 elif pos["peak"] > pos["entry"] and cur <= pos["peak"] * (1 - trail_now):
                     reason = "TRAIL"
-                elif V9 and age_s / 60 >= NOPROG_MIN and peak_pct_val < NOPROG_PEAK:
-                    reason = "NO-PROGRESS"   # v9: nach X Min nicht gelaufen -> Fader raus (tail-sicher)
+                elif (V9 or V11) and age_s / 60 >= NOPROG_MIN and peak_pct_val < NOPROG_PEAK:
+                    reason = "NO-PROGRESS"   # v9/v11: nach X Min nicht gelaufen -> Fader raus (tail-sicher)
                 elif age_h >= MAX_HOURS and -20 < pnl < 25:
                     reason = "TIMEOUT"
                 elif (age_h >= STALE_HOURS
