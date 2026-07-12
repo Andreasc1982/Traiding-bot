@@ -20,11 +20,13 @@ TG_TOKEN = config.get("telegram_bot_token", "")
 TG_CHAT  = config.get("telegram_chat_id", "")
 
 # (Anzeigename, trades-Datei, heartbeat-Datei)
+# 2x2-Faktorial: v7 = nichts (Kontrolle), v9 = Fade-Cut, v10 = Velocity<=300, v11 = beides
 VARIANTS = [
     ("Baseline v7",   "paper_trades.json",     "paper_heartbeat.json"),
-    ("v8 Aggro-Pyr",  "paper_trades_v8.json",  "paper_heartbeat_v8.json"),
     ("v9 Fade-Cut",   "paper_trades_v9.json",  "paper_heartbeat_v9.json"),
-    ("v10 Velocity",  "paper_trades_v10.json", "paper_heartbeat_v10.json"),
+    ("v10 Vel300",    "paper_trades_v10.json", "paper_heartbeat_v10.json"),
+    ("v11 Vel+Fade",  "paper_trades_v11.json", "paper_heartbeat_v11.json"),
+    ("v12 JupFill",   "paper_trades_v12.json", "paper_heartbeat_v12.json"),
 ]
 
 
@@ -55,7 +57,7 @@ def analyze(trades_f, hb_f):
 
 def build_msg():
     rows = [(name, analyze(tf, hf)) for name, tf, hf in VARIANTS]
-    L = ["\U0001F9EA <b>DEX-Vergleich — v7 / v8 Pyramid / v9 Fade-Cut / v10 Velocity</b>", ""]
+    L = ["\U0001F9EA <b>DEX — v7 Kontrolle / v9 Fade / v10 Vel / v11 beides / v12 JupFill</b>", ""]
     for name, s in rows:
         L.append("<b>%s</b>  (Start $500)" % name)
         L.append("  Equity <b>$%.0f</b> | %d Trades | WR %.0f%%" % (s["eq"], s["n"], s["wr"]))
