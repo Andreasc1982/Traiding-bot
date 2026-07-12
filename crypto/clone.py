@@ -181,6 +181,7 @@ class CloneBot(CryptoBot):
                 "shares": shares, "entry": fill, "fee_in": round(fee_in, 6),
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "highest": fill,
                 "stop_loss": 1.5, "take_profit": 3.0, "spike": True,
+                "esnap": {"spike_ratio": round(ratio, 1), "fg": self.last_fg.get("value")},
             }
         self._save_state()
         print("[CLONE-" + self.variant + "] SPIKE-BUY " + symbol + " $" + str(round(price, 4)) +
@@ -258,6 +259,8 @@ class CloneBot(CryptoBot):
                         "peak": fill, "hard_stop": fill * (1 - MOON_HARD),
                         "trail": MOON_TRAIL, "moonshot": True,
                         "orig_shares": shares, "orig_cost": shares * fill + fee_in, "scaled": [],
+                        "esnap": {"bb_break": True, "supertrend": 1, "rsi": ind.get("rsi"),
+                                  "adx": ind.get("adx"), "fg": self.last_fg.get("value")},
                     }
                 self._save_state()
                 print("[CLONE-E] MOONSHOT-BUY " + sym + " $" + str(round(price, 6)) +
@@ -413,6 +416,8 @@ class CloneBot(CryptoBot):
                     "stop_loss": 8.0,    # Backtest-Wert: gibt Pos Luft in echter Panik
                     "take_profit": 5.0,  # Mean-Reversion-Ziel
                     "fear_contrarian": True,
+                    "esnap": {"rsi": rsi, "fg": fg, "supertrend": 1,
+                              "adx": ind.get("adx"), "cmf": ind.get("cmf")},
                 }
             self._save_state()
             print("[CLONE-F] FEAR-BUY " + sym + " RSI=" + str(round(rsi, 1)) +
@@ -479,6 +484,8 @@ class CloneBot(CryptoBot):
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "highest": fill,
                     "stop_loss": self.stop_loss, "take_profit": 6.0,   # wider TP for mean-reversion
                     "contrarian": True,
+                    "esnap": {"rsi": rsi, "fg": fg, "supertrend": ind.get("supertrend"),
+                              "adx": ind.get("adx"), "cmf": ind.get("cmf")},
                 }
             self._save_state()
             print(tag + " CONTRARIAN-BUY " + sym + " RSI=" + str(rsi) +

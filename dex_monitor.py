@@ -29,6 +29,10 @@ os.makedirs(DEX_DIR, exist_ok=True)
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")
 HEARTBEAT = os.path.join(DEX_DIR, "heartbeat.json")
 LOG_CSV   = os.path.join(DEX_DIR, "screening_log.csv")
+GRAVEYARD = os.path.join(DEX_DIR, "graveyard.json")
+GRAVE_H          = 36   # aus Watchlist entfernte Token noch so lange weiterloggen (Post-Exit-Trajektorie)
+GRAVE_MAX        = 60   # max Grab-Groesse (= 2 Batch-Calls) — aelteste fliegen zuerst
+GRAVE_VANISH_MAX = 3    # nach N BESTAETIGTEN Vanishes (leere OK-Antwort, kein API-Fehler) endgueltig raus
 
 CHAIN          = "solana"
 POLL_SEC       = 60          # 120->60: dank Batch-Call + Lazy-RugCheck (1 statt ~30 DexScreener-Calls/Zyklus)
@@ -131,6 +135,14 @@ def run():
         except Exception:
             pass
 
+    graveyard = {}
+    if os.path.exists(GRAVEYARD):
+        try:
+            graveyard = json.load(open(GRAVEYARD))
+            print("[STATE] Graveyard wiederhergestellt: " + str(len(graveyard)) + " Token")
+        except Exception as e:
+            print("[GRAVE] Restore-Fehler (starte leer): " + str(e))
+
     if not os.path.exists(LOG_CSV):
         with open(LOG_CSV, "w") as f:
             f.write("time,addr,symbol,price,liq,vol5,buys,sells,chg5,age_h,passed,rug_risk,reasons,chg1,vol_h6\n")
@@ -197,10 +209,14 @@ def run():
                 for a in chunk:
                     p = _best_pair(rpairs, a)
                     if p is None:                       # aus API verschwunden -> geruggt/delisted -> raus
-                        watchlist.pop(a, None); removed += 1; continue
+                        _g = watchlist.pop(a, None); removed += 1
+                        if _g: graveyard[a] = {"symbol": _g.get("symbol", "?"), "since": time.time(), "vanish": 0}
+                        continue
                     fs = screen_pair(p, a)              # FRISCHE Werte + neu bewertete reasons
                     if fs["reasons"]:                   # Basis-Screen nicht mehr erfuellt -> raus
-                        watchlist.pop(a, None); removed += 1; continue
+                        _g = watchlist.pop(a, None); removed += 1
+                        if _g: graveyard[a] = {"symbol": _g.get("symbol", "?"), "since": time.time(), "vanish": 0}
+                        continue
                     prev = watchlist.get(a, {})
                     fs["first_seen"]  = prev.get("first_seen", now)
                     fs["first_price"] = prev.get("first_price", fs["price"])
@@ -211,19 +227,68 @@ def run():
                     refreshed += 1
                 time.sleep(0.3)                          # DexScreener-Schonung zwischen Chunks
 
-            # Watchlist auf zuletzt 200 begrenzen (aelteste raus)
+            # Watchlist auf zuletzt 200 begrenzen (aelteste raus -> auch ins Grab, Trajektorie weiterloggen)
             if len(watchlist) > 200:
                 items = sorted(watchlist.items(), key=lambda kv: kv[1].get("last_seen", ""))
+                for _a, _v in items[:-200]:
+                    graveyard[_a] = {"symbol": _v.get("symbol", "?"), "since": time.time(), "vanish": 0}
                 watchlist = dict(items[-200:])
+
+            # ── Graveyard-Watch: entfernte Token GRAVE_H weiterloggen (Post-Exit-Trajektorie) ──
+            # Schliesst die groesste Analyse-Luecke: Retro-Sims mussten das Trajektorien-Ende als
+            # Unbekannte behandeln (optimistisch/pessimistisch-Schranken). Lehren eingebaut:
+            # API-Ausfall (None) zaehlt NICHT als Vanish; Rows gehen NUR ins LOG_CSV
+            # (reasons="graveyard*", passed=False) — nie in die Watchlist, nie in screened/passed.
+            gy_logged = 0
+            try:
+                _tnow = time.time()
+                graveyard = {a: g for a, g in graveyard.items()
+                             if (_tnow - g.get("since", _tnow)) / 3600 < GRAVE_H and a not in watchlist}
+                if len(graveyard) > GRAVE_MAX:
+                    _gitems = sorted(graveyard.items(), key=lambda kv: kv[1].get("since", 0))
+                    graveyard = dict(_gitems[-GRAVE_MAX:])
+                gaddrs = list(graveyard.keys())
+                for gi in range(0, len(gaddrs), 30):
+                    gchunk = gaddrs[gi:gi + 30]
+                    gb = _get("https://api.dexscreener.com/latest/dex/tokens/" + ",".join(gchunk))
+                    if gb is None:
+                        continue          # API-Ausfall -> kein Vanish-Beleg, nichts loggen (transient)
+                    gpairs = gb.get("pairs") or []
+                    for a in gchunk:
+                        g = graveyard.get(a) or {}
+                        gp = _best_pair(gpairs, a)
+                        if gp is None:    # bestaetigt weg (OK-Antwort ohne den Token)
+                            g["vanish"] = g.get("vanish", 0) + 1
+                            _row = [now, a, g.get("symbol", "?"), 0, 0, 0, 0, 0, 0, 0,
+                                    False, "?", "graveyard_vanished", 0, 0]
+                            if g["vanish"] >= GRAVE_VANISH_MAX:
+                                graveyard.pop(a, None)    # endgueltig tot -> nicht weiter pollen
+                        else:
+                            g["vanish"] = 0
+                            gs = screen_pair(gp, a)
+                            _row = [now, a, gs["symbol"], gs["price"], gs["liq"], gs["vol5"],
+                                    gs["buys"], gs["sells"], gs["chg5"], gs["age_h"],
+                                    False, "?", "graveyard", gs.get("chg1", 0), gs.get("vol_h6", 0)]
+                        try:
+                            with open(LOG_CSV, "a") as f:
+                                f.write(",".join(str(v) for v in _row) + "\n")
+                            gy_logged += 1
+                        except Exception as _we:
+                            print("[GRAVE-LOG] " + str(_we))
+                    time.sleep(0.3)
+                _atomic_write(GRAVEYARD, graveyard)
+            except Exception as e:
+                print("[GRAVE] " + str(e))
 
             _atomic_write(WATCHLIST, watchlist)
             _atomic_write(HEARTBEAT, {"cycle": cycle, "ts": time.time(),
                                       "screened": screened, "passed": passed,
                                       "refreshed": refreshed, "removed": removed,
-                                      "watchlist": len(watchlist)})
+                                      "watchlist": len(watchlist), "graveyard": len(graveyard)})
             print("[DEX] Zyklus " + str(cycle) + " | " + str(screened) + " gescreent, " +
                   str(passed) + " neu | refresh " + str(refreshed) + " / raus " + str(removed) +
-                  " | Watchlist " + str(len(watchlist)))
+                  " | Watchlist " + str(len(watchlist)) + " | Grab " + str(len(graveyard)) +
+                  ("(" + str(gy_logged) + " Rows)" if gy_logged else ""))
         except Exception as e:
             print("[DEX-LOOP] " + str(e))
         time.sleep(POLL_SEC)
