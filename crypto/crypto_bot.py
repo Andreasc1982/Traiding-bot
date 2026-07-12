@@ -459,8 +459,10 @@ class CryptoBot:
                 "positions":         positions,     # full position dicts, restored on startup
                 "sl_cooldown":       active_cooldowns,  # persisted SL cooling periods
             }
-            with open(self._state_path, "w") as f:
+            _tmp = self._state_path + ".tmp"
+            with open(_tmp, "w") as f:
                 json.dump(st, f)
+            os.replace(_tmp, self._state_path)  # atomar — kein Torn Write bei Stromausfall/parallelem Reader
             os.chmod(self._state_path, 0o600)   # owner read/write only — API keys adjacent
         except Exception as e:
             print("[STATE] Save error: " + str(e))
@@ -2434,8 +2436,10 @@ class CryptoBot:
             "skips":         skips_snap,
             "ws_connected":  self.ws_connected,
         }
-        with open(self._dash_path, "w") as f:
+        _tmp = self._dash_path + ".tmp"
+        with open(_tmp, "w") as f:
             json.dump(data, f)
+        os.replace(_tmp, self._dash_path)   # atomar — Risk-Agent liest nie eine halbe Datei (Fehlalarm 12.07.)
 
     # ── Safety ─────────────────────────────────────────────────────────────
 
