@@ -1156,8 +1156,9 @@ def run_optimization():
         "suggestions":        suggestions,
     }
     try:
-        with open(RESULTS_FILE, "w") as f:
+        with open(RESULTS_FILE + ".tmp", "w") as f:
             json.dump(results, f, indent=2, default=str)
+        os.replace(RESULTS_FILE + ".tmp", RESULTS_FILE)   # atomar — Router (/apply) liest parallel
         log(f"Ergebnisse gespeichert: {RESULTS_FILE}")
     except Exception as e:
         log(f"Fehler beim Speichern: {e}")

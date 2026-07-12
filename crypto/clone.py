@@ -324,8 +324,9 @@ class CloneBot(CryptoBot):
                                 "reason": tag, "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
                                 "moonshot": True, "partial": True})
         try:
-            with open(self._trades_path, "w") as f:
+            with open(self._trades_path + ".tmp", "w") as f:
                 json.dump(self.trades, f)
+            os.replace(self._trades_path + ".tmp", self._trades_path)   # atomar — Crons lesen parallel
         except Exception:
             pass
         self._save_state()

@@ -177,8 +177,9 @@ def load_state():
 def save_state(s):
     try:
         s["events"] = s["events"][-500:]
-        with open(LOG_FILE, "w") as f:
+        with open(LOG_FILE + ".tmp", "w") as f:
             json.dump(s, f, indent=2)
+        os.replace(LOG_FILE + ".tmp", LOG_FILE)   # atomar — Router (/risk) liest parallel
     except Exception as e:
         print("[STATE] Save error: " + str(e))
 
@@ -204,16 +205,18 @@ def _update_halt_file(s):
     if sh: bots.append("super")
     if ch: bots.append("crypto")
     times = [t for t in [s.get("super_resume_at"), s.get("crypto_resume_at"), s.get("resume_at")] if t]
-    with open(HALT_FILE, "w") as f:
+    with open(HALT_FILE + ".tmp", "w") as f:
         json.dump({"halted": True, "halted_bots": bots,
                    "halted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                    "manual_hold": s.get("manual_hold", False),
                    "resume_at": min(times) if times else None}, f, indent=2)
+    os.replace(HALT_FILE + ".tmp", HALT_FILE)   # atomar — Monitor liest alle 60s
 
 def _stop_super():
     try:
-        with open(CONTROL_FILE, "w") as f:
+        with open(CONTROL_FILE + ".tmp", "w") as f:
             json.dump({"command": "close_all"}, f)
+        os.replace(CONTROL_FILE + ".tmp", CONTROL_FILE)   # atomar — Bot liest jeden Zyklus; halber Read = Command verloren
         print("[HALT] Wrote close_all -> bot_control.json (warte max 45s auf Position-Abbau)")
     except Exception as e:
         print("[HALT] Control file: " + str(e))
@@ -233,8 +236,9 @@ def _stop_super():
 def _stop_crypto():
     crypto_ctrl = os.path.join(BASE_DIR, "crypto", "crypto_control.json")
     try:
-        with open(crypto_ctrl, "w") as f:
+        with open(crypto_ctrl + ".tmp", "w") as f:
             json.dump({"command": "close_all"}, f)
+        os.replace(crypto_ctrl + ".tmp", crypto_ctrl)   # atomar — Bot liest jeden Zyklus; halber Read = Command verloren
         print("[HALT] Wrote close_all -> crypto_control.json (warte max 45s auf Position-Abbau)")
     except Exception as e:
         print("[HALT] Crypto control file: " + str(e))

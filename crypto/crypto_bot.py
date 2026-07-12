@@ -2141,8 +2141,9 @@ class CryptoBot:
             self.trades.append(trade_record)
 
         trades_path = self._trades_path
-        with open(trades_path, "w") as f:
+        with open(trades_path + ".tmp", "w") as f:
             json.dump(self.trades, f)
+        os.replace(trades_path + ".tmp", trades_path)   # atomar — compare_clones/Optimizer lesen parallel
 
         self._save_state()   # persist balance after every close
 

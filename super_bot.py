@@ -992,8 +992,10 @@ class SuperTradingBot:
         with self.positions_lock:
             self.trades.append(trade_record)
 
-        with open("/home/trading2025/trading_bot/trades_history.json", "w") as f:
+        _th = "/home/trading2025/trading_bot/trades_history.json"
+        with open(_th + ".tmp", "w") as f:
             json.dump(self.trades, f)
+        os.replace(_th + ".tmp", _th)   # atomar — Optimizer/Analysen lesen parallel
 
         self._save_state()   # persist balance after every close
 
