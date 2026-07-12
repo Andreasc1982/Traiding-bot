@@ -29,6 +29,8 @@ os.makedirs(DEX_DIR, exist_ok=True)
 WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")
 HEARTBEAT = os.path.join(DEX_DIR, "heartbeat.json")
 LOG_CSV   = os.path.join(DEX_DIR, "screening_log.csv")
+ONCHAIN_LOG = os.path.join(DEX_DIR, "onchain_log.csv")   # log-only: erste On-Chain-Signalspur, aendert Screening NICHT
+SOL_RPC   = "https://api.mainnet-beta.solana.com"        # Gratis-Public-RPC (getAccountInfo ok; Holder-Calls rate-limited)
 GRAVEYARD = os.path.join(DEX_DIR, "graveyard.json")
 GRAVE_H          = 36   # aus Watchlist entfernte Token noch so lange weiterloggen (Post-Exit-Trajektorie)
 GRAVE_MAX        = 60   # max Grab-Groesse (= 2 Batch-Calls) — aelteste fliegen zuerst
@@ -45,6 +47,27 @@ MIN_VOL_5M     = 500         # min Handelsaktivitaet (5 min)
 MAX_AGE_H      = 48          # nur frische Token (<48h)
 MIN_AGE_MIN    = 15          # aber nicht brandneu (<15min = hoechstes Rug-Fenster)
 MIN_BUY_RATIO  = 0.5         # buys/sells >= 0.5 (kein massiver Verkaufsdruck)
+
+
+def onchain_auth(addr):
+    """Gratis On-Chain-Check via Solana-RPC: sind Mint-/Freeze-Authority gesetzt?
+    freeze=gesetzt -> Konto einfrierbar = NICHT verkaufbar (definitiver Rug).
+    mint=gesetzt   -> Supply nachmuenzbar = Verwaesserung. Returns dict oder None (nie Crash)."""
+    try:
+        r = requests.post(SOL_RPC, timeout=TIMEOUT, headers={"Content-Type": "application/json"},
+                          json={"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo",
+                                "params": [addr, {"encoding": "jsonParsed"}]})
+        if r.status_code != 200:
+            return None
+        info = (((r.json() or {}).get("result") or {}).get("value") or {}).get("data", {})
+        info = (info.get("parsed") or {}).get("info") if isinstance(info, dict) else None
+        if not info:
+            return None
+        return {"mint_auth": bool(info.get("mintAuthority")),
+                "freeze_auth": bool(info.get("freezeAuthority"))}
+    except Exception as e:
+        print("[ONCHAIN] " + str(e)[:60])
+        return None
 
 
 def _get(url):
@@ -135,6 +158,7 @@ def run():
         except Exception:
             pass
 
+    onchain_seen = set()   # Adressen deren Authority schon gecheckt wurde (1 RPC-Call je Token)
     graveyard = {}
     if os.path.exists(GRAVEYARD):
         try:
@@ -189,6 +213,22 @@ def run():
                     s["first_seen"]  = prev.get("first_seen", now)
                     s["first_price"] = prev.get("first_price", s["price"])  # Entdeckungs-Preis fixieren
                     s["last_seen"]   = now
+                    # On-Chain-Authority NUR einmal je Token (log-only, aendert Screening nicht)
+                    if addr not in onchain_seen:
+                        onchain_seen.add(addr)
+                        oc = onchain_auth(addr)
+                        if oc is not None:
+                            try:
+                                _new = not os.path.exists(ONCHAIN_LOG)
+                                with open(ONCHAIN_LOG, "a") as f:
+                                    if _new:
+                                        f.write("time,addr,symbol,mint_auth,freeze_auth\n")
+                                    f.write(",".join(str(v) for v in [now, addr, s["symbol"],
+                                            oc["mint_auth"], oc["freeze_auth"]]) + "\n")
+                            except Exception as _we:
+                                print("[ONCHAIN-LOG] " + str(_we)[:50])
+                            if oc["freeze_auth"]:
+                                print("[ONCHAIN] ⚠️ " + s["symbol"] + " FREEZE-AUTHORITY gesetzt (nicht verkaufbar!)")
                     watchlist[addr] = s
                     print("[PASS] " + s["symbol"].ljust(10) + " liq$" + str(s["liq"]) +
                           " chg5=" + str(s["chg5"]) + "% buys/sells=" + str(s["buys"]) + "/" +
