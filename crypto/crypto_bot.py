@@ -487,12 +487,34 @@ class CryptoBot:
     # ── Telegram ───────────────────────────────────────────────────────────
 
     def send(self, msg):
-        if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
-            try:
-                url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
+        if not (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
+            return
+        url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
+        try:
+            r = requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg,
+                                         "parse_mode": "HTML"}, timeout=5)
+            if r.status_code != 200:   # HTML-Parse-Fehler (& / ungueltiges Tag) -> als Klartext senden
                 requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=5)
-            except Exception as e:
-                print("[TG Error] " + str(e))
+        except Exception as e:
+            print("[TG Error] " + str(e))
+
+    @staticmethod
+    def _de_regime(r):
+        return {"TRENDING": "starker Trend", "TRANSITIONAL": "Übergang",
+                "RANGING": "Seitwärts"}.get(r, r)
+
+    @staticmethod
+    def _de_reason(r):
+        return {
+            "WS-STOP-LOSS": "Stop-Loss — Verlust begrenzt", "STOP-LOSS": "Stop-Loss — Verlust begrenzt",
+            "WS-TRAIL-STOP": "Trailing-Stop — Gewinn gesichert", "TRAIL-STOP": "Trailing-Stop — Gewinn gesichert",
+            "WS-PROFIT-LOCK": "Profit-Lock — Gewinn gesichert",
+            "WS-BREAKEVEN": "Break-Even — kein Verlust mehr",
+            "WS-TAKE-PROFIT": "Ziel erreicht", "TAKE-PROFIT": "Ziel erreicht",
+            "WS-PSAR-STOP": "Trend gedreht (PSAR)", "PSAR-STOP": "Trend gedreht (PSAR)",
+            "TIME-EXIT": "Zeit-Exit — zu lange flach",
+            "RISK-CLOSE-ALL": "Risk-Agent Notverkauf",
+        }.get(r, r)
 
     # ── Price — WS cache → REST fallback ──────────────────────────────────
 
@@ -1325,7 +1347,13 @@ class CryptoBot:
                " vol=" + str(round(ratio, 1)) + "x avg (Schwelle " + str(int(self.spike_threshold)) + "x, " + str(self._spike_count) + "/" + str(self.spike_max_day) + " heute)" +
                " SL=1.5% TP=3% | Bal: $" + str(round(self.balance, 0)))
         print(msg)
-        self.send(msg)
+        tg = ("⚡ <b>BLITZ-KAUF · " + symbol + "</b>\n"
+              "💵 Preis $" + str(round(price, 4)) + "  ·  Kontostand $" + str(int(round(self.balance))) + "\n"
+              "📈 Volumen-Explosion: " + str(round(ratio, 1)) + "× normal (Auslöser ab "
+              + str(int(self.spike_threshold)) + "×)\n"
+              "🎯 Enger Stop 1,5 % / Ziel 3 % · " + str(self._spike_count) + "/"
+              + str(self.spike_max_day) + " Blitz-Käufe heute")
+        self.send(tg)
 
     def _ws_on_error(self, ws, error):
         print("[WS] Error: " + str(error))
@@ -2158,7 +2186,13 @@ class CryptoBot:
         msg = ("CRYPTO " + reason + ": " + symbol + " " +
                str(round(pnl_pct, 1)) + "% | P&L: $" + str(round(profit, 0)))
         print(msg)
-        self.send(msg)
+        _win = profit >= 0
+        tg = ((("✅ <b>GEWINN · " if _win else "🔴 <b>VERLUST · ") + symbol + "  "
+               + ("+" if pnl_pct >= 0 else "") + str(round(pnl_pct, 1)) + "%</b>\n")
+              + "💰 " + ("+" if profit >= 0 else "") + "$" + str(int(round(profit)))
+              + "  ·  Kontostand $" + str(int(round(self.balance))) + "\n"
+              + "📊 Grund: " + self._de_reason(reason))
+        self.send(tg)
 
     # ── Trade entry ────────────────────────────────────────────────────────
 
@@ -2402,7 +2436,16 @@ class CryptoBot:
                    " PSAR=" + str(ind.get("psar", "?")) +
                    " | Bal: $" + str(round(self.balance, 0)))
             print(msg)
-            self.send(msg)
+            tg = ("🟢 <b>KAUF · " + symbol + "</b>\n"
+                  "💵 Preis $" + str(round(price, 4)) + "  ·  Kontostand $" + str(int(round(self.balance))) + "\n"
+                  "📊 Warum: " + self._de_regime(regime) + " (Stärke " + str(adx) + ") · "
+                  + str(round(score_pct * 100)) + "% der Signale bullish · "
+                  + ("volle" if size_mult >= 1 else "reduzierte") + " Größe\n"
+                  "🎯 Risiko ~$" + str(round(shares * ind["atr"] * 2, 2)) + " falls der Stop greift\n"
+                  "🔎 RSI " + str(ind["rsi"]) + " · MACD " + ("↑" if ind.get("macd_hist", 0) > 0 else "↓")
+                  + " · Trend " + ("↑" if ind.get("supertrend") == 1 else "↓")
+                  + " · Geldfluss " + ("+" if ind.get("cmf", 0) >= 0 else "") + str(ind.get("cmf", 0)))
+            self.send(tg)
 
     # ── Dashboard ──────────────────────────────────────────────────────────
 
