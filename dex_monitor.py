@@ -33,6 +33,7 @@ ONCHAIN_LOG = os.path.join(DEX_DIR, "onchain_log.csv")   # log-only: erste On-Ch
 SOL_RPC   = "https://api.mainnet-beta.solana.com"        # Public-RPC-Fallback (getAccountInfo ok; Holder-Calls rate-limited)
 HELIUS_KEY  = config.get("helius_api_key", "")
 ONCHAIN_RPC = ("https://mainnet.helius-rpc.com/?api-key=" + HELIUS_KEY) if HELIUS_KEY else SOL_RPC
+onchain_cache = {}   # addr -> {"freeze","conc","top10"} : 1-Call-Cache je Token UND Quelle fuers Dashboard
 GRAVEYARD = os.path.join(DEX_DIR, "graveyard.json")
 GRAVE_H          = 36   # aus Watchlist entfernte Token noch so lange weiterloggen (Post-Exit-Trajektorie)
 GRAVE_MAX        = 60   # max Grab-Groesse (= 2 Batch-Calls) — aelteste fliegen zuerst
@@ -96,6 +97,35 @@ def onchain_signals(addr):
     except Exception as e:
         print("[ONCHAIN] parse-holders: " + str(e)[:40])
     return out
+
+
+def ensure_onchain(addr, symbol, now):
+    """Holt On-Chain-DNA EINMAL je Token (Cache), loggt sie, gibt kompaktes dict fuers Dashboard.
+    Log-only — aendert das Screening nicht. Rate-sicher (1x je Token)."""
+    if addr in onchain_cache:
+        return onchain_cache[addr]
+    oc = onchain_signals(addr)
+    try:
+        _new = not os.path.exists(ONCHAIN_LOG)
+        with open(ONCHAIN_LOG, "a") as f:
+            if _new:
+                f.write("time,addr,symbol,mint_auth,freeze_auth,top1,top5,top10,top10_ex1\n")
+            f.write(",".join(str(v) for v in [now, addr, symbol, oc["mint_auth"], oc["freeze_auth"],
+                    oc["top1"], oc["top5"], oc["top10"], oc["top10_ex1"]]) + "\n")
+    except Exception as _we:
+        print("[ONCHAIN-LOG] " + str(_we)[:50])
+    if oc.get("freeze_auth"):
+        print("[ONCHAIN] ⚠️ " + symbol + " FREEZE-AUTHORITY gesetzt (nicht verkaufbar!)")
+    elif oc.get("top10_ex1") is not None and oc["top10_ex1"] > 40:
+        print("[ONCHAIN] ⚠️ " + symbol + " Insider-Konzentration hoch: Top2-11 = " + str(oc["top10_ex1"]) + "%")
+    elif oc.get("top10") is not None:
+        print("[ONCHAIN] " + symbol + " Holder Top10=" + str(oc["top10"]) + "% (ex-LP " + str(oc["top10_ex1"]) + "%)")
+    compact = {"freeze": oc.get("freeze_auth"), "conc": oc.get("top10_ex1"), "top10": oc.get("top10")}
+    onchain_cache[addr] = compact
+    if len(onchain_cache) > 400:                       # Cache begrenzen (aelteste raus)
+        for _k in list(onchain_cache.keys())[:100]:
+            onchain_cache.pop(_k, None)
+    return compact
 
 
 def _get(url):
@@ -186,7 +216,6 @@ def run():
         except Exception:
             pass
 
-    onchain_seen = set()   # Adressen deren Authority schon gecheckt wurde (1 RPC-Call je Token)
     graveyard = {}
     if os.path.exists(GRAVEYARD):
         try:
@@ -241,28 +270,7 @@ def run():
                     s["first_seen"]  = prev.get("first_seen", now)
                     s["first_price"] = prev.get("first_price", s["price"])  # Entdeckungs-Preis fixieren
                     s["last_seen"]   = now
-                    # On-Chain-Authority NUR einmal je Token (log-only, aendert Screening nicht)
-                    if addr not in onchain_seen:
-                        onchain_seen.add(addr)
-                        oc = onchain_signals(addr)
-                        try:
-                            _new = not os.path.exists(ONCHAIN_LOG)
-                            with open(ONCHAIN_LOG, "a") as f:
-                                if _new:
-                                    f.write("time,addr,symbol,mint_auth,freeze_auth,top1,top5,top10,top10_ex1\n")
-                                f.write(",".join(str(v) for v in [now, addr, s["symbol"],
-                                        oc["mint_auth"], oc["freeze_auth"],
-                                        oc["top1"], oc["top5"], oc["top10"], oc["top10_ex1"]]) + "\n")
-                        except Exception as _we:
-                            print("[ONCHAIN-LOG] " + str(_we)[:50])
-                        if oc.get("freeze_auth"):
-                            print("[ONCHAIN] ⚠️ " + s["symbol"] + " FREEZE-AUTHORITY gesetzt (nicht verkaufbar!)")
-                        elif oc.get("top10_ex1") is not None and oc["top10_ex1"] > 40:
-                            print("[ONCHAIN] ⚠️ " + s["symbol"] + " Insider-Konzentration hoch: Top2-11 = " +
-                                  str(oc["top10_ex1"]) + "%")
-                        elif oc.get("top10") is not None:
-                            print("[ONCHAIN] " + s["symbol"] + " Holder Top10=" + str(oc["top10"]) +
-                                  "% (ex-LP " + str(oc["top10_ex1"]) + "%)")
+                    s["onchain"]     = ensure_onchain(addr, s["symbol"], now)   # DNA fuers Dashboard (log-only)
                     watchlist[addr] = s
                     print("[PASS] " + s["symbol"].ljust(10) + " liq$" + str(s["liq"]) +
                           " chg5=" + str(s["chg5"]) + "% buys/sells=" + str(s["buys"]) + "/" +
@@ -297,6 +305,7 @@ def run():
                     fs["last_seen"]   = now             # JETZT frisch gesehen
                     fs["rug_risk"]    = prev.get("rug_risk", "ok")   # RugCheck-Label vom Erst-Screen behalten
                     fs["passed"]      = True
+                    fs["onchain"]     = ensure_onchain(a, fs["symbol"], now)   # auch Restart-restaurierte Token bekommen DNA
                     watchlist[a] = fs
                     refreshed += 1
                 time.sleep(0.3)                          # DexScreener-Schonung zwischen Chunks
@@ -353,6 +362,12 @@ def run():
                 _atomic_write(GRAVEYARD, graveyard)
             except Exception as e:
                 print("[GRAVE] " + str(e))
+
+            # Vollstaendige On-Chain-Abdeckung: JEDER Watchlist-Token bekommt DNA — auch die,
+            # die durch Screen/Refresh-Ritzen fielen (discovered, aber nicht im Batch). Cached -> billig.
+            for _a, _v in list(watchlist.items()):
+                if not _v.get("onchain"):
+                    _v["onchain"] = ensure_onchain(_a, _v.get("symbol", "?"), now)
 
             _atomic_write(WATCHLIST, watchlist)
             _atomic_write(HEARTBEAT, {"cycle": cycle, "ts": time.time(),
