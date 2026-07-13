@@ -108,8 +108,9 @@ def _load(path):
 def _write_ctrl(path, data):
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as f:
+        with open(path + ".tmp", "w") as f:
             json.dump(data, f)
+        os.replace(path + ".tmp", path)   # atomar — Bots lesen Control-Files jeden Zyklus
         return True
     except Exception as e:
         log(f"ctrl write error {path}: {e}")
@@ -424,8 +425,9 @@ def _apply_params_to_file(bot_path, new_params):
         if content == original:
             return True, "no_change"
 
-        with open(bot_path, "w") as f:
+        with open(bot_path + ".tmp", "w") as f:
             f.write(content)
+        os.replace(bot_path + ".tmp", bot_path)   # atomar — nie halben BOT-QUELLCODE hinterlassen (/confirm)
         return True, "updated"
 
     except Exception as e:

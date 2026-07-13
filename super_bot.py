@@ -820,8 +820,10 @@ class SuperTradingBot:
                 "day_date":          datetime.now().strftime("%Y-%m-%d"),
                 "positions":         positions,     # full position dicts, restored on startup
             }
-            with open(SUPER_STATE_PATH, "w") as f:
+            _tmp = SUPER_STATE_PATH + ".tmp"
+            with open(_tmp, "w") as f:
                 json.dump(st, f)
+            os.replace(_tmp, SUPER_STATE_PATH)  # atomar — kein Torn Write bei Stromausfall/parallelem Reader
             os.chmod(SUPER_STATE_PATH, 0o600)   # owner read/write only
         except Exception as e:
             print("[STATE] Save error: " + str(e))
@@ -990,8 +992,10 @@ class SuperTradingBot:
         with self.positions_lock:
             self.trades.append(trade_record)
 
-        with open("/home/trading2025/trading_bot/trades_history.json", "w") as f:
+        _th = "/home/trading2025/trading_bot/trades_history.json"
+        with open(_th + ".tmp", "w") as f:
             json.dump(self.trades, f)
+        os.replace(_th + ".tmp", _th)   # atomar — Optimizer/Analysen lesen parallel
 
         self._save_state()   # persist balance after every close
 
@@ -1750,8 +1754,10 @@ class SuperTradingBot:
             "ws_connected": self.ws_connected,
             "earnings":     earnings_info,
         }
-        with open("/home/trading2025/trading_bot/dashboard.json", "w") as f:
+        _dash = "/home/trading2025/trading_bot/dashboard.json"
+        with open(_dash + ".tmp", "w") as f:
             json.dump(data, f)
+        os.replace(_dash + ".tmp", _dash)   # atomar — Risk-Agent liest nie eine halbe Datei (Fehlalarm 12.07.)
 
     def dashboard(self, scores):
         with self.positions_lock:

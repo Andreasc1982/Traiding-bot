@@ -459,8 +459,10 @@ class CryptoBot:
                 "positions":         positions,     # full position dicts, restored on startup
                 "sl_cooldown":       active_cooldowns,  # persisted SL cooling periods
             }
-            with open(self._state_path, "w") as f:
+            _tmp = self._state_path + ".tmp"
+            with open(_tmp, "w") as f:
                 json.dump(st, f)
+            os.replace(_tmp, self._state_path)  # atomar — kein Torn Write bei Stromausfall/parallelem Reader
             os.chmod(self._state_path, 0o600)   # owner read/write only — API keys adjacent
         except Exception as e:
             print("[STATE] Save error: " + str(e))
@@ -1125,6 +1127,7 @@ class CryptoBot:
                                     "take_profit": WHALE_TP,
                                     "whale":       True,
                                     "whale_usd_m": usd_m,
+                                    "esnap":       {"whale_usd_m": usd_m, "fg": self.last_fg.get("value")},
                                 }
                             self._save_state()
                             self.send("🐋 <b>WHALE BUY {}</b> ${:,}M Abfluss von {}\n"
@@ -1307,6 +1310,7 @@ class CryptoBot:
                 "stop_loss":   1.5,   # tight spike stop
                 "take_profit": 3.0,   # tight spike target
                 "spike":       True,
+                "esnap":       {"spike_ratio": round(ratio, 1), "fg": self.last_fg.get("value")},
             }
 
         # Order placed outside lock (slow network call)
@@ -2134,13 +2138,15 @@ class CryptoBot:
             "spike":     pos.get("spike", False),
             "whale":     pos.get("whale", False),
             "whale_usd_m": pos.get("whale_usd_m", 0),
+            "esnap":     pos.get("esnap", {}),   # Entry-DNA (leer bei Alt-Positionen)
         }
         with self.positions_lock:
             self.trades.append(trade_record)
 
         trades_path = self._trades_path
-        with open(trades_path, "w") as f:
+        with open(trades_path + ".tmp", "w") as f:
             json.dump(self.trades, f)
+        os.replace(trades_path + ".tmp", trades_path)   # atomar — compare_clones/Optimizer lesen parallel
 
         self._save_state()   # persist balance after every close
 
@@ -2360,6 +2366,17 @@ class CryptoBot:
                 # so _ws_check_price and check_stops both use it via pos.get("stop_loss")
                 if symbol in WILD_MEME:
                     pos_entry["stop_loss"] = meme_sl
+                # esnap: Entry-DNA fuer Winner/Loser-Analysen (rein additiv, aendert kein Verhalten)
+                try:
+                    pos_entry["esnap"] = {
+                        "rsi": ind.get("rsi"), "adx": ind.get("adx"), "cmf": ind.get("cmf"),
+                        "atr_pct": round(ind.get("atr", 0) / price * 100, 3) if price else None,
+                        "score": round(score_pct * 100, 1), "regime": regime,
+                        "vol_regime": vol_regime, "dd_zone": dd_zone,
+                        "size_mult": size_mult, "fg": self.last_fg.get("value"),
+                    }
+                except Exception as _ee:
+                    pos_entry["esnap"] = {"err": str(_ee)[:40]}   # nie still schlucken
                 self.positions[symbol] = pos_entry
 
             if not self.demo and self.exchange_ok:
@@ -2434,8 +2451,10 @@ class CryptoBot:
             "skips":         skips_snap,
             "ws_connected":  self.ws_connected,
         }
-        with open(self._dash_path, "w") as f:
+        _tmp = self._dash_path + ".tmp"
+        with open(_tmp, "w") as f:
             json.dump(data, f)
+        os.replace(_tmp, self._dash_path)   # atomar — Risk-Agent liest nie eine halbe Datei (Fehlalarm 12.07.)
 
     # ── Safety ─────────────────────────────────────────────────────────────
 

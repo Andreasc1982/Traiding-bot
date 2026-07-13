@@ -45,6 +45,9 @@ CHECK_INTERVAL            = 30
 SUPER_DAILY_LIMIT         = -8.0
 CRYPTO_DAILY_LIMIT        = -8.0
 DRAWDOWN_LIMIT            = -15.0
+HALT_CONFIRM              = 2     # Halts erst nach N aufeinanderfolgenden Zyklen (30s) ueber dem Limit
+                                  # — ein einzelner korrupter Dashboard-Read zieht keine Notbremse mehr
+                                  # (Fehlalarm 2026-07-12 03:04: ein Read=None -> combined kollabiert -> "DD -93%")
 RESUME_HOURS_BOT          = 2     # per-bot daily loss halt: time-based 2h
 RESUME_MIN_HOURS_DRAWDOWN = 2     # drawdown halt: minimum wait before market check
 RESUME_RECOVERY_BTC       = 5.0   # crypto bot: BTC must recover +5% from low
@@ -174,8 +177,9 @@ def load_state():
 def save_state(s):
     try:
         s["events"] = s["events"][-500:]
-        with open(LOG_FILE, "w") as f:
+        with open(LOG_FILE + ".tmp", "w") as f:
             json.dump(s, f, indent=2)
+        os.replace(LOG_FILE + ".tmp", LOG_FILE)   # atomar — Router (/risk) liest parallel
     except Exception as e:
         print("[STATE] Save error: " + str(e))
 
@@ -201,16 +205,18 @@ def _update_halt_file(s):
     if sh: bots.append("super")
     if ch: bots.append("crypto")
     times = [t for t in [s.get("super_resume_at"), s.get("crypto_resume_at"), s.get("resume_at")] if t]
-    with open(HALT_FILE, "w") as f:
+    with open(HALT_FILE + ".tmp", "w") as f:
         json.dump({"halted": True, "halted_bots": bots,
                    "halted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                    "manual_hold": s.get("manual_hold", False),
                    "resume_at": min(times) if times else None}, f, indent=2)
+    os.replace(HALT_FILE + ".tmp", HALT_FILE)   # atomar — Monitor liest alle 60s
 
 def _stop_super():
     try:
-        with open(CONTROL_FILE, "w") as f:
+        with open(CONTROL_FILE + ".tmp", "w") as f:
             json.dump({"command": "close_all"}, f)
+        os.replace(CONTROL_FILE + ".tmp", CONTROL_FILE)   # atomar — Bot liest jeden Zyklus; halber Read = Command verloren
         print("[HALT] Wrote close_all -> bot_control.json (warte max 45s auf Position-Abbau)")
     except Exception as e:
         print("[HALT] Control file: " + str(e))
@@ -230,8 +236,9 @@ def _stop_super():
 def _stop_crypto():
     crypto_ctrl = os.path.join(BASE_DIR, "crypto", "crypto_control.json")
     try:
-        with open(crypto_ctrl, "w") as f:
+        with open(crypto_ctrl + ".tmp", "w") as f:
             json.dump({"command": "close_all"}, f)
+        os.replace(crypto_ctrl + ".tmp", crypto_ctrl)   # atomar — Bot liest jeden Zyklus; halber Read = Command verloren
         print("[HALT] Wrote close_all -> crypto_control.json (warte max 45s auf Position-Abbau)")
     except Exception as e:
         print("[HALT] Crypto control file: " + str(e))
@@ -417,6 +424,7 @@ def run():
        str(RESUME_RECOVERY_BTC) + "% Super=SPY+" + str(RESUME_RECOVERY_SPY) + "%")
 
     cycle = 0; last_stale_tg = 0.0; last_equity = 0.0
+    breach = {"super": 0, "crypto": 0, "dd": 0}   # aufeinanderfolgende Limit-Verletzungen je Bremse
 
     while True:
         try:
@@ -439,13 +447,16 @@ def run():
             if sv is None and cv is None:
                 print("[" + now.strftime("%H:%M:%S") + "] Keine Daten"); time.sleep(CHECK_INTERVAL); continue
 
+            # Drawdown/Peak nur bewerten wenn BEIDE Dashboards lesbar sind — ein einzelner
+            # kaputter Read (None -> als 0 gezaehlt) liess combined kollabieren -> Fehlalarm-Halt
+            dd_valid = (sv is not None) and (cv is not None)
             combined = (sv or 0) + (cv or 0)
-            if s["peak_value"] is None and combined > 0:
+            if dd_valid and s["peak_value"] is None and combined > 0:
                 s["peak_value"] = combined
                 print("[INIT] Peak: $" + "{:,.2f}".format(combined))
-            if combined > (s["peak_value"] or 0): s["peak_value"] = combined
+            if dd_valid and combined > (s["peak_value"] or 0): s["peak_value"] = combined
             _rp_cur = s.get("rolling_peak")
-            if _rp_cur and s["peak_value"] and _rp_cur < s["peak_value"]:
+            if dd_valid and _rp_cur and s["peak_value"] and _rp_cur < s["peak_value"]:
                 s["peak_value"] = max(_rp_cur, combined)   # altes Hoch altert aus 30-Tage-Fenster
 
             if sv and (s["super_day_date"] != today or not s["super_day_start"]):
@@ -456,12 +467,12 @@ def run():
                 print("[DAY] Crypto Basis: $" + "{:,.2f}".format(cv))
 
             peak  = s["peak_value"] or combined
-            ddpct = (combined - peak) / peak * 100 if peak > 0 else 0.0
+            ddpct = (combined - peak) / peak * 100 if (dd_valid and peak > 0) else 0.0
             spct  = (sv - s["super_day_start"])  / s["super_day_start"]  * 100 if sv and s["super_day_start"]  else 0.0
             cpct  = (cv - s["crypto_day_start"]) / s["crypto_day_start"] * 100 if cv and s["crypto_day_start"] else 0.0
 
-            # Equity-Kurve: stuendlich eine Zeile (Basis fuer Sharpe/MaxDD-Analytik)
-            if time.time() - last_equity >= 3600:
+            # Equity-Kurve: stuendlich eine Zeile (nur mit vollstaendigen Daten — keine 0-Zeilen)
+            if dd_valid and time.time() - last_equity >= 3600:
                 try:
                     newfile = not os.path.exists(EQUITY_CSV)
                     with open(EQUITY_CSV, "a") as ef:
@@ -595,12 +606,34 @@ def run():
                                       str(int((rdt-now).total_seconds()/60)) + " min")
                         except Exception: pass
 
+            # Halts erst nach HALT_CONFIRM aufeinanderfolgenden Verletzungen (~60s):
+            # transiente/korrupte Messwerte ziehen keine Notbremse, echte Crashes bleiben >60s verletzt
             if sv and not s.get("super_halted") and spct <= SUPER_DAILY_LIMIT:
-                halt_super(s, "SUPER_DAILY_LOSS " + "{:+.2f}".format(spct) + "% (Limit " + str(SUPER_DAILY_LIMIT) + "%)", spct, sv)
+                breach["super"] += 1
+                if breach["super"] >= HALT_CONFIRM:
+                    halt_super(s, "SUPER_DAILY_LOSS " + "{:+.2f}".format(spct) + "% (Limit " + str(SUPER_DAILY_LIMIT) + "%)", spct, sv)
+                else:
+                    print("[CONFIRM] Super " + "{:+.2f}".format(spct) + "% Zyklus " + str(breach["super"]) + "/" + str(HALT_CONFIRM))
+            else:
+                breach["super"] = 0
             if cv and not s.get("crypto_halted") and cpct <= CRYPTO_DAILY_LIMIT:
-                halt_crypto(s, "CRYPTO_DAILY_LOSS " + "{:+.2f}".format(cpct) + "% (Limit " + str(CRYPTO_DAILY_LIMIT) + "%)", cpct, cv)
-            if not s.get("halted") and not (s.get("super_halted") and s.get("crypto_halted")) and ddpct <= DRAWDOWN_LIMIT:
-                halt_both(s, "DRAWDOWN " + "{:+.2f}".format(ddpct) + "% (Limit " + str(DRAWDOWN_LIMIT) + "%)", spct, ddpct, combined)
+                breach["crypto"] += 1
+                if breach["crypto"] >= HALT_CONFIRM:
+                    halt_crypto(s, "CRYPTO_DAILY_LOSS " + "{:+.2f}".format(cpct) + "% (Limit " + str(CRYPTO_DAILY_LIMIT) + "%)", cpct, cv)
+                else:
+                    print("[CONFIRM] Crypto " + "{:+.2f}".format(cpct) + "% Zyklus " + str(breach["crypto"]) + "/" + str(HALT_CONFIRM))
+            else:
+                breach["crypto"] = 0
+            if (dd_valid and not s.get("halted")
+                    and not (s.get("super_halted") and s.get("crypto_halted"))
+                    and ddpct <= DRAWDOWN_LIMIT):
+                breach["dd"] += 1
+                if breach["dd"] >= HALT_CONFIRM:
+                    halt_both(s, "DRAWDOWN " + "{:+.2f}".format(ddpct) + "% (Limit " + str(DRAWDOWN_LIMIT) + "%)", spct, ddpct, combined)
+                else:
+                    print("[CONFIRM] Drawdown " + "{:+.2f}".format(ddpct) + "% Zyklus " + str(breach["dd"]) + "/" + str(HALT_CONFIRM))
+            else:
+                breach["dd"] = 0
 
             if cycle % 20 == 0: save_state(s)
 
