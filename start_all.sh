@@ -88,7 +88,7 @@ screen -dmS gateway bash -c '
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1'
 sleep 3
-for V in A_baseline B_nospikes C_conservative D_contrarian E_moonshot F_contrarian_vix28 G_core H_contra_refined G_big; do
+for V in A_baseline F_contrarian_vix28 G_core H_contra_refined G_big; do
   screen -dmS clone_$V bash -c "
     cd /home/trading2025/trading_bot/crypto &&
     source /home/trading2025/trading_bot_env/bin/activate &&
@@ -97,7 +97,7 @@ done
 screen -dmS clones_dashboard bash -c '
   fuser -k 8090/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/crypto/clones &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json D_contrarian_dashboard.json E_moonshot_dashboard.json F_contrarian_vix28_dashboard.json G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json > /tmp/clones_dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json F_contrarian_vix28_dashboard.json G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json > /tmp/clones_dashboard.log 2>&1'
 
 # DEX-Monitor (Solana, read-only)
 screen -dmS dex bash -c '
