@@ -30,7 +30,10 @@ WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")
 HEARTBEAT = os.path.join(DEX_DIR, "heartbeat.json")
 LOG_CSV   = os.path.join(DEX_DIR, "screening_log.csv")
 ONCHAIN_LOG = os.path.join(DEX_DIR, "onchain_log.csv")   # log-only: erste On-Chain-Signalspur, aendert Screening NICHT
-SOL_RPC   = "https://api.mainnet-beta.solana.com"        # Gratis-Public-RPC (getAccountInfo ok; Holder-Calls rate-limited)
+SOL_RPC   = "https://api.mainnet-beta.solana.com"        # Public-RPC-Fallback (getAccountInfo ok; Holder-Calls rate-limited)
+HELIUS_KEY  = config.get("helius_api_key", "")
+ONCHAIN_RPC = ("https://mainnet.helius-rpc.com/?api-key=" + HELIUS_KEY) if HELIUS_KEY else SOL_RPC
+onchain_cache = {}   # addr -> {"freeze","conc","top10"} : 1-Call-Cache je Token UND Quelle fuers Dashboard
 GRAVEYARD = os.path.join(DEX_DIR, "graveyard.json")
 GRAVE_H          = 36   # aus Watchlist entfernte Token noch so lange weiterloggen (Post-Exit-Trajektorie)
 GRAVE_MAX        = 60   # max Grab-Groesse (= 2 Batch-Calls) — aelteste fliegen zuerst
@@ -49,25 +52,80 @@ MIN_AGE_MIN    = 15          # aber nicht brandneu (<15min = hoechstes Rug-Fenst
 MIN_BUY_RATIO  = 0.5         # buys/sells >= 0.5 (kein massiver Verkaufsdruck)
 
 
-def onchain_auth(addr):
-    """Gratis On-Chain-Check via Solana-RPC: sind Mint-/Freeze-Authority gesetzt?
-    freeze=gesetzt -> Konto einfrierbar = NICHT verkaufbar (definitiver Rug).
-    mint=gesetzt   -> Supply nachmuenzbar = Verwaesserung. Returns dict oder None (nie Crash)."""
+def _rpc(method, params):
+    """Ein Solana-RPC-Call (Helius wenn Key, sonst Public). Returns result oder None (nie Crash)."""
     try:
-        r = requests.post(SOL_RPC, timeout=TIMEOUT, headers={"Content-Type": "application/json"},
-                          json={"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo",
-                                "params": [addr, {"encoding": "jsonParsed"}]})
+        r = requests.post(ONCHAIN_RPC, timeout=TIMEOUT, headers={"Content-Type": "application/json"},
+                          json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
         if r.status_code != 200:
             return None
-        info = (((r.json() or {}).get("result") or {}).get("value") or {}).get("data", {})
-        info = (info.get("parsed") or {}).get("info") if isinstance(info, dict) else None
-        if not info:
+        d = r.json() or {}
+        if "error" in d:
             return None
-        return {"mint_auth": bool(info.get("mintAuthority")),
-                "freeze_auth": bool(info.get("freezeAuthority"))}
+        return d.get("result")
     except Exception as e:
-        print("[ONCHAIN] " + str(e)[:60])
+        print("[ONCHAIN] " + method + ": " + str(e)[:50])
         return None
+
+
+def onchain_signals(addr):
+    """On-Chain-DNA: Authority (Rug) + Holder-Konzentration (Insider-Dump-Risiko).
+    Alles optional -> Teil-Fehler = None, nie Crash. Gibt IMMER ein dict zurueck.
+    Heuristik: Top-Konto ist meist Bonding-Curve/LP -> top10_ex1 (Holder 2-11) = Insider-Proxy."""
+    out = {"mint_auth": None, "freeze_auth": None,
+           "top1": None, "top5": None, "top10": None, "top10_ex1": None}
+    supply = None
+    info = _rpc("getAccountInfo", [addr, {"encoding": "jsonParsed"}])
+    try:
+        pi = (((info or {}).get("value") or {}).get("data") or {})
+        pi = (pi.get("parsed") or {}).get("info") if isinstance(pi, dict) else None
+        if pi:
+            out["mint_auth"]   = bool(pi.get("mintAuthority"))
+            out["freeze_auth"] = bool(pi.get("freezeAuthority"))
+            dec = int(pi.get("decimals", 0) or 0)
+            supply = float(pi.get("supply", 0) or 0) / (10 ** dec)
+    except Exception as e:
+        print("[ONCHAIN] parse-auth: " + str(e)[:40])
+    la = _rpc("getTokenLargestAccounts", [addr])
+    try:
+        if la and supply and supply > 0:
+            amts = sorted([float(a.get("uiAmount") or 0) for a in la.get("value", [])], reverse=True)
+            if amts:
+                pc = lambda n: round(sum(amts[:n]) / supply * 100, 1)
+                out["top1"], out["top5"], out["top10"] = pc(1), pc(5), pc(10)
+                out["top10_ex1"] = round(sum(amts[1:11]) / supply * 100, 1)  # Holder 2-11 (Curve/LP raus)
+    except Exception as e:
+        print("[ONCHAIN] parse-holders: " + str(e)[:40])
+    return out
+
+
+def ensure_onchain(addr, symbol, now):
+    """Holt On-Chain-DNA EINMAL je Token (Cache), loggt sie, gibt kompaktes dict fuers Dashboard.
+    Log-only — aendert das Screening nicht. Rate-sicher (1x je Token)."""
+    if addr in onchain_cache:
+        return onchain_cache[addr]
+    oc = onchain_signals(addr)
+    try:
+        _new = not os.path.exists(ONCHAIN_LOG)
+        with open(ONCHAIN_LOG, "a") as f:
+            if _new:
+                f.write("time,addr,symbol,mint_auth,freeze_auth,top1,top5,top10,top10_ex1\n")
+            f.write(",".join(str(v) for v in [now, addr, symbol, oc["mint_auth"], oc["freeze_auth"],
+                    oc["top1"], oc["top5"], oc["top10"], oc["top10_ex1"]]) + "\n")
+    except Exception as _we:
+        print("[ONCHAIN-LOG] " + str(_we)[:50])
+    if oc.get("freeze_auth"):
+        print("[ONCHAIN] ⚠️ " + symbol + " FREEZE-AUTHORITY gesetzt (nicht verkaufbar!)")
+    elif oc.get("top10_ex1") is not None and oc["top10_ex1"] > 40:
+        print("[ONCHAIN] ⚠️ " + symbol + " Insider-Konzentration hoch: Top2-11 = " + str(oc["top10_ex1"]) + "%")
+    elif oc.get("top10") is not None:
+        print("[ONCHAIN] " + symbol + " Holder Top10=" + str(oc["top10"]) + "% (ex-LP " + str(oc["top10_ex1"]) + "%)")
+    compact = {"freeze": oc.get("freeze_auth"), "conc": oc.get("top10_ex1"), "top10": oc.get("top10")}
+    onchain_cache[addr] = compact
+    if len(onchain_cache) > 400:                       # Cache begrenzen (aelteste raus)
+        for _k in list(onchain_cache.keys())[:100]:
+            onchain_cache.pop(_k, None)
+    return compact
 
 
 def _get(url):
@@ -158,7 +216,6 @@ def run():
         except Exception:
             pass
 
-    onchain_seen = set()   # Adressen deren Authority schon gecheckt wurde (1 RPC-Call je Token)
     graveyard = {}
     if os.path.exists(GRAVEYARD):
         try:
@@ -213,22 +270,7 @@ def run():
                     s["first_seen"]  = prev.get("first_seen", now)
                     s["first_price"] = prev.get("first_price", s["price"])  # Entdeckungs-Preis fixieren
                     s["last_seen"]   = now
-                    # On-Chain-Authority NUR einmal je Token (log-only, aendert Screening nicht)
-                    if addr not in onchain_seen:
-                        onchain_seen.add(addr)
-                        oc = onchain_auth(addr)
-                        if oc is not None:
-                            try:
-                                _new = not os.path.exists(ONCHAIN_LOG)
-                                with open(ONCHAIN_LOG, "a") as f:
-                                    if _new:
-                                        f.write("time,addr,symbol,mint_auth,freeze_auth\n")
-                                    f.write(",".join(str(v) for v in [now, addr, s["symbol"],
-                                            oc["mint_auth"], oc["freeze_auth"]]) + "\n")
-                            except Exception as _we:
-                                print("[ONCHAIN-LOG] " + str(_we)[:50])
-                            if oc["freeze_auth"]:
-                                print("[ONCHAIN] ⚠️ " + s["symbol"] + " FREEZE-AUTHORITY gesetzt (nicht verkaufbar!)")
+                    s["onchain"]     = ensure_onchain(addr, s["symbol"], now)   # DNA fuers Dashboard (log-only)
                     watchlist[addr] = s
                     print("[PASS] " + s["symbol"].ljust(10) + " liq$" + str(s["liq"]) +
                           " chg5=" + str(s["chg5"]) + "% buys/sells=" + str(s["buys"]) + "/" +
@@ -263,6 +305,7 @@ def run():
                     fs["last_seen"]   = now             # JETZT frisch gesehen
                     fs["rug_risk"]    = prev.get("rug_risk", "ok")   # RugCheck-Label vom Erst-Screen behalten
                     fs["passed"]      = True
+                    fs["onchain"]     = ensure_onchain(a, fs["symbol"], now)   # auch Restart-restaurierte Token bekommen DNA
                     watchlist[a] = fs
                     refreshed += 1
                 time.sleep(0.3)                          # DexScreener-Schonung zwischen Chunks
@@ -319,6 +362,12 @@ def run():
                 _atomic_write(GRAVEYARD, graveyard)
             except Exception as e:
                 print("[GRAVE] " + str(e))
+
+            # Vollstaendige On-Chain-Abdeckung: JEDER Watchlist-Token bekommt DNA — auch die,
+            # die durch Screen/Refresh-Ritzen fielen (discovered, aber nicht im Batch). Cached -> billig.
+            for _a, _v in list(watchlist.items()):
+                if not _v.get("onchain"):
+                    _v["onchain"] = ensure_onchain(_a, _v.get("symbol", "?"), now)
 
             _atomic_write(WATCHLIST, watchlist)
             _atomic_write(HEARTBEAT, {"cycle": cycle, "ts": time.time(),
