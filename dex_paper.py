@@ -97,11 +97,12 @@ EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort r
 NOPROG_MIN     = 12.0      # Minuten ohne Lauf
 NOPROG_PEAK    = 10.0      # % — wenn Peak drunter bleibt -> Fader
 # v10/v11/v12 „Velocity-Filter": Token mit zu hoher Kaufrate (buys/age_h) meiden.
-# Retro-Sim (141 Entries, 2026-07-11): Verlust faellt monoton mit dem Deckel; Verlierer-Median
-# 216/h. ABER: die in-sample-Optimierung (300) cuttet pendu (groesster Gewinner, Velocity 308) ->
-# Tail-Selbstmord/Overfitting. 320 statt 300 (2026-07-15, User-Catch): behaelt pendu (308),
-# schneidet nur die frantic-Extremen >320 -> positive-skew-sicher statt in-sample-overfit.
-MAXVEL         = 320.0     # max buys/Stunde beim Entry (behaelt pendu@308)
+# VERIFIZIERT 2026-07-15 an 115 v7-Trades (echte Outcomes): SCHWACHER, probabilistischer Edge —
+# verbessert NET moderat (-265 -> -137 bei 300/320), aber NICHT sauber tail-sicher: cuttet PUMPDb
+# (+$34 @ vel 2060, ein frantic-Pump der MOONTE) bei jeder Schwelle. 300 und 320 IDENTISCH (kein
+# Trade im 300-320-Band). Exakter Wert im Rauschen (250-350 alle ~-110..-145). "pendu@308"-Anker
+# war veraltet (anderes Fenster). 320 = pragmatische Tail-Marge, bewusst NICHT praezise getunt.
+MAXVEL         = 320.0     # max buys/Stunde (Neben-Hebel, Wert unkritisch/im Rauschen)
 # v12 „Jupiter-Fill": Fills zu echten, ausfuehrbaren Jupiter-Quotes (lite-api, kein Key, kein Wallet).
 # Live-Messung 2026-07-12: BONK-Roundtrip 0.07%, Watchlist-Micro-Cap 1.55% — vs. 10.5% Pauschal-Modell.
 # v11 vs v12 isoliert exakt den Kosten-Unterschied; v12 = das live-praediktive Ergebnis.
