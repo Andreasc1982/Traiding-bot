@@ -172,6 +172,7 @@ class CryptoBot:
         self.max_pos      = 8     # 6→8: bigger universe (20 coins) needs more slots
         self.pos_size     = 0.06  # 8%→6%: smaller per position, more positions active
         self.meme_size    = 0.03  # meme coins stay at 3%
+        self.risk_pct     = 0.01  # ATR-Risiko-Budget je Trade — Clone kann ueberschreiben (Kapital-Einsatz-Test)
         self.running      = True
         self._sl_cooldown = {}   # symbol -> timestamp of last hard SL — blocks re-entry for 3h
         self.last_skips   = []
@@ -2371,7 +2372,7 @@ class CryptoBot:
             atr = ind.get("atr", 0)
             if atr and atr > 0:
                 risk_per_unit = atr * 2.0            # 2×ATR = expected stop distance in $
-                risk_budget   = self.balance * 0.01  # 1% of balance at risk per trade
+                risk_budget   = self.balance * self.risk_pct  # ATR-Risiko-Budget (default 1%, per Clone konfigurierbar)
                 atr_shares    = risk_budget / risk_per_unit
                 max_shares    = (self.balance * size * size_mult) / price
                 shares = min(atr_shares, max_shares)

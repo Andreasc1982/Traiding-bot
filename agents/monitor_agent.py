@@ -170,46 +170,6 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u clone.py A_baseline > /tmp/clone_A_baseline.log 2>&1"
         ),
     },
-    "clone_B_nospikes": {
-        "name":         "Clone B (no-spikes)",
-        "session":      "clone_B_nospikes",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py B_nospikes > /tmp/clone_B_nospikes.log 2>&1"
-        ),
-    },
-    "clone_C_conservative": {
-        "name":         "Clone C (conservative)",
-        "session":      "clone_C_conservative",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py C_conservative > /tmp/clone_C_conservative.log 2>&1"
-        ),
-    },
-    "clone_D_contrarian": {
-        "name":         "Clone D (contrarian)",
-        "session":      "clone_D_contrarian",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py D_contrarian > /tmp/clone_D_contrarian.log 2>&1"
-        ),
-    },
-    "clone_E_moonshot": {
-        "name":         "Clone E (moonshot)",
-        "session":      "clone_E_moonshot",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py E_moonshot > /tmp/clone_E_moonshot.log 2>&1"
-        ),
-    },
     "clone_F_contrarian_vix28": {
         "name":         "Clone F (deep-fear contrarian)",
         "session":      "clone_F_contrarian_vix28",
@@ -240,6 +200,16 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u clone.py H_contra_refined > /tmp/clone_H_contra_refined.log 2>&1"
         ),
     },
+    "clone_G_big": {
+        "name":         "Clone G_big (2x Einsatz)",
+        "session":      "clone_G_big",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py G_big > /tmp/clone_G_big.log 2>&1"
+        ),
+    },
     "clones_dashboard": {
         "name":         "Clones Dashboard HTTP :8090",
         "session":      "clones_dashboard",
@@ -248,9 +218,8 @@ BOTS = {
             "fuser -k 8090/tcp 2>/dev/null; sleep 1; "
             "cd /home/trading2025/trading_bot/crypto/clones && "
             "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
-            "A_baseline_dashboard.json B_nospikes_dashboard.json C_conservative_dashboard.json "
-            "D_contrarian_dashboard.json E_moonshot_dashboard.json F_contrarian_vix28_dashboard.json "
-            "G_core_dashboard.json H_contra_refined_dashboard.json "
+            "A_baseline_dashboard.json F_contrarian_vix28_dashboard.json "
+            "G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json "
             "> /tmp/clones_dashboard.log 2>&1"
         ),
     },

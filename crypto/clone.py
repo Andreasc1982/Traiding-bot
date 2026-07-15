@@ -17,8 +17,9 @@ Varianten:
   G_core            : Momentum, OHNE Spikes/Memes/BTC/ETH — isoliert den Mid-Cap-Kern (Trade-Log-Erkenntnis)
   H_contra_refined  : Contrarian MIT Supertrend-Bestaetigung (kauft oversold-UND-drehend, kein Messerfangen)
                       — Daten-Fix fuer D: D hatte besten WR (54%) aber schlechteste Expectancy (avgLoss -$8.79)
+  G_big             : wie G_core, aber DOPPELTER Kapital-Einsatz (pos_size 12%, ATR-Budget 2%) — A/B ob Hochskalieren des Edge traegt
 
-Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28|G_core|H_contra_refined>
+Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28|G_core|H_contra_refined|G_big>
 """
 import os, sys, json, time, threading
 from datetime import datetime
@@ -54,6 +55,12 @@ VARIANTS = {
     # weil avgLoss -$8.79 (Messer gefangen: oversold UND weiter fallend). Refined verlangt Supertrend==1
     # (bullish = Umkehr hat BEGONNEN) -> kauft oversold-und-drehend, keine Memes. Ziel: avgLoss -> ~-$3.5 -> Plus.
     "H_contra_refined":    {"spikes": False, "memes": False, "contrarian": True,  "refined": True, "score_min": 0.1, "port": 8099},
+    # G_big = "MEXC-Szenario": G_core-Strategie, aber DOPPELTER Einsatz (pos 6->12%, Risiko 1->2%)
+    # UND MEXC-Fee 0.05% (statt Kraken 0.26%). Gegen G_core (konservativ: normale Groesse, 0.26%).
+    # Achtung: unterscheidet sich in ZWEI Achsen (Groesse + Fee) -> "Best-Case MEXC" vs "konservativ".
+    "G_big":               {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
+                            "exclude": {"BTC/USD", "ETH/USD"}, "pos_size": 0.12, "risk_pct": 0.02,
+                            "sim_fee": 0.0005, "port": 8100},
 }
 
 # Moonshot-Parameter (10J-Backtest 2026-06-18): Trailing schlaegt gedeckeltes TP 6.5x
@@ -96,10 +103,15 @@ class CloneBot(CryptoBot):
         if cfg.get("exclude"):
             self.excluded_symbols = set(self.excluded_symbols) | set(cfg["exclude"])
         self._entry_score_min = cfg["score_min"]
+        if cfg.get("pos_size"): self.pos_size = cfg["pos_size"]   # Kapital-Einsatz-Test (G_big): groessere Positionen
+        if cfg.get("risk_pct"): self.risk_pct = cfg["risk_pct"]   # + hoeheres ATR-Risiko-Budget
+        if cfg.get("sim_fee") is not None: self.sim_fee = cfg["sim_fee"]   # MEXC-Fee 0.05% statt Kraken 0.26%
         self._consumed_spikes = set()
         print("[CLONE-" + variant + "] init | spikes=" + str(cfg["spikes"]) +
               " memes=" + str(cfg["memes"]) + " contrarian=" + str(cfg["contrarian"]) +
-              " score_min=" + str(cfg["score_min"]))
+              " score_min=" + str(cfg["score_min"]) +
+              " | pos_size=" + str(self.pos_size) + " risk_pct=" + str(self.risk_pct) +
+              " sim_fee=" + str(self.sim_fee))
 
     # ── Telegram aus ─────────────────────────────────────────────────────────
     def send(self, msg):
