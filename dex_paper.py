@@ -96,11 +96,12 @@ EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort r
 # Tail-sicher: echte Gewinner laufen schnell hoch -> Peak>=10% -> werden NIE getroffen.
 NOPROG_MIN     = 12.0      # Minuten ohne Lauf
 NOPROG_PEAK    = 10.0      # % — wenn Peak drunter bleibt -> Fader
-# v10/v11 „Velocity-Filter": Token mit zu hoher Kaufrate (buys/age_h) meiden.
-# Retro-Sim auf echten Trajektorien (141 Entries, 2026-07-11): Verlust faellt monoton mit dem
-# Deckel (ungefiltert -555 -> vel300 -143); Tail-Median der grossen Gewinner nur 73 buys/h,
-# Verlierer-Median 216/h. 600 war zu locker -> 300 (Sim-Sieger im 2x2 zusammen mit Fade-Cut).
-MAXVEL         = 300.0     # max buys/Stunde beim Entry
+# v10/v11/v12 „Velocity-Filter": Token mit zu hoher Kaufrate (buys/age_h) meiden.
+# Retro-Sim (141 Entries, 2026-07-11): Verlust faellt monoton mit dem Deckel; Verlierer-Median
+# 216/h. ABER: die in-sample-Optimierung (300) cuttet pendu (groesster Gewinner, Velocity 308) ->
+# Tail-Selbstmord/Overfitting. 320 statt 300 (2026-07-15, User-Catch): behaelt pendu (308),
+# schneidet nur die frantic-Extremen >320 -> positive-skew-sicher statt in-sample-overfit.
+MAXVEL         = 320.0     # max buys/Stunde beim Entry (behaelt pendu@308)
 # v12 „Jupiter-Fill": Fills zu echten, ausfuehrbaren Jupiter-Quotes (lite-api, kein Key, kein Wallet).
 # Live-Messung 2026-07-12: BONK-Roundtrip 0.07%, Watchlist-Micro-Cap 1.55% — vs. 10.5% Pauschal-Modell.
 # v11 vs v12 isoliert exakt den Kosten-Unterschied; v12 = das live-praediktive Ergebnis.
@@ -436,7 +437,7 @@ def run():
               str(int(NOPROG_PEAK)) + "% (nie gelaufene Fader raus, Tail bleibt)")
     if V10:
         print("  v10 VELOCITY: skip wenn buys/h > " + str(int(MAXVEL)) +
-              " (Frantic-FOMO-Pumps meiden; Tail-Median 73/h bleibt, tail-sicher)")
+              " (Frantic-FOMO-Pumps meiden; behaelt pendu@308, tail-sicher)")
     if V11:
         print("  v11 KOMBI (Retro-Sim-Sieger): Velocity-Skip buys/h > " + str(int(MAXVEL)) +
               " + Fade-Cut nach " + str(int(NOPROG_MIN)) + " Min wenn Peak < " + str(int(NOPROG_PEAK)) + "%")
