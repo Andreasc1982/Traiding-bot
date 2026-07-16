@@ -139,7 +139,8 @@ def ensure_onchain(addr, symbol, now):
         print("[ONCHAIN] " + symbol + " Top2-11=" + str(oc["top10_ex1"]) + "% | Insider " +
               str(oc.get("insiders")) + " | Holder " + str(oc.get("holders")) + " | RC-Score " + str(oc.get("rc_score")))
     compact = {"freeze": oc.get("freeze_auth"), "conc": oc.get("top10_ex1"), "top10": oc.get("top10"),
-               "insiders": oc.get("insiders"), "holders": oc.get("holders"), "rc_score": oc.get("rc_score")}
+               "insiders": oc.get("insiders"), "insider_nets": oc.get("insider_nets"),
+               "holders": oc.get("holders"), "rc_score": oc.get("rc_score")}
     onchain_cache[addr] = compact
     if len(onchain_cache) > 400:                       # Cache begrenzen (aelteste raus)
         for _k in list(onchain_cache.keys())[:100]:

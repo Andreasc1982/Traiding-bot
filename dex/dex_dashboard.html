@@ -34,6 +34,7 @@
   tr:hover td { background:#1b212b; }
   .sym { color:var(--blue); font-weight:600; }
   .pos { color:var(--green); } .neg { color:var(--red); } .dim { color:var(--dim); }
+  .amber { color:var(--yellow); }
   .pill { padding:2px 8px; border-radius:10px; font-size:11px; }
   .pill.ok { background:rgba(63,185,80,.15); color:var(--green); }
   .pill.warn { background:rgba(210,153,34,.15); color:var(--yellow); }
@@ -91,7 +92,7 @@
   <div class="wrap"><table>
     <thead><tr>
       <th>Symbol</th><th>Preis</th><th>seit Entdeckung</th><th>Mom. 1h</th>
-      <th>5h-Vol</th><th>Liquidität</th><th>Buy/Sell</th><th>Rug</th><th title="Insider-Konzentration Top2-11 ohne LP; 🔒=Freeze-Authority=nicht verkaufbar">Holder</th><th>Alter</th>
+      <th>5h-Vol</th><th>Liquidität</th><th>Buy/Sell</th><th>Rug</th><th title="Insider-Konzentration Top2-11 ohne LP; 🔒=Freeze-Authority=nicht verkaufbar">Holder</th><th title="Insider/Bundle-Wallets (RugCheck) — koordinierte Cluster = Dump-Gefahr; ⚠️=hoher RugCheck-Risiko-Score">Insider</th><th title="Holder-Zahl (Adoption) — sehr wenige = riskant/neu, viele = organisch verteilt">#Holder</th><th>Alter</th>
     </tr></thead>
     <tbody id="rows"></tbody>
   </table></div>
@@ -202,6 +203,15 @@ async function load(){
     const conc = (typeof oc.conc === "number") ? oc.conc : null;
     const hCls = oc.freeze ? "neg" : (conc!==null && conc>40 ? "neg" : (conc!==null && conc<=20 ? "pos" : "dim"));
     const hTxt = oc.freeze ? "🔒" : (conc!==null ? Math.round(conc)+"%" : "–");
+    // Forensik Phase 1: Insider/Bundle-Cluster + Holder-Zahl + RugCheck-Risiko
+    const ins = (typeof oc.insiders === "number") ? oc.insiders : null;
+    const insCls = ins===null ? "dim" : (ins>=15 ? "neg" : (ins>=5 ? "amber" : "pos"));
+    const insTxt = ins===null ? "–" : String(ins);
+    const hold = (typeof oc.holders === "number") ? oc.holders : null;
+    const holdCls = hold===null ? "dim" : (hold<30 ? "neg" : (hold>=500 ? "pos" : "dim"));
+    const holdTxt = hold===null ? "–" : hold.toLocaleString("de-DE");
+    const rc = (typeof oc.rc_score === "number") ? oc.rc_score : null;
+    const rcWarn = (rc!==null && rc>=20) ? " ⚠️" : "";
     rb.insertAdjacentHTML("beforeend", `<tr>
       <td class="sym">${t.symbol||"?"}</td><td>${fmtPrice(t.price)}</td>
       <td class="${t.perf>=0?'pos':'neg'}">${pct(t.perf)}</td>
@@ -210,6 +220,8 @@ async function load(){
       <td class="${bs}">${t.buys}/${t.sells}</td>
       <td><span class="pill ${rugCls}">${t.rug_risk||"?"}</span></td>
       <td class="${hCls}" title="Insider-Konzentration Top2-11 (ohne LP) — 🔒 = Freeze-Authority = nicht verkaufbar">${hTxt}</td>
+      <td class="${insCls}" title="Insider/Bundle-Wallets${oc.insider_nets?' · '+oc.insider_nets+' Netze':''}">${insTxt}</td>
+      <td class="${holdCls}" title="Holder-Zahl (Adoption)${rc!==null?' · RugCheck-Score '+rc:''}">${holdTxt}${rcWarn}</td>
       <td class="dim">${t.age_h}h</td></tr>`);
   }
   document.getElementById("scards").innerHTML = `
