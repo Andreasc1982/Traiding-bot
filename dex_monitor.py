@@ -96,6 +96,20 @@ def onchain_signals(addr):
                 out["top10_ex1"] = round(sum(amts[1:11]) / supply * 100, 1)  # Holder 2-11 (Curve/LP raus)
     except Exception as e:
         print("[ONCHAIN] parse-holders: " + str(e)[:40])
+    # RugCheck-Rich (Forensik Phase 1): Insider/Bundle-Cluster + Holder-Zahl + Creator-Holding
+    # + Risiko-Score — alles aus EINEM Gratis-Call (gleiche API wie das Screening, kein Helius).
+    out.update({"insiders": None, "insider_nets": None, "holders": None,
+                "creator_bal": None, "rc_score": None})
+    try:
+        rc = _get("https://api.rugcheck.xyz/v1/tokens/" + addr + "/report")
+        if rc:
+            out["insiders"]     = rc.get("graphInsidersDetected")          # Anzahl erkannter Insider-Wallets
+            out["insider_nets"] = len(rc.get("insiderNetworks") or [])      # koordinierte Cluster (=Bundles)
+            out["holders"]      = rc.get("totalHolders")                    # Holder-Zahl (Adoption)
+            out["creator_bal"]  = rc.get("creatorBalance")                  # Dev-Holding (0 = raus/nie gehalten)
+            out["rc_score"]     = rc.get("score_normalised")                # RugCheck-Risiko (hoeher = schlechter)
+    except Exception as e:
+        print("[ONCHAIN] rugcheck-rich: " + str(e)[:40])
     return out
 
 
@@ -109,18 +123,23 @@ def ensure_onchain(addr, symbol, now):
         _new = not os.path.exists(ONCHAIN_LOG)
         with open(ONCHAIN_LOG, "a") as f:
             if _new:
-                f.write("time,addr,symbol,mint_auth,freeze_auth,top1,top5,top10,top10_ex1\n")
+                f.write("time,addr,symbol,mint_auth,freeze_auth,top1,top5,top10,top10_ex1,"
+                        "insiders,insider_nets,holders,creator_bal,rc_score\n")
             f.write(",".join(str(v) for v in [now, addr, symbol, oc["mint_auth"], oc["freeze_auth"],
-                    oc["top1"], oc["top5"], oc["top10"], oc["top10_ex1"]]) + "\n")
+                    oc["top1"], oc["top5"], oc["top10"], oc["top10_ex1"],
+                    oc["insiders"], oc["insider_nets"], oc["holders"], oc["creator_bal"], oc["rc_score"]]) + "\n")
     except Exception as _we:
         print("[ONCHAIN-LOG] " + str(_we)[:50])
     if oc.get("freeze_auth"):
-        print("[ONCHAIN] ⚠️ " + symbol + " FREEZE-AUTHORITY gesetzt (nicht verkaufbar!)")
-    elif oc.get("top10_ex1") is not None and oc["top10_ex1"] > 40:
-        print("[ONCHAIN] ⚠️ " + symbol + " Insider-Konzentration hoch: Top2-11 = " + str(oc["top10_ex1"]) + "%")
-    elif oc.get("top10") is not None:
-        print("[ONCHAIN] " + symbol + " Holder Top10=" + str(oc["top10"]) + "% (ex-LP " + str(oc["top10_ex1"]) + "%)")
-    compact = {"freeze": oc.get("freeze_auth"), "conc": oc.get("top10_ex1"), "top10": oc.get("top10")}
+        print("[ONCHAIN] ⚠️ " + symbol + " FREEZE-AUTHORITY (nicht verkaufbar!)")
+    elif (oc.get("insiders") or 0) >= 20:
+        print("[ONCHAIN] ⚠️ " + symbol + " viele Insider: " + str(oc["insiders"]) +
+              " Wallets / " + str(oc.get("insider_nets")) + " Netze | Holder " + str(oc.get("holders")))
+    elif oc.get("top10_ex1") is not None:
+        print("[ONCHAIN] " + symbol + " Top2-11=" + str(oc["top10_ex1"]) + "% | Insider " +
+              str(oc.get("insiders")) + " | Holder " + str(oc.get("holders")) + " | RC-Score " + str(oc.get("rc_score")))
+    compact = {"freeze": oc.get("freeze_auth"), "conc": oc.get("top10_ex1"), "top10": oc.get("top10"),
+               "insiders": oc.get("insiders"), "holders": oc.get("holders"), "rc_score": oc.get("rc_score")}
     onchain_cache[addr] = compact
     if len(onchain_cache) > 400:                       # Cache begrenzen (aelteste raus)
         for _k in list(onchain_cache.keys())[:100]:

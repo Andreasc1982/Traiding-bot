@@ -96,11 +96,13 @@ EARLY_EXIT_DROP= 12.0      # v3: wenn in den ersten 3 Min schon -12% -> sofort r
 # Tail-sicher: echte Gewinner laufen schnell hoch -> Peak>=10% -> werden NIE getroffen.
 NOPROG_MIN     = 12.0      # Minuten ohne Lauf
 NOPROG_PEAK    = 10.0      # % — wenn Peak drunter bleibt -> Fader
-# v10/v11 „Velocity-Filter": Token mit zu hoher Kaufrate (buys/age_h) meiden.
-# Retro-Sim auf echten Trajektorien (141 Entries, 2026-07-11): Verlust faellt monoton mit dem
-# Deckel (ungefiltert -555 -> vel300 -143); Tail-Median der grossen Gewinner nur 73 buys/h,
-# Verlierer-Median 216/h. 600 war zu locker -> 300 (Sim-Sieger im 2x2 zusammen mit Fade-Cut).
-MAXVEL         = 300.0     # max buys/Stunde beim Entry
+# v10/v11/v12 „Velocity-Filter": Token mit zu hoher Kaufrate (buys/age_h) meiden.
+# VERIFIZIERT 2026-07-15 an 115 v7-Trades (echte Outcomes): SCHWACHER, probabilistischer Edge —
+# verbessert NET moderat (-265 -> -137 bei 300/320), aber NICHT sauber tail-sicher: cuttet PUMPDb
+# (+$34 @ vel 2060, ein frantic-Pump der MOONTE) bei jeder Schwelle. 300 und 320 IDENTISCH (kein
+# Trade im 300-320-Band). Exakter Wert im Rauschen (250-350 alle ~-110..-145). "pendu@308"-Anker
+# war veraltet (anderes Fenster). 320 = pragmatische Tail-Marge, bewusst NICHT praezise getunt.
+MAXVEL         = 320.0     # max buys/Stunde (Neben-Hebel, Wert unkritisch/im Rauschen)
 # v12 „Jupiter-Fill": Fills zu echten, ausfuehrbaren Jupiter-Quotes (lite-api, kein Key, kein Wallet).
 # Live-Messung 2026-07-12: BONK-Roundtrip 0.07%, Watchlist-Micro-Cap 1.55% — vs. 10.5% Pauschal-Modell.
 # v11 vs v12 isoliert exakt den Kosten-Unterschied; v12 = das live-praediktive Ergebnis.
@@ -436,7 +438,7 @@ def run():
               str(int(NOPROG_PEAK)) + "% (nie gelaufene Fader raus, Tail bleibt)")
     if V10:
         print("  v10 VELOCITY: skip wenn buys/h > " + str(int(MAXVEL)) +
-              " (Frantic-FOMO-Pumps meiden; Tail-Median 73/h bleibt, tail-sicher)")
+              " (Frantic-FOMO-Pumps meiden; behaelt pendu@308, tail-sicher)")
     if V11:
         print("  v11 KOMBI (Retro-Sim-Sieger): Velocity-Skip buys/h > " + str(int(MAXVEL)) +
               " + Fade-Cut nach " + str(int(NOPROG_MIN)) + " Min wenn Peak < " + str(int(NOPROG_PEAK)) + "%")
