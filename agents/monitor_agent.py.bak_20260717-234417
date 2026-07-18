@@ -201,33 +201,13 @@ BOTS = {
         ),
     },
     "clone_G_big": {
-        "name":         "Clone G_big (MEXC 2x Einsatz)",
+        "name":         "Clone G_big (2x Einsatz)",
         "session":      "clone_G_big",
         "trading_only": False,
         "cmd": (
             "cd /home/trading2025/trading_bot/crypto && "
             "source /home/trading2025/trading_bot_env/bin/activate && "
             "PYTHONUNBUFFERED=1 python3 -u clone.py G_big > /tmp/clone_G_big.log 2>&1"
-        ),
-    },
-    "clone_G_mexc": {
-        "name":         "Clone G_mexc (Core auf MEXC)",
-        "session":      "clone_G_mexc",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py G_mexc > /tmp/clone_G_mexc.log 2>&1"
-        ),
-    },
-    "clone_I_wide": {
-        "name":         "Clone I_wide (MEXC weites Universum)",
-        "session":      "clone_I_wide",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py I_wide > /tmp/clone_I_wide.log 2>&1"
         ),
     },
     "clones_dashboard": {
@@ -240,7 +220,6 @@ BOTS = {
             "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
             "A_baseline_dashboard.json F_contrarian_vix28_dashboard.json "
             "G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json "
-            "G_mexc_dashboard.json I_wide_dashboard.json "
             "> /tmp/clones_dashboard.log 2>&1"
         ),
     },

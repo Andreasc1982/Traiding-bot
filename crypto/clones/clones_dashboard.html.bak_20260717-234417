@@ -52,7 +52,7 @@
 <body>
 <header>
   <h1>🧬 Clone-Experiment</h1>
-  <span class="sub">7 Strategien · identische Gateway-Signale · je $5.000 Start</span>
+  <span class="sub">5 Strategien · identische Gateway-Daten · je $5.000 Start</span>
   <span id="updated">lädt…</span>
 </header>
 <div class="grid" id="grid"></div>
@@ -63,12 +63,10 @@ const META = {
   "F_contrarian_vix28":  { label:"F · Deep-Fear 😱",   desc:"RSI<20 + Supertrend bull + F&G<25 (Extreme Fear)" },
   "G_core":              { label:"G · Mid-Cap Core 🎯", desc:"Momentum ohne Spikes/Memes/BTC/ETH" },
   "H_contra_refined":    { label:"H · Refined Contra ↩", desc:"Contrarian + Supertrend-Bestätigung (kein Messerfangen)" },
-  "G_big":               { label:"G_big · MEXC 2× 💰", desc:"G_core-Strategie, 2× Einsatz (pos 12%/Risiko 2%) auf MEXC-Execution (ask/bid + 0,05%)" },
-  "G_mexc":              { label:"G_mexc · Core auf MEXC 🔁", desc:"G_core 1:1, aber MEXC-Execution — isoliert die Börsen-Achse" },
-  "I_wide":              { label:"I · Weites Universum 🌐", desc:"G_mexc + ATOM/NEAR/OP/INJ/FIL — mehr qualifizierte Signale, gleiche Messlatte" },
+  "G_big":               { label:"G_big · MEXC-Szenario 💰", desc:"G_core-Strategie, 2× Einsatz (pos 12%/Risiko 2%) + MEXC-Fee 0,05% (vs Kraken 0,26%)" },
 };
 const START = 5000;
-const order = ["A_baseline","F_contrarian_vix28","G_core","H_contra_refined","G_big","G_mexc","I_wide"];
+const order = ["A_baseline","F_contrarian_vix28","G_core","H_contra_refined","G_big"];
 
 function equityOf(d){
   let eq = d.balance || 0;

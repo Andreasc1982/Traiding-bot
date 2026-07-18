@@ -18,7 +18,6 @@ Account:
     (for testing the /dev/shm pipe without a WS conflict).
 """
 import os, sys, json, time, threading
-import requests
 
 BASE = "/home/trading2025/trading_bot"
 sys.path.insert(0, BASE)
@@ -35,25 +34,7 @@ except ImportError:
 SHM = "/dev/shm/crypto_gw"
 os.makedirs(SHM, exist_ok=True)
 
-# ── MEXC-Erweiterung ──────────────────────────────────────────────────────────
-# EXTRA = zusaetzliche Mid-Caps fuer I_wide. Alpaca hat KEINE Bars fuer diese
-# (getestet 2026-07-17: 0 bars) -> Bars kommen von MEXC-Klines, Indikator-Mathe
-# bleibt identisch (gleiche get_indicators-Pipeline). Sentiment-Scores fuer EXTRA
-# laufen als zweiter Keyword-Pass ueber die gecachten News (analyze-Override).
-EXTRA_UNIVERSE = ["ATOM/USD", "NEAR/USD", "OP/USD", "INJ/USD", "FIL/USD"]
-EXTRA_KEYWORDS = {
-    "ATOM/USD": ["cosmos"],
-    "NEAR/USD": ["near protocol"],
-    "OP/USD":   ["optimism"],
-    "INJ/USD":  ["injective"],
-    "FIL/USD":  ["filecoin"],
-}
-# USD-Symbol -> MEXC-USDT-Paar (1 USDT ~ 1 USD als Sim-Annahme)
-MEXC_MAP = {s: s.replace("/USD", "USDT").replace("/", "")
-            for s in CRYPTO_MAIN + EXTRA_UNIVERSE}
-MEXC_BASE = "https://api.mexc.com"
-
-ALL_SYMBOLS = CRYPTO_MAIN + CRYPTO_MEME + EXTRA_UNIVERSE
+ALL_SYMBOLS = CRYPTO_MAIN + CRYPTO_MEME
 
 # ── Separate gateway account (keeps live bots' WS untouched) ──────────────────
 GW_KEY    = config.get("alpaca_gw_api_key", "")
@@ -87,94 +68,6 @@ class Gateway(CryptoBot):
             "APCA-API-KEY-ID":     crypto_bot.ALPACA_API_KEY,
             "APCA-API-SECRET-KEY": crypto_bot.ALPACA_SECRET_KEY,
         }
-        self._news_cache_ts = 0.0
-        self._news_cache    = []
-
-    # ── News-Cache: analyze() (super) + EXTRA-Pass teilen sich EINEN Fetch ────
-    def fetch_news(self):
-        if time.time() - self._news_cache_ts < 100:
-            return self._news_cache
-        arts = super().fetch_news()
-        self._news_cache, self._news_cache_ts = arts, time.time()
-        return arts
-
-    # ── Scores: Standard-Universum via super, EXTRA als zweiter Keyword-Pass ──
-    # (CRYPTO_MAIN wird bewusst NICHT gepatcht: der Alpaca-WS-Subscribe liest die
-    #  Modul-Globale und wuerde bei unbekannten Symbolen die Subscription killen)
-    def analyze(self):
-        scores = super().analyze()
-        try:
-            fg = self.last_fg.get("value", 50)
-            if   fg <= 25: fg_mult = 1.3
-            elif fg <= 45: fg_mult = 1.1
-            elif fg <= 55: fg_mult = 1.0
-            elif fg <= 75: fg_mult = 0.8
-            else:          fg_mult = 0.5
-            extra = {s: 0.0 for s in EXTRA_UNIVERSE}
-            for art in self.fetch_news():
-                text = art.lower()
-                sent = crypto_bot._sentiment(text)
-                for symbol, keywords in EXTRA_KEYWORDS.items():
-                    for kw in keywords:
-                        if kw in text:
-                            extra[symbol] += sent
-            for s in extra:
-                scores[s] = extra[s] * fg_mult
-        except Exception as e:
-            print("[GW-EXTRA-SCORES] " + str(e))
-        return scores
-
-    # ── Bars: EXTRA-Symbole von MEXC (Alpaca kennt sie nicht) ─────────────────
-    def _fetch_bars(self, symbol):
-        if symbol in EXTRA_UNIVERSE:
-            return self._mexc_get_bars(symbol)
-        return super()._fetch_bars(symbol)
-
-    def _mexc_get_bars(self, symbol):
-        pair = MEXC_MAP.get(symbol)
-        if not pair:
-            return None
-        try:
-            r = requests.get(MEXC_BASE + "/api/v3/klines",
-                             params={"symbol": pair, "interval": "60m", "limit": 400},
-                             timeout=10)
-            if r.status_code != 200:
-                print("[GW-MEXC-BARS] " + symbol + " HTTP " + str(r.status_code))
-                return None
-            rows = r.json()
-            # MEXC kline row: [openTime, open, high, low, close, volume, closeTime, quoteVol]
-            return [{"o": float(b[1]), "h": float(b[2]), "l": float(b[3]),
-                     "c": float(b[4]), "v": float(b[5])} for b in rows]
-        except Exception as e:
-            print("[GW-MEXC-BARS] " + symbol + ": " + str(e))
-            return None
-
-    def _mexc_book_loop(self):
-        """Publish MEXC top-of-book (bid/ask) every 5s — one bulk request for all
-        pairs. MEXC-mode clones fill entries at ask and exits at bid, so the real
-        spread is part of the simulation (fee alone flatters thin mid-caps)."""
-        wanted = {v: k for k, v in MEXC_MAP.items()}
-        while True:
-            try:
-                r = requests.get(MEXC_BASE + "/api/v3/ticker/bookTicker", timeout=10)
-                if r.status_code == 200:
-                    book = {}
-                    for d in r.json():
-                        usd = wanted.get(d.get("symbol"))
-                        if usd:
-                            try:
-                                bid, ask = float(d["bidPrice"]), float(d["askPrice"])
-                            except (KeyError, ValueError):
-                                continue
-                            if bid > 0 and ask > 0:
-                                book[usd] = {"bid": bid, "ask": ask}
-                    if book:
-                        _publish("mexc_book.json", {"ts": time.time(), "book": book})
-                else:
-                    print("[GW-MEXC-BOOK] HTTP " + str(r.status_code))
-            except Exception as e:
-                print("[GW-MEXC-BOOK] " + str(e))
-            time.sleep(5)
 
     # Override: detect spikes from the tick stream and PUBLISH them (don't trade).
     # Only clone A consumes spikes.json; B/C/D ignore it. Active in WS mode only.
@@ -246,10 +139,6 @@ class Gateway(CryptoBot):
         else:
             threading.Thread(target=self._rest_price_poll_loop,
                              daemon=True, name="gw-rest").start()
-
-        # MEXC top-of-book fuer die MEXC-Modus-Clones (G_big/G_mexc/I_wide)
-        threading.Thread(target=self._mexc_book_loop,
-                         daemon=True, name="gw-mexc-book").start()
 
         # On-chain background scores (same as the live bot)
         threading.Thread(target=self._onchain_refresh_run,

@@ -17,17 +17,9 @@ Varianten:
   G_core            : Momentum, OHNE Spikes/Memes/BTC/ETH — isoliert den Mid-Cap-Kern (Trade-Log-Erkenntnis)
   H_contra_refined  : Contrarian MIT Supertrend-Bestaetigung (kauft oversold-UND-drehend, kein Messerfangen)
                       — Daten-Fix fuer D: D hatte besten WR (54%) aber schlechteste Expectancy (avgLoss -$8.79)
-  G_big             : G_core-Strategie mit DOPPELTEM Einsatz (pos 12%, ATR-Budget 2%) auf MEXC-Execution
-  G_mexc            : G_core 1:1, aber MEXC-Execution — isoliert die Boersen-Achse (G_core -> G_mexc)
-  I_wide            : G_mexc + erweitertes Mid-Cap-Universum (ATOM/NEAR/OP/INJ/FIL) — mehr QUALIFIZIERTE
-                      Signale statt niedrigerer Messlatte (max_pos=8 war nie bindend, ~5 Pos typisch)
+  G_big             : wie G_core, aber DOPPELTER Kapital-Einsatz (pos_size 12%, ATR-Budget 2%) — A/B ob Hochskalieren des Edge traegt
 
-MEXC-Modus ("mexc": True): Signale bleiben identisch (gleicher Gateway = fairer Vergleich),
-aber Execution ist echt-MEXC: Entry zum ASK, Exit/Bewertung zum BID (mexc_book.json, 5s),
-Fee 0.05% taker, Rest-Slippage 0.02%. Der reale Spread ist damit Teil der Simulation —
-Fee allein schmeichelt duennen Mid-Caps (ARB-Spread ~0.11% > 2x Fee).
-
-Usage: python3 clone.py <A_baseline|...|G_core|H_contra_refined|G_big|G_mexc|I_wide>
+Usage: python3 clone.py <A_baseline|B_nospikes|C_conservative|D_contrarian|E_moonshot|F_contrarian_vix28|G_core|H_contra_refined|G_big>
 """
 import os, sys, json, time, threading
 from datetime import datetime
@@ -63,29 +55,13 @@ VARIANTS = {
     # weil avgLoss -$8.79 (Messer gefangen: oversold UND weiter fallend). Refined verlangt Supertrend==1
     # (bullish = Umkehr hat BEGONNEN) -> kauft oversold-und-drehend, keine Memes. Ziel: avgLoss -> ~-$3.5 -> Plus.
     "H_contra_refined":    {"spikes": False, "memes": False, "contrarian": True,  "refined": True, "score_min": 0.1, "port": 8099},
-    # G_big: G_core-Strategie mit DOPPELTEM Einsatz (pos 6->12%, Risiko 1->2%) auf MEXC-Execution.
-    # Seit 2026-07-17 echte Bid/Ask-Fills statt nur 0.05%-Fee-Annahme (mexc-Flag).
+    # G_big = "MEXC-Szenario": G_core-Strategie, aber DOPPELTER Einsatz (pos 6->12%, Risiko 1->2%)
+    # UND MEXC-Fee 0.05% (statt Kraken 0.26%). Gegen G_core (konservativ: normale Groesse, 0.26%).
+    # Achtung: unterscheidet sich in ZWEI Achsen (Groesse + Fee) -> "Best-Case MEXC" vs "konservativ".
     "G_big":               {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
                             "exclude": {"BTC/USD", "ETH/USD"}, "pos_size": 0.12, "risk_pct": 0.02,
-                            "mexc": True, "port": 8100},
-    # G_mexc: G_core 1:1 auf MEXC-Execution — Vergleichskette isoliert je EINE Achse:
-    #   G_core -> G_mexc  = Boerse (Kraken-Kosten vs MEXC ask/bid+0.05%)
-    #   G_mexc -> G_big   = Einsatzgroesse   |   G_mexc -> I_wide = Universum
-    "G_mexc":              {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
-                            "exclude": {"BTC/USD", "ETH/USD"}, "mexc": True, "port": 8101},
-    # I_wide: G_mexc + erweitertes Universum (Gateway liefert Bars/Scores fuer EXTRA via MEXC).
-    "I_wide":              {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
-                            "exclude": {"BTC/USD", "ETH/USD"}, "mexc": True,
-                            "universe_extra": True, "port": 8102},
+                            "sim_fee": 0.0005, "port": 8100},
 }
-
-# Muss mit gateway.EXTRA_UNIVERSE uebereinstimmen. Fuer alle Varianten OHNE
-# universe_extra werden diese Symbole excluded — sonst wuerden Alt-Clones die
-# neuen Gateway-Scores aufgreifen und das laufende Experiment veraendern.
-EXTRA_UNIVERSE = {"ATOM/USD", "NEAR/USD", "OP/USD", "INJ/USD", "FIL/USD"}
-
-MEXC_FEE  = 0.0005   # taker je Seite (beim Konto-Setup gegen echten Account verifizieren!)
-MEXC_SLIP = 0.0002   # Rest-Slippage (Latenz/Tiefe) — Spread steckt schon in ask/bid
 
 # Moonshot-Parameter (10J-Backtest 2026-06-18): Trailing schlaegt gedeckeltes TP 6.5x
 MOON_SIZE  = 0.03    # Mini-Wette 3% (Totalverlust einkalkuliert)
@@ -109,10 +85,6 @@ class CloneBot(CryptoBot):
         self.variant = variant
         cfg = VARIANTS[variant]
         self.cfg = cfg
-        # Vor super().__init__ setzen — get_price/close_position sind ueberschrieben
-        # und muessen die Flags schon kennen, falls der Parent-Init sie aufruft.
-        self._mexc = bool(cfg.get("mexc"))
-        self._mexc_bid, self._mexc_ask = {}, {}
         state_p = os.path.join(CLONE_DIR, variant + "_state.json")
         had_state = os.path.exists(state_p)
         super().__init__(
@@ -130,22 +102,16 @@ class CloneBot(CryptoBot):
             self.excluded_symbols = set(self.excluded_symbols) | set(CRYPTO_MEME)
         if cfg.get("exclude"):
             self.excluded_symbols = set(self.excluded_symbols) | set(cfg["exclude"])
-        if not cfg.get("universe_extra"):
-            self.excluded_symbols = set(self.excluded_symbols) | EXTRA_UNIVERSE
         self._entry_score_min = cfg["score_min"]
         if cfg.get("pos_size"): self.pos_size = cfg["pos_size"]   # Kapital-Einsatz-Test (G_big): groessere Positionen
         if cfg.get("risk_pct"): self.risk_pct = cfg["risk_pct"]   # + hoeheres ATR-Risiko-Budget
-        if cfg.get("sim_fee") is not None: self.sim_fee = cfg["sim_fee"]
-        # MEXC-Execution: Entry@ask / Exit@bid aus mexc_book.json + Taker-Fee
-        if self._mexc:
-            self.sim_fee  = MEXC_FEE
-            self.sim_slip = MEXC_SLIP
+        if cfg.get("sim_fee") is not None: self.sim_fee = cfg["sim_fee"]   # MEXC-Fee 0.05% statt Kraken 0.26%
         self._consumed_spikes = set()
         print("[CLONE-" + variant + "] init | spikes=" + str(cfg["spikes"]) +
               " memes=" + str(cfg["memes"]) + " contrarian=" + str(cfg["contrarian"]) +
               " score_min=" + str(cfg["score_min"]) +
               " | pos_size=" + str(self.pos_size) + " risk_pct=" + str(self.risk_pct) +
-              " sim_fee=" + str(self.sim_fee) + " mexc=" + str(self._mexc))
+              " sim_fee=" + str(self.sim_fee))
 
     # ── Telegram aus ─────────────────────────────────────────────────────────
     def send(self, msg):
@@ -158,24 +124,13 @@ class CloneBot(CryptoBot):
 
     def _shm_reader(self):
         """Replaces the WS thread: pull prices from gateway every 1s, run stop
-        checks on held positions, and (variant A) consume spike signals.
-        MEXC-Modus: mexc_book.json ueberschreibt ws_prices mit dem BID —
-        Bewertung + Stop-Checks laufen auf dem verkaufbaren Preis."""
+        checks on held positions, and (variant A) consume spike signals."""
         while self.running:
             try:
                 prices = _read_shm("prices.json", {})
                 if prices:
                     self.ws_prices.update({k: float(v) for k, v in prices.items()})
                     self.ws_connected = True
-                if self._mexc:
-                    raw = _read_shm("mexc_book.json", {})
-                    if raw and time.time() - raw.get("ts", 0) < 30:
-                        for sym, q in raw.get("book", {}).items():
-                            self._mexc_bid[sym] = q["bid"]
-                            self._mexc_ask[sym] = q["ask"]
-                            self.ws_prices[sym] = q["bid"]
-                        self.ws_connected = True
-                if prices or (self._mexc and self._mexc_bid):
                     with self.positions_lock:
                         held = list(self.positions.keys())
                     for sym in held:
@@ -192,30 +147,6 @@ class CloneBot(CryptoBot):
             except Exception as e:
                 print("[CLONE-READER] " + str(e))
             time.sleep(1)
-
-    # ── MEXC-Execution: Entries zum ASK, Exits zum BID ───────────────────────
-    def get_price(self, symbol):
-        """Entry-Preis. MEXC-Modus: ask (= was ein Kauf wirklich kostet).
-        ws_prices haelt den bid -> Kauf-Fill ask*(1+slip), Exit-Fill bid*(1-slip),
-        der Spread liegt damit ehrlich zwischen Entry und Exit."""
-        if self._mexc:
-            ask = self._mexc_ask.get(symbol)
-            if ask:
-                return ask
-        return super().get_price(symbol)
-
-    def close_position(self, symbol, price, reason, pnl_pct):
-        """Exit-Fill im MEXC-Modus immer zum BID — auch wenn der Aufrufer
-        (check_stops/check_stuck_positions via get_price) den ask uebergibt."""
-        if self._mexc:
-            bid = self._mexc_bid.get(symbol)
-            if bid:
-                with self.positions_lock:
-                    pos = self.positions.get(symbol)
-                if pos:
-                    pnl_pct = (bid - pos["entry"]) / pos["entry"] * 100
-                price = bid
-        super().close_position(symbol, price, reason, pnl_pct)
 
     # gateway has no WS in REST mode -> spikes.json absent -> no-op (A==B until WS)
     def _consume_spikes(self):
