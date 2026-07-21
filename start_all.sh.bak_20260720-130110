@@ -104,14 +104,31 @@ screen -dmS dex bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1'
-# dex_paper (v7), dex_paper_v9, dex_paper_v10, dex_paper_v11: SUNSET 2026-07-20
-# (-96..-98% nach 9 Tagen live, siehe dex_compare.py). Absichtlich nicht mehr
-# gestartet. State-Dateien archiviert als *_sunset_20260720-*.json.
-# DEX Paper v12 (Jupiter-Fill) — einzige aktive Variante, echte ausfuehrbare Quotes
+# DEX Paper-Moonshot (simuliert, kein Geld)
+screen -dmS dex_paper bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1'
+# DEX Paper v11 (Vel+Fade, Retro-Sim-Sieger) — 2x2 gegen v7/v9/v10
+screen -dmS dex_paper_v11 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v11 > /tmp/dex_paper_v11.log 2>&1'
+# DEX Paper v12 (Jupiter-Fill) — v11-Regeln mit echten ausfuehrbaren Quotes
 screen -dmS dex_paper_v12 bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1'
+# DEX Paper v9 (Fade-Cut) — A/B gegen Baseline v7
+screen -dmS dex_paper_v9 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v9 > /tmp/dex_paper_v9.log 2>&1'
+# DEX Paper v10 (Velocity-Filter) — A/B gegen Baseline v7
+screen -dmS dex_paper_v10 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v10 > /tmp/dex_paper_v10.log 2>&1'
 screen -dmS dex_dashboard bash -c '
   fuser -k 8091/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/dex &&

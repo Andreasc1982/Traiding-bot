@@ -20,13 +20,7 @@ TG_TOKEN = config.get("telegram_bot_token", "")
 TG_CHAT  = config.get("telegram_chat_id", "")
 
 # (Anzeigename, trades-Datei, heartbeat-Datei)
-# 2x2-Faktorial (v7 Kontrolle, v9 Fade-Cut, v10 Velocity<=300, v11 beides) SUNSET
-# 2026-07-20: Live-Ergebnis nach 9 Tagen war -96..-98% (Equity $10-19 von $500),
-# Pauschal-Kostenmodell erwies sich als 7x zu pessimistisch (siehe v12). Prozesse
-# gestoppt (Backup-Kopien: *_sunset_20260720-*.json), Original-Dateien bleiben
-# unveraendert liegen -> Equity friert ab jetzt einfach ein (keine neuen Trades).
-# v12 (Jupiter-Fill, echte Kosten) ist die einzige AKTIVE Variante.
-SUNSET = {"Baseline v7", "v9 Fade-Cut", "v10 Vel300", "v11 Vel+Fade"}
+# 2x2-Faktorial: v7 = nichts (Kontrolle), v9 = Fade-Cut, v10 = Velocity<=300, v11 = beides
 VARIANTS = [
     ("Baseline v7",   "paper_trades.json",     "paper_heartbeat.json"),
     ("v9 Fade-Cut",   "paper_trades_v9.json",  "paper_heartbeat_v9.json"),
@@ -63,17 +57,26 @@ def analyze(trades_f, hb_f):
 
 def build_msg():
     rows = [(name, analyze(tf, hf)) for name, tf, hf in VARIANTS]
-    L = ["\U0001F9EA <b>DEX — v12 Jupiter-Fill (aktiv) · v7/v9/v10/v11 sunset 20.07.</b>", ""]
+    L = ["\U0001F9EA <b>DEX — v7 Kontrolle / v9 Fade / v10 Vel / v11 beides / v12 JupFill</b>", ""]
     for name, s in rows:
-        tag = " 🪦 SUNSET (eingefroren)" if name in SUNSET else " ✅ AKTIV"
-        L.append("<b>%s</b>%s  (Start $500)" % (name, tag))
+        L.append("<b>%s</b>  (Start $500)" % name)
         L.append("  Equity <b>$%.0f</b> | %d Trades | WR %.0f%%" % (s["eq"], s["n"], s["wr"]))
         L.append("  NET $%+.0f (avg $%+.2f) | Rugs %d" % (s["net"], s["avg"], s["rugs"]))
         L.append("  Pyramide: %d Trades, net $%+.0f | Ø-Rückgabe %.0f pp" % (s["pyr_n"], s["pyr_net"], s["gb"]))
         L.append("")
-    v12 = next(s for nm, s in rows if nm == "v12 JupFill")
-    L.append("→ v12 ist die einzige aktive Variante: Equity $%.0f (avg $%+.2f/Trade, n=%d)."
-             % (v12["eq"], v12["avg"], v12["n"]))
+    b = rows[0][1]
+    challengers = [(nm, s) for nm, s in rows[1:] if s["n"] >= 20]
+    if not challengers:
+        pend = ", ".join("%s %d" % (nm, s["n"]) for nm, s in rows[1:])
+        L.append("→ Herausforderer sammeln noch (Trades: %s) — Urteil folgt in 1-2 Tagen" % pend)
+    else:
+        best_nm, best = max(challengers, key=lambda x: x[1]["avg"])
+        if best["avg"] > b["avg"]:
+            L.append("→ ✅ <b>%s führt</b>: avg $%+.2f vs Baseline $%+.2f (Equity %+.0f$)"
+                     % (best_nm, best["avg"], b["avg"], best["eq"] - b["eq"]))
+        else:
+            L.append("→ ❌ Baseline führt: bester ist %s (avg $%+.2f vs $%+.2f)"
+                     % (best_nm, best["avg"], b["avg"]))
     return "\n".join(L)
 
 

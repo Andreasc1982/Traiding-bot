@@ -46,30 +46,6 @@ WATCHLIST = os.path.join(DEX_DIR, "watchlist.json")                 # geteilt (g
 PSTATE    = os.path.join(DEX_DIR, "paper_state"     + _SUF + ".json")
 PTRADES   = os.path.join(DEX_DIR, "paper_trades"    + _SUF + ".json")
 PHB       = os.path.join(DEX_DIR, "paper_heartbeat" + _SUF + ".json")
-# Positions-Preis-Log (seit 2026-07-20): screening_log.csv trackt nur den
-# Watchlist-Trichter, NICHT gehaltene Positionen -> ein Retro-Sim der Exit-Regeln
-# auf echten Trajektorien war deshalb nicht moeglich (Sanity-Check schlug fehl:
-# rekonstruierte Preise wichen bei 18% der Trades >20% vom echten Entry-Fill ab,
-# Luecken bis zu 9h). Dieses Log schliesst die Luecke fuer KUENFTIGE Retro-Sims:
-# JEDE gehaltene Position wird bei jedem 20s-Poll mitgeloggt (variant-uebergreifend,
-# eine Datei, kein Lock noetig -> kurze Zeilen, O_APPEND ist auf Linux atomar).
-POSLOG    = os.path.join(DEX_DIR, "positions_log.csv")
-
-
-def _log_position(addr, pos, price, liq):
-    try:
-        peak_pct = (pos["peak"] / pos["entry"] - 1) * 100 if pos["entry"] > 0 else 0
-        line = "{},{},{},{},{},{},{},{}\n".format(
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), VARIANT, addr,
-            pos.get("symbol", "?"), price, liq if liq is not None else "",
-            pos["entry"], round(peak_pct, 2))
-        if not os.path.exists(POSLOG):
-            with open(POSLOG, "a") as f:
-                f.write("time,variant,addr,symbol,price,liq,entry,peak_pct\n")
-        with open(POSLOG, "a") as f:
-            f.write(line)
-    except Exception as e:
-        print("[POSLOG] " + str(e)[:60])
 
 # ── Parameter ────────────────────────────────────────────────────────────────
 START_BANKROLL = 500.0     # Paper-Kapital (realistische Mini-Kasse)
@@ -623,7 +599,6 @@ def run():
                 pos["last_price"] = cur
                 if cur > pos["peak"]:
                     pos["peak"] = cur
-                _log_position(addr, pos, cur, now.get("liq"))
                 pnl = (cur - pos["entry"]) / pos["entry"] * 100 if pos["entry"] > 0 else 0
                 try:
                     age_h = (datetime.now() - datetime.strptime(pos["time"], "%Y-%m-%d %H:%M")).total_seconds() / 3600

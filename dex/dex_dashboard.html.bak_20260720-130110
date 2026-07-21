@@ -63,7 +63,7 @@
     <thead><tr><th>A/B-Vergleich (Start $500)</th><th class="num">Equity</th><th class="num">Rendite</th><th class="num">Trades</th><th class="num">WR</th><th class="num">NET</th><th class="num">Ø/Trade</th></tr></thead>
     <tbody id="abrows"></tbody>
   </table></div>
-  <div style="color:var(--dim);font-size:12px;margin:-6px 0 14px">🪦 v7/v9/v10/v11 SUNSET seit 20.07. (eingefroren, -96..-98% nach 9 Tagen) · ✅ v12 = einzige aktive Variante (echte Jupiter-Kosten statt 5%-Pauschale)</div>
+  <div style="color:var(--dim);font-size:12px;margin:-6px 0 14px">v9 = Fade-Cut · v10 = Velocity≤300 · v11 = beides · v12 = v11 mit echten Jupiter-Quotes (statt 5%-Pauschale) · Tabellen unten = v7 Kontrolle</div>
   <div class="cards" id="pcards"></div>
   <div class="two">
     <div>
