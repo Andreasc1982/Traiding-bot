@@ -1,0 +1,16 @@
+{
+  "addr": "WxN2LrhDyrGE9GqBuaLMbHMQdYwPm9p8LrDXzSBpump",
+  "n_buyers": 1,
+  "reached_genesis": true,
+  "buyers": [
+    {
+      "wallet": "AYJSaJiDbxZjPjTKWdLjpFfoqMBvivp8uHEHqvabPFvb",
+      "first_buy_ts": 1784358990,
+      "funder": "A77HErqtfN1hLLpvZ9pCtu66FEtM8BveoaKbbMoZ4RiR",
+      "funder_ts": 1784358272,
+      "sol": 76.1475,
+      "sec_before_buy": 718
+    }
+  ],
+  "fetched": "2026-07-21 18:02"
+}

@@ -1,0 +1,68 @@
+{
+  "addr": "3XhARh1nQiwGZLwAD8YyKhfZKVHaG8t3VzsRSejZpump",
+  "n_buyers": 10,
+  "reached_genesis": false,
+  "buyers": [
+    {
+      "wallet": "HdrFEv3jqwcmBCqMH643ccnEjCbVuXUcCDTi1Ns9Z1mC",
+      "first_buy_ts": 1784306207,
+      "funder": "F4SiFdL2RGyp4KNWa7sAsnVb2pVeVjsCfvRHkRPyh9w6",
+      "funder_ts": 1773080773,
+      "sol": 0.0,
+      "sec_before_buy": 11225434
+    },
+    {
+      "wallet": "FnVRbvSkgiKss4TKGDb11VHngfJaoJPWYfxsF1TY3CQr",
+      "first_buy_ts": 1784306207,
+      "funder": "EtehMaBLigsbwdNYZ8V3owkzBSDpqZcLzH2zGxkWY67g",
+      "funder_ts": 1754973235,
+      "sol": 2.498,
+      "sec_before_buy": 29332972
+    },
+    {
+      "wallet": "Hjys96QzF8hibkaoRku5EZptrRztsB2U6M3xdRi8GFJb",
+      "first_buy_ts": 1784306208
+    },
+    {
+      "wallet": "24YnarRr9WGynCeYpwsaxfc1Bfay344CePrxxsLi6QGz",
+      "first_buy_ts": 1784306208
+    },
+    {
+      "wallet": "DZNaMZqgNLB82B6fSFJEZTNLgxUFF8sGsxj39xQR3J14",
+      "first_buy_ts": 1784306208,
+      "funder": "HADEZR2BhzqaLbnnbXhSBvi6iYuEWGgah2NfVH2fZcCj",
+      "funder_ts": 1783643698,
+      "sol": 9.998,
+      "sec_before_buy": 662510
+    },
+    {
+      "wallet": "DpvrxeCWz7AhT1swHXkgNWBRGmKg2TvGHQACDjuDH7MR",
+      "first_buy_ts": 1784306208
+    },
+    {
+      "wallet": "8M5L11iRqh2f96ZBU1FcdghAJphPTK7R2a3mU8qorvqk",
+      "first_buy_ts": 1784306210,
+      "funder": "DSX1w7BmVykpf5ri9rGtUWDs7kKyhJkW21ev48ZuWJNC",
+      "funder_ts": 1771107189,
+      "sol": 0.0,
+      "sec_before_buy": 13199021
+    },
+    {
+      "wallet": "CjKDiR2aHtpaJ6uaZby79C4uYgDu1V3UE1M7sCT1oXxn",
+      "first_buy_ts": 1784306212,
+      "funder": "7XU2FqsCkRme3ga4C61vDg9Sv8ueedvMDncvFzGhX8yn",
+      "funder_ts": 1769878251,
+      "sol": 2.0982,
+      "sec_before_buy": 14427961
+    },
+    {
+      "wallet": "DnJM1Gd9A1XRjvdQGsUdU1t6jMR1Xosm6MiNX4iD9gRW",
+      "first_buy_ts": 1784306212
+    },
+    {
+      "wallet": "4K3a2ucXiGvuMJMPNneRDyzmNp6i4RdzXJmBdWwGwPEh",
+      "first_buy_ts": 1784306212
+    }
+  ],
+  "fetched": "2026-07-21 18:11"
+}

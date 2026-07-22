@@ -1,0 +1,72 @@
+{
+  "addr": "HekL5sMgvpsuypitEc7ThcrAtRCT59zMxqvcH7T4pump",
+  "n_buyers": 10,
+  "reached_genesis": true,
+  "buyers": [
+    {
+      "wallet": "G68jPUQFQvUyQLTp2WsiNPckceT3X1meXYvWbpCXYCL4",
+      "first_buy_ts": 1784419282,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784418933,
+      "sol": 1.994,
+      "sec_before_buy": 349
+    },
+    {
+      "wallet": "3bbDEL917JkpMSCBTf43azASbkttCYNYaNoQpzPLPV8X",
+      "first_buy_ts": 1784419282,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1783537607,
+      "sol": 25.1481,
+      "sec_before_buy": 881675
+    },
+    {
+      "wallet": "CfE3PpB4cyVbDCarQTYVFAfSuLLCW2iZEL79mKf4qva2",
+      "first_buy_ts": 1784419282,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1783537607,
+      "sol": 25.1481,
+      "sec_before_buy": 881675
+    },
+    {
+      "wallet": "5huujHCxeNiXDsiojAZWyzQkebYAbUpULaWy5Vzh7bGL",
+      "first_buy_ts": 1784419282,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1783537607,
+      "sol": 25.1481,
+      "sec_before_buy": 881675
+    },
+    {
+      "wallet": "C32zAgk1ESr1u7WHBSjroBwETNkMvQnfwu66UhHPn6Gu",
+      "first_buy_ts": 1784419282,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1783537607,
+      "sol": 25.1481,
+      "sec_before_buy": 881675
+    },
+    {
+      "wallet": "5yAzaCkMKaAav6W4h8gdLRLrEY5qDBqM9ufgL4SvyRqE",
+      "first_buy_ts": 1784419283,
+      "funder": "ABu8HEsfF3geHKjwgcEgdpnWe8z4drgYhTA21mf1w3Wz",
+      "funder_ts": 1782307835,
+      "sol": 0.3625,
+      "sec_before_buy": 2111448
+    },
+    {
+      "wallet": "2YpBZwXLhadaFtJ2VRHUQKn82RYzwE2h4TF3goRnQMDb",
+      "first_buy_ts": 1784419283
+    },
+    {
+      "wallet": "D1P9dPB1VLnPBMXe52hpJXgScaKjexZ3jx3KctwqHfAS",
+      "first_buy_ts": 1784419283
+    },
+    {
+      "wallet": "6hh9uNdE2idxjZ2SUit4M2z2tGKe14sNsLiN6tZNNfew",
+      "first_buy_ts": 1784419283
+    },
+    {
+      "wallet": "8ik9TbDMMm7iXErRA7ohCEGf3X4KjnbBfsJiCCSCFxdX",
+      "first_buy_ts": 1784419283
+    }
+  ],
+  "fetched": "2026-07-21 18:09"
+}

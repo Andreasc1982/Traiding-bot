@@ -88,7 +88,7 @@ screen -dmS gateway bash -c '
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1'
 sleep 3
-for V in A_baseline F_contrarian_vix28 G_core H_contra_refined G_big G_mexc I_wide; do
+for V in A_baseline F_contrarian_vix28 G_core H_contra_refined G_big; do
   screen -dmS clone_$V bash -c "
     cd /home/trading2025/trading_bot/crypto &&
     source /home/trading2025/trading_bot_env/bin/activate &&
@@ -97,21 +97,43 @@ done
 screen -dmS clones_dashboard bash -c '
   fuser -k 8090/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/crypto/clones &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json F_contrarian_vix28_dashboard.json G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json G_mexc_dashboard.json I_wide_dashboard.json > /tmp/clones_dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json F_contrarian_vix28_dashboard.json G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json > /tmp/clones_dashboard.log 2>&1'
 
 # DEX-Monitor (Solana, read-only)
 screen -dmS dex bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1'
-# dex_paper (v7), dex_paper_v9, dex_paper_v10, dex_paper_v11: SUNSET 2026-07-20
-# (-96..-98% nach 9 Tagen live, siehe dex_compare.py). Absichtlich nicht mehr
-# gestartet. State-Dateien archiviert als *_sunset_20260720-*.json.
-# DEX Paper v12 (Jupiter-Fill) — einzige aktive Variante, echte ausfuehrbare Quotes
+# DEX Paper-Moonshot (simuliert, kein Geld)
+screen -dmS dex_paper bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1'
+# DEX Paper v11 (Vel+Fade, Retro-Sim-Sieger) — 2x2 gegen v7/v9/v10
+screen -dmS dex_paper_v11 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v11 > /tmp/dex_paper_v11.log 2>&1'
+# DEX Paper v12 (Jupiter-Fill) — v11-Regeln mit echten ausfuehrbaren Quotes
 screen -dmS dex_paper_v12 bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1'
+# DEX Paper v9 (Fade-Cut) — A/B gegen Baseline v7
+screen -dmS dex_paper_v9 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v9 > /tmp/dex_paper_v9.log 2>&1'
+# DEX Paper v10 (Velocity-Filter) — A/B gegen Baseline v7
+screen -dmS dex_paper_v10 bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v10 > /tmp/dex_paper_v10.log 2>&1'
+# DEX Bundle-Collector (vorwaerts, Launch-Funding-Graphen frischer Tokens)
+screen -dmS dex_bundle bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dex_bundle_collector.py > /tmp/dex_bundle_collector.log 2>&1'
 screen -dmS dex_dashboard bash -c '
   fuser -k 8091/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/dex &&

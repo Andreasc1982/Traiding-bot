@@ -1,0 +1,52 @@
+{
+  "addr": "8CXQ9D7X3rQAWYHRWcWQjiSwauo8myTTcuvds97ypump",
+  "n_buyers": 9,
+  "reached_genesis": true,
+  "buyers": [
+    {
+      "wallet": "5BFuw7KyK5ryyvBwv4uJYwwNMnXPqGJGcf6okqtnhmFJ",
+      "first_buy_ts": 1784368796
+    },
+    {
+      "wallet": "5EtD6bwu6GrRUdvAKZs7pymFw8tFMD4MWQ2pGj4fPFEp",
+      "first_buy_ts": 1784368796,
+      "funder": "8BuxdeDdr2Nmdu8wXove9QFW8HZpHu3FmFUC9s9ijZmH",
+      "funder_ts": 1781180929,
+      "sol": 0.0,
+      "sec_before_buy": 3187867
+    },
+    {
+      "wallet": "DvgGZQbaPV6wT4u8w8g4A4GmsCL7gKpxCv8G6bgNX8wd",
+      "first_buy_ts": 1784368796
+    },
+    {
+      "wallet": "9CGPQ35yojUP4oP2tv5suWtUdhevp68BmUGoykgZX2Yv",
+      "first_buy_ts": 1784368796
+    },
+    {
+      "wallet": "DSmkz9ztNRJGjqWMB3zmxR6bTg1y42AvSZciWj3f74Ut",
+      "first_buy_ts": 1784368796
+    },
+    {
+      "wallet": "AgNaa6DLja2Nc5KEu3oEJ9Aan7shFFDB96fg6N7unxWS",
+      "first_buy_ts": 1784368796
+    },
+    {
+      "wallet": "5ZEUmZhKBnN7NTRqC4LgE9uNzB2Yk4XHqtjz8bcZVbRq",
+      "first_buy_ts": 1784368796
+    },
+    {
+      "wallet": "YZykTqXgx91g2FSXoTh7q46HJnbwEH17jRhbNzbfppf",
+      "first_buy_ts": 1784368796,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784306070,
+      "sol": 3.999,
+      "sec_before_buy": 62726
+    },
+    {
+      "wallet": "3ajGGwXj4TgjgdW4hH6ALxGptUevgMb52Dxehu8Dzuxq",
+      "first_buy_ts": 1784368796
+    }
+  ],
+  "fetched": "2026-07-21 18:13"
+}

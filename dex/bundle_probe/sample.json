@@ -1,0 +1,302 @@
+[
+  {
+    "addr": "CV9dcP2D9hYtcnNtoHoY4NQEN9fYxfBbQN72wkd5pump",
+    "symbol": "WIFARG",
+    "peak_liq": 143271,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "3wwU3njdLCT3ebRUrTFeHwKG6zamiiCKwmpShSK2pump",
+    "symbol": "Mouse",
+    "peak_liq": 148665,
+    "last_liq": 29893,
+    "insiders": 9.0,
+    "insider_nets": 2.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "8TQAPEgP8jcWPeLTiQhFCFtPYwKhpjRvTngoPAmjpump",
+    "symbol": "BULLARMY",
+    "peak_liq": 133275,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "D6ytjMdBBPoV8nsRHJhvrkpwF7sgVBYd7PufkRHNpump",
+    "symbol": "CASHCOW",
+    "peak_liq": 102347,
+    "last_liq": 74235,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "5UNFUzBFu34Zv8Cewfn33FxbNtbFuihmXA4Rgee1pump",
+    "symbol": "ANSEMCOIN",
+    "peak_liq": 117630,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "43mjozsTLTViop3seWnmgkcf1DRj6qMf1JWw7X8ypump",
+    "symbol": "MrSue",
+    "peak_liq": 102117,
+    "last_liq": 24552,
+    "insiders": 6.0,
+    "insider_nets": 1.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "5v4Apahd9MZVUWt5qn5MV4ZsbsuRWavbvfmmwVkNpump",
+    "symbol": "MOGCHILL",
+    "peak_liq": 115625,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "HVRtNeFPrDcAA9Yu3WrTEdCsTLGJiYDiQbqjg3efpump",
+    "symbol": "CUBEMAN",
+    "peak_liq": 93870,
+    "last_liq": 87127,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "74fkPhNC3LTxqtdkJST26Mzhzpc2yu2XteVTcjFjpump",
+    "symbol": "JIMO",
+    "peak_liq": 96283,
+    "last_liq": 0,
+    "insiders": 25.0,
+    "insider_nets": 1.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "7NmbCaQpjpTcze5bmvWWJPjiaXMjHnLNYj9vJBG5pump",
+    "symbol": "BOBAOPPA",
+    "peak_liq": 90268,
+    "last_liq": 57072,
+    "insiders": null,
+    "insider_nets": null,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "3YudidgEnPyMekuUCDEUf79MPqce8FHWF4ZSBV64pump",
+    "symbol": "CASHBULL",
+    "peak_liq": 92871,
+    "last_liq": 0,
+    "insiders": 18.0,
+    "insider_nets": 2.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "6weTzoLKhoYGChmkhotrJhNKwZdB8TWBG7XG3qmGpump",
+    "symbol": "BISCOTTI",
+    "peak_liq": 85430,
+    "last_liq": 53794,
+    "insiders": 10.0,
+    "insider_nets": 1.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "GrKJPe5MeSVkQ9wLuLBCbpBeFQqdWxh7TqzEPTpepump",
+    "symbol": "ANSPERM",
+    "peak_liq": 91504,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "E7vTVLLaxV3y68cpnDx2Q7ExeznhWgJKwPziKDsrpump",
+    "symbol": "HOMIE",
+    "peak_liq": 83944,
+    "last_liq": 60793,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "WxN2LrhDyrGE9GqBuaLMbHMQdYwPm9p8LrDXzSBpump",
+    "symbol": "JIMWIF",
+    "peak_liq": 90955,
+    "last_liq": 0,
+    "insiders": 15.0,
+    "insider_nets": 2.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "A3NaYDFxepZCXurb2LZouaPREHZ21SMfY3zgrwFmAUS9",
+    "symbol": "nice",
+    "peak_liq": 78874,
+    "last_liq": 22845,
+    "insiders": 8.0,
+    "insider_nets": 2.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "AZ1fowC7PCS4rKJCY7UFuDqwvGNRRxzJj9BQxiHfpump",
+    "symbol": "HOUSEM",
+    "peak_liq": 82734,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "BQDTXj9bvYRY9hksEmnXVMxsPu5VwFDW3bwiXpiDpump",
+    "symbol": "Sagawa",
+    "peak_liq": 75763,
+    "last_liq": 26374,
+    "insiders": 4.0,
+    "insider_nets": 1.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "2AEuuDipca4mbqhQDS473GgeX8vA5S7d9voTm8hepump",
+    "symbol": "BULD",
+    "peak_liq": 82522,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "57ZbsHaZWsKx8fFALhGAnQmRkhr3LZtLMSvXPtC5pump",
+    "symbol": "Ivy",
+    "peak_liq": 74526,
+    "last_liq": 42550,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "DLz4bLgo72D8QCpVLwJ1QVL7MvFxX2wq3diiW5ESpump",
+    "symbol": "LILBUB",
+    "peak_liq": 79723,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "2mGS6WWuDy1xNQuCo7irzH3iT4SsSeSaA3oJ5NLqpump",
+    "symbol": "Benny",
+    "peak_liq": 74293,
+    "last_liq": 12241,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "HekL5sMgvpsuypitEc7ThcrAtRCT59zMxqvcH7T4pump",
+    "symbol": "Blackmothy",
+    "peak_liq": 74996,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "4tnZ57E3oWjaZKSQY1iwgqiD8ivAGk5TambivhTYpump",
+    "symbol": "GMEBULL",
+    "peak_liq": 69870,
+    "last_liq": 66260,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "3XhARh1nQiwGZLwAD8YyKhfZKVHaG8t3VzsRSejZpump",
+    "symbol": "TABLEPEDE",
+    "peak_liq": 71433,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "GEg3E1dPotfUSxEm6ft1NF8dT211YCibHJRcDtGwpump",
+    "symbol": "YMIR",
+    "peak_liq": 69413,
+    "last_liq": 36045,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "8CXQ9D7X3rQAWYHRWcWQjiSwauo8myTTcuvds97ypump",
+    "symbol": "UNB",
+    "peak_liq": 70079,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "YYhQEwcAeScuY3PNxcBzRMDCvZf1Nw1TFK7dVoypump",
+    "symbol": "PONED",
+    "peak_liq": 65115,
+    "last_liq": 53778,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  },
+  {
+    "addr": "3TVrHiTENThXzrJjGqHcVA8dpYxpgGt9jTgcsMhqpump",
+    "symbol": "BULLZARD",
+    "peak_liq": 69806,
+    "last_liq": 0,
+    "insiders": 0.0,
+    "insider_nets": 0.0,
+    "label": "rug",
+    "reason": "vanished"
+  },
+  {
+    "addr": "FCR5PjritfaxoYwwDzrYybCKoN3pJDjQ6gNcsymkpump",
+    "symbol": "Rigby",
+    "peak_liq": 63883,
+    "last_liq": 31962,
+    "insiders": 4.0,
+    "insider_nets": 1.0,
+    "label": "nonrug",
+    "reason": "survivor"
+  }
+]

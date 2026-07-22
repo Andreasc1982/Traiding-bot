@@ -1,0 +1,28 @@
+{
+  "addr": "2AEuuDipca4mbqhQDS473GgeX8vA5S7d9voTm8hepump",
+  "n_buyers": 3,
+  "reached_genesis": false,
+  "buyers": [
+    {
+      "wallet": "9sEuhjUK18dXcoHFxKvDpTkW5sx7CBUoxHs6djRdF8gK",
+      "first_buy_ts": 1784195036
+    },
+    {
+      "wallet": "DbzHc3yKmKDSV6XchUsmwaAbHeyS7RTtvsWfa6eDj2Qc",
+      "first_buy_ts": 1784195036,
+      "funder": "3fLVmwR1C2DccHauVvqUrvnN15UUdVx5WGGJToqg7mms",
+      "funder_ts": 1777558939,
+      "sol": 0.9981,
+      "sec_before_buy": 6636097
+    },
+    {
+      "wallet": "3J2ckGWeycNF6CHqdbcmndRHmqVAZyr6ES6gYTS3Je29",
+      "first_buy_ts": 1784195036,
+      "funder": "BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6",
+      "funder_ts": 1772445879,
+      "sol": 0.047,
+      "sec_before_buy": 11749157
+    }
+  ],
+  "fetched": "2026-07-21 18:05"
+}

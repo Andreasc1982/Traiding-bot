@@ -1,0 +1,27 @@
+{
+  "addr": "cdxxwBUAxxtwQjpjCAh7PSUDKdNuRYYWk2gKhUipump",
+  "symbol": "ANSEMOTHY",
+  "first_seen": "2026-07-21 21:54",
+  "age_h_at_capture": 2.1,
+  "captured": "2026-07-21 23:47",
+  "reached_genesis": true,
+  "n_buyers": 2,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "2nRzUwpXSDD3aKGUota6t4pwZnB9zUSejcxBHzck12qT",
+      "first_buy_ts": 1784662212,
+      "funder": "is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV",
+      "funder_ts": 1784386151,
+      "sol": 4.0,
+      "sec_before_buy": 276061
+    },
+    {
+      "wallet": "ESpD72LK5Jz9fHqLyYRXkdEYZMuz5aQW3fWSee3274XB",
+      "first_buy_ts": 1784662212
+    }
+  ]
+}

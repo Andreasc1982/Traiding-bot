@@ -90,12 +90,46 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1"
         ),
     },
-    # dex_paper (v7 Kontrolle), dex_paper_v9, dex_paper_v10, dex_paper_v11: SUNSET 2026-07-20.
-    # Nach 9 Tagen live -96..-98% (Equity $10-19 von $500) unter dem 10.5%-Pauschal-
-    # Kostenmodell; v12 (echte Jupiter-Kosten) zeigte, dass das Modell ~7x zu pessimistisch
-    # war, aber selbst realistisch bleibt es negativ. Prozesse gestoppt, State-Dateien
-    # archiviert (*_sunset_20260720-*.json). Absichtlich NICHT mehr hier eingetragen,
-    # damit der Monitor sie nicht automatisch neu startet. Siehe dex_compare.py.
+    "dex_paper": {
+        "name":         "DEX Paper-Moonshot",
+        "session":      "dex_paper",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1"
+        ),
+    },
+    "dex_paper_v11": {
+        "name":         "DEX Paper v11 (Vel+Fade)",
+        "session":      "dex_paper_v11",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v11 > /tmp/dex_paper_v11.log 2>&1"
+        ),
+    },
+    "dex_paper_v9": {
+        "name":         "DEX Paper v9 (Fade-Cut)",
+        "session":      "dex_paper_v9",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v9 > /tmp/dex_paper_v9.log 2>&1"
+        ),
+    },
+    "dex_paper_v10": {
+        "name":         "DEX Paper v10 (Velocity-Filter)",
+        "session":      "dex_paper_v10",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v10 > /tmp/dex_paper_v10.log 2>&1"
+        ),
+    },
     "dex_paper_v12": {
         "name":         "DEX Paper v12 (Jupiter-Fill)",
         "session":      "dex_paper_v12",
@@ -104,6 +138,16 @@ BOTS = {
             "cd /home/trading2025/trading_bot && "
             "source /home/trading2025/trading_bot_env/bin/activate && "
             "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1"
+        ),
+    },
+    "dex_bundle": {
+        "name":         "DEX Bundle-Collector",
+        "session":      "dex_bundle",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dex_bundle_collector.py > /tmp/dex_bundle_collector.log 2>&1"
         ),
     },
     "dex_dashboard": {
@@ -167,33 +211,13 @@ BOTS = {
         ),
     },
     "clone_G_big": {
-        "name":         "Clone G_big (MEXC 2x Einsatz)",
+        "name":         "Clone G_big (2x Einsatz)",
         "session":      "clone_G_big",
         "trading_only": False,
         "cmd": (
             "cd /home/trading2025/trading_bot/crypto && "
             "source /home/trading2025/trading_bot_env/bin/activate && "
             "PYTHONUNBUFFERED=1 python3 -u clone.py G_big > /tmp/clone_G_big.log 2>&1"
-        ),
-    },
-    "clone_G_mexc": {
-        "name":         "Clone G_mexc (Core auf MEXC)",
-        "session":      "clone_G_mexc",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py G_mexc > /tmp/clone_G_mexc.log 2>&1"
-        ),
-    },
-    "clone_I_wide": {
-        "name":         "Clone I_wide (MEXC weites Universum)",
-        "session":      "clone_I_wide",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py I_wide > /tmp/clone_I_wide.log 2>&1"
         ),
     },
     "clones_dashboard": {
@@ -206,7 +230,6 @@ BOTS = {
             "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
             "A_baseline_dashboard.json F_contrarian_vix28_dashboard.json "
             "G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json "
-            "G_mexc_dashboard.json I_wide_dashboard.json "
             "> /tmp/clones_dashboard.log 2>&1"
         ),
     },
