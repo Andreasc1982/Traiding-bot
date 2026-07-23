@@ -1,0 +1,51 @@
+{
+  "addr": "6rgZ1MEFwik2F1tDGfq7e9xmMf2vZE72uWTDNpospump",
+  "symbol": "deerabbit",
+  "first_seen": "2026-07-22 16:22",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-22 16:28",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "Rfyr64EFv1FWUR8eEXbJQ9EjLfEbh8ckv328LGn3gFt",
+      "first_buy_ts": 1784727981
+    },
+    {
+      "wallet": "7SmqeNFybL1tXjQSRSZ3Mu4GUurhkgh4Cw8A6w5YUX2h",
+      "first_buy_ts": 1784727981
+    },
+    {
+      "wallet": "4yFAz7dp5WwuZs3vbWKedbRiUmSFxTVGCdsLAxfEQrG3",
+      "first_buy_ts": 1784727981,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1784148384,
+      "sol": 0.0,
+      "sec_before_buy": 579597
+    },
+    {
+      "wallet": "FaxUZJMo4fAE6mCBujH9SHTLsM8FJbsamVXqqPQUmivY",
+      "first_buy_ts": 1784727981,
+      "funder": "6LY1JzAFVZsP2a2xKrtU6znQMQ5h4i7tocWdgrkZzkzF",
+      "funder_ts": 1774216975,
+      "sol": 0.23,
+      "sec_before_buy": 10511006
+    },
+    {
+      "wallet": "DQApNebkK5wCmy92T5c4Z9NePWjP7dC4avpLMzuxadxR",
+      "first_buy_ts": 1784727981,
+      "funder": "AybhAncaLLoroNymmLPAMpK2fZYVo75JiwyyYh4FmnxL",
+      "funder_ts": 1784577068,
+      "sol": 0.2314,
+      "sec_before_buy": 150913
+    },
+    {
+      "wallet": "DeNwH63Xgj3a4bXXHw79BiL5iBUNBQVaRYeLHQTQxL7z",
+      "first_buy_ts": 1784727981
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "addr": "57HrLUAXSrtjxkymZoMG57HeCUWU2Xgmy3BL18xB2vmh",
+  "symbol": "normoids",
+  "first_seen": "2026-07-22 23:17",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-22 23:19",
+  "reached_genesis": false,
+  "n_buyers": 2,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "73P3mAi44XHaBRsKybCMaRc6jYin49wSEjStPPfqbu8J",
+      "first_buy_ts": 1784754168
+    },
+    {
+      "wallet": "DByYa8aEFHzemEh2y5VxWerw7H9sZcztQMt7pitSanQS",
+      "first_buy_ts": 1784754169
+    }
+  ]
+}

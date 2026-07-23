@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Bundle-Frühwarnung — Live</title>
+</head>
+<body>
+<style>
+  :root{
+    --bg:#F4F6F8; --surface:#FFFFFF; --surface2:#F8FAFC; --border:#E2E7ED;
+    --ink:#141A22; --muted:#5C6672; --faint:#8B95A2;
+    --accent:#3D5AF1; --accent-soft:rgba(61,90,241,.10);
+    --good:#0E9F6E; --good-soft:rgba(14,159,110,.12);
+    --bad:#D8232A;  --bad-soft:rgba(216,35,42,.10);
+    --warn:#B4690E; --warn-soft:rgba(180,105,14,.13);
+    --shadow:0 1px 2px rgba(20,26,34,.04),0 4px 16px rgba(20,26,34,.05);
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0E1116; --surface:#161C24; --surface2:#1B222C; --border:#2A323D;
+      --ink:#E7ECF3; --muted:#8C97A6; --faint:#67717F;
+      --accent:#7B90F7; --accent-soft:rgba(123,144,247,.16);
+      --good:#34C596; --good-soft:rgba(52,197,150,.15);
+      --bad:#F26670;  --bad-soft:rgba(242,102,112,.15);
+      --warn:#E6A24E; --warn-soft:rgba(230,162,78,.15);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#F4F6F8; --surface:#FFFFFF; --surface2:#F8FAFC; --border:#E2E7ED;
+    --ink:#141A22; --muted:#5C6672; --faint:#8B95A2;
+    --accent:#3D5AF1; --accent-soft:rgba(61,90,241,.10);
+    --good:#0E9F6E; --good-soft:rgba(14,159,110,.12);
+    --bad:#D8232A; --bad-soft:rgba(216,35,42,.10);
+    --warn:#B4690E; --warn-soft:rgba(180,105,14,.13);
+    --shadow:0 1px 2px rgba(20,26,34,.04),0 4px 16px rgba(20,26,34,.05);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1116; --surface:#161C24; --surface2:#1B222C; --border:#2A323D;
+    --ink:#E7ECF3; --muted:#8C97A6; --faint:#67717F;
+    --accent:#7B90F7; --accent-soft:rgba(123,144,247,.16);
+    --good:#34C596; --good-soft:rgba(52,197,150,.15);
+    --bad:#F26670; --bad-soft:rgba(242,102,112,.15);
+    --warn:#E6A24E; --warn-soft:rgba(230,162,78,.15);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       line-height:1.5;-webkit-font-smoothing:antialiased;font-size:15px}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 20px 64px}
+  .num{font-variant-numeric:tabular-nums}
+
+  header{margin-bottom:24px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--accent);font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--good);display:inline-block;
+            box-shadow:0 0 0 0 var(--good);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(14,159,110,.5)}70%{box-shadow:0 0 0 6px rgba(14,159,110,0)}100%{box-shadow:0 0 0 0 rgba(14,159,110,0)}}
+  @media (prefers-reduced-motion:reduce){.live-dot{animation:none}}
+  h1{font-size:clamp(24px,4vw,33px);line-height:1.12;margin:0 0 12px;letter-spacing:-.02em;
+     font-weight:680;text-wrap:balance}
+  .thesis{max-width:66ch;color:var(--muted);font-size:15.5px;margin:0 0 16px}
+  .thesis em{color:var(--ink);font-style:normal;font-weight:600}
+  .meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  .chip{font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--surface);
+        border:1px solid var(--border);border-radius:999px;padding:3px 10px}
+  .chip b{color:var(--ink);font-weight:600}
+
+  section{margin-top:22px}
+  h2{font-size:13px;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);
+     font-weight:600;margin:0 0 12px}
+
+  .verdict{border-radius:16px;border:1px solid var(--border);background:var(--surface);
+           box-shadow:var(--shadow);padding:22px 24px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+  .verdict.pass{background:var(--good-soft);border-color:var(--good)}
+  .verdict.fail{background:var(--bad-soft);border-color:var(--bad)}
+  .verdict.pend{background:var(--surface2)}
+  .vmark{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;flex:none;
+         font-size:24px;font-weight:700;color:#fff}
+  .pass .vmark{background:var(--good)} .fail .vmark{background:var(--bad)}
+  .pend .vmark{background:var(--accent);color:#fff;font-size:22px}
+  .vbody{flex:1;min-width:220px}
+  .vtitle{font-size:19px;font-weight:680;letter-spacing:-.01em;margin-bottom:3px}
+  .vsub{color:var(--muted);font-size:14px} .vsub b{color:var(--ink)}
+  .prog{margin-top:10px;height:7px;border-radius:5px;background:var(--surface);border:1px solid var(--border);overflow:hidden;max-width:280px}
+  .prog i{display:block;height:100%;background:var(--accent);border-radius:5px}
+  .vsep{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;flex:none}
+  .vsep .big{font-size:30px;font-weight:700;letter-spacing:-.02em;display:block;line-height:1}
+  .pass .vsep .big{color:var(--good)} .fail .vsep .big{color:var(--bad)}
+  .vsep small{color:var(--faint);font-size:11px;letter-spacing:.02em}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:13px;
+        padding:15px 16px;box-shadow:var(--shadow)}
+  .tile .k{font-size:11.5px;letter-spacing:.02em;text-transform:uppercase;color:var(--faint);
+           font-weight:600;margin-bottom:9px}
+  .tile .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:26px;
+           font-weight:680;letter-spacing:-.02em}
+  .tile .v small{font-size:15px;color:var(--faint);font-weight:500}
+  .tile .sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .tile.bad .v{color:var(--bad)} .tile.good .v{color:var(--good)}
+
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+         box-shadow:var(--shadow);overflow:hidden}
+  .clegend{display:flex;gap:16px;padding:13px 18px;border-bottom:1px solid var(--border);
+           font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .clegend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:3px;flex:none}
+  .dot.good{background:var(--good)} .dot.bad{background:var(--bad)}
+  .mrow{display:grid;grid-template-columns:150px 1fr 56px;gap:14px;align-items:center;
+        padding:13px 18px;border-bottom:1px solid var(--border)}
+  .mrow:last-child{border-bottom:0}
+  .mrow.hero{background:var(--accent-soft)}
+  .mname{font-size:13.5px;font-weight:600}
+  .mrow.hero .mname{color:var(--accent)}
+  .mbars{display:flex;flex-direction:column;gap:7px}
+  .bar{display:flex;align-items:center;gap:9px}
+  .track{flex:1;height:9px;border-radius:5px;background:var(--surface2);
+         border:1px solid var(--border);overflow:hidden}
+  .fill{height:100%;border-radius:5px;min-width:2px}
+  .fill.good{background:var(--good)} .fill.bad{background:var(--bad)}
+  .blabel{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;
+          width:46px;text-align:right;color:var(--ink)}
+  .blabel i{color:var(--faint);font-style:normal}
+  .msep{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:19px;font-weight:680;text-align:right}
+  .msep.win{color:var(--good)}
+  .msep small{display:block;font-size:9.5px;letter-spacing:.03em;color:var(--faint);font-weight:500;text-transform:uppercase}
+
+  .thelp{font-size:12.5px;color:var(--muted);margin:-4px 0 12px;max-width:78ch}
+  .tscroll{overflow-x:auto;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;font-size:13px;background:var(--surface);min-width:720px}
+  thead th{text-align:left;font-size:11px;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);
+           font-weight:600;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap;
+           position:sticky;top:0;background:var(--surface)}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr.hasbundle{background:var(--warn-soft)}
+  .tok{font-weight:640;font-size:13.5px}
+  .tok .addr{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint);font-weight:500;margin-top:1px}
+  .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;
+         display:inline-flex;align-items:center;gap:5px;border:1px solid transparent}
+  .badge.rug{color:var(--bad);background:var(--bad-soft);border-color:var(--bad)}
+  .badge.survivor{color:var(--good);background:var(--good-soft);border-color:var(--good)}
+  .badge.pending{color:var(--muted);background:var(--surface2);border-color:var(--border)}
+  .cluster{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:680;font-size:15px}
+  .cluster.hit{color:var(--warn)} .cluster.none{color:var(--faint)}
+  .kv{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--muted)}
+  .gen{font-size:11.5px}
+  .gen.ok{color:var(--good)} .gen.no{color:var(--warn)}
+
+  footer{margin-top:28px;padding-top:18px;border-top:1px solid var(--border);
+          color:var(--muted);font-size:12.5px;max-width:82ch}
+  footer b{color:var(--ink)}
+  footer code{font-family:var(--mono);font-size:11.5px;background:var(--surface2);
+              border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+
+  @media (max-width:680px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .mrow{grid-template-columns:104px 1fr 44px;gap:10px}
+  }
+</style>
+
+<main class="wrap">
+  <header>
+    <div class="eyebrow"><span class="live-dot"></span> DEX-Forensik · Live-Sammlung</div>
+    <h1>Bundle-Frühwarnung</h1>
+    <p class="thesis">Für jeden frischen Token, der den Screener passiert, schneiden wir am Launch mit, ob mehrere „unabhängige" Käufer aus <em>derselben Quelle</em> finanziert wurden (<em>max_cluster</em> = Bundle-Fingerabdruck). Später zeigt die Trajektorie, ob der Token gerugged ist. Frage: fängt der Bundle-Cluster die Rugs, wo die Insider-<em>Zählung</em> versagt?</p>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section><div class="verdict pend" id="verdict"></div></section>
+  <section><div class="kpis" id="kpis"></div></section>
+
+  <section>
+    <h2>Trennschärfe — Bundle-Cluster vs. Insider-Zählung</h2>
+    <div class="panel">
+      <div class="clegend">
+        <span><i class="dot good"></i> Rug korrekt erkannt</span>
+        <span><i class="dot bad"></i> Fehlalarm bei Survivor</span>
+        <span style="color:var(--faint)">Trennung = Treffer − Fehlalarme</span>
+      </div>
+      <div id="methods"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Erfasste Tokens</h2>
+    <p class="thelp">Sortiert: Rugs zuerst, nach Bundle-Cluster. <b>Bernstein hinterlegt</b> = Bundle erkannt (≥2 Käufer teilen einen Funder). „genesis ✓" = echtes Launch-Fenster erreicht; „≈" = sehr aktiver Token, Fenster evtl. unvollständig (bei der Auswertung gefiltert).</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr>
+          <th>Token</th><th>Ausgang</th><th>Bundle-Cluster</th><th>Käufer / Funder</th>
+          <th>Insider (Cluster/Zahl)</th><th>Daten</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</main>
+
+<script>
+const EXAMPLE = {
+  "generated": "2026-07-22 08:12",
+  "n_captured": 41,
+  "n_rug": 29,
+  "n_survivor": 0,
+  "n_pending": 12,
+  "n_genesis": 26,
+  "methods": [
+    {
+      "name": "max_cluster \u2265 2",
+      "tp": 4,
+      "fp": 0,
+      "sep": 4
+    },
+    {
+      "name": "max_cluster \u2265 3",
+      "tp": 2,
+      "fp": 0,
+      "sep": 2
+    },
+    {
+      "name": "insider_nets \u2265 1",
+      "tp": 14,
+      "fp": 0,
+      "sep": 14
+    },
+    {
+      "name": "insiders \u2265 20",
+      "tp": 5,
+      "fp": 0,
+      "sep": 5
+    }
+  ],
+  "bundle_sep": 4,
+  "baseline_sep": 14,
+  "enough": false,
+  "rows": [
+    {
+      "symbol": "SEKHMET",
+      "addr": "4ygnBZgF",
+      "outcome": "rug",
+      "max_cluster": 4,
+      "genesis": true,
+      "n_buyers": 11,
+      "n_funded": 9,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:19"
+    },
+    {
+      "symbol": "Dicks ",
+      "addr": "6KdxE6CL",
+      "outcome": "rug",
+      "max_cluster": 3,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 11,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-22 04:10"
+    },
+    {
+      "symbol": "\u51ac\u74dc",
+      "addr": "5iLwg9wZ",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 5,
+      "n_funded": 3,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:01"
+    },
+    {
+      "symbol": "ACTJ",
+      "addr": "Eq9Dq64d",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 18,
+      "n_funded": 13,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 07:01"
+    },
+    {
+      "symbol": "Cooncoin",
+      "addr": "EM5saRmu",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 13,
+      "n_funded": 5,
+      "insiders": 6,
+      "insider_nets": 1,
+      "captured": "2026-07-22 03:26"
+    },
+    {
+      "symbol": "SPIDER",
+      "addr": "ELFTZMMB",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 11,
+      "n_funded": 8,
+      "insiders": 8,
+      "insider_nets": 2,
+      "captured": "2026-07-22 04:36"
+    },
+    {
+      "symbol": "USOH",
+      "addr": "4x7zDPji",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 19,
+      "insiders": 1607,
+      "insider_nets": 1,
+      "captured": "2026-07-22 00:00"
+    },
+    {
+      "symbol": "JIMOJAK",
+      "addr": "3zUqCv6r",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 14,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 02:40"
+    },
+    {
+      "symbol": "BabyTrump",
+      "addr": "GtpUa2zb",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 14,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:02"
+    },
+    {
+      "symbol": "USOH",
+      "addr": "5BbPYNEV",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 10,
+      "insiders": 1607,
+      "insider_nets": 2,
+      "captured": "2026-07-22 01:52"
+    },
+    {
+      "symbol": "COONAURA",
+      "addr": "CnEgM3tC",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 14,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 03:32"
+    },
+    {
+      "symbol": "FARTCOON",
+      "addr": "2TSVBXq2",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 6,
+      "n_funded": 5,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-22 03:53"
+    },
+    {
+      "symbol": "JIMBERLY",
+      "addr": "12aV3Zvm",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 9,
+      "n_funded": 7,
+      "insiders": 6,
+      "insider_nets": 1,
+      "captured": "2026-07-22 00:44"
+    },
+    {
+      "symbol": "NTFS",
+      "addr": "JgEXxus2",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 17,
+      "insiders": 603,
+      "insider_nets": 3,
+      "captured": "2026-07-22 02:19"
+    },
+    {
+      "symbol": "Cheeks",
+      "addr": "HJjyn79C",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 11,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 05:38"
+    },
+    {
+      "symbol": "GokuSem",
+      "addr": "2bFc6R3W",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 13,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:08"
+    },
+    {
+      "symbol": "JIMOTHIUS",
+      "addr": "GWVESyRB",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 13,
+      "n_funded": 5,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 05:49"
+    },
+    {
+      "symbol": "PVE",
+      "addr": "DDmGRJ7x",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 3,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-22 00:08"
+    },
+    {
+      "symbol": "bitchwife",
+      "addr": "8DLFn83W",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 2,
+      "n_funded": 2,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 05:59"
+    },
+    {
+      "symbol": "Fartcoon",
+      "addr": "26aQBvRi",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 9,
+      "n_funded": 8,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-22 03:59"
+    },
+    {
+      "symbol": "Cuda",
+      "addr": "Ar3vVpZt",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 17,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 01:16"
+    },
+    {
+      "symbol": "Cuda",
+      "addr": "2HBTVUsa",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 11,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:55"
+    },
+    {
+      "symbol": "PSYOPDOG",
+      "addr": "D3FjEv2y",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 11,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 02:09"
+    },
+    {
+      "symbol": "AFTER",
+      "addr": "H1nnMBj8",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 4,
+      "n_funded": 3,
+      "insiders": 12,
+      "insider_nets": 3,
+      "captured": "2026-07-22 01:51"
+    },
+    {
+      "symbol": "USOH",
+      "addr": "SrxbiYw2",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 25,
+      "n_funded": 23,
+      "insiders": 603,
+      "insider_nets": 3,
+      "captured": "2026-07-21 23:47"
+    },
+    {
+      "symbol": "fablechain",
+      "addr": "HWvpE3aq",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 16,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:01"
+    },
+    {
+      "symbol": "Jimberly",
+      "addr": "JAF9prun",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 9,
+      "n_funded": 7,
+      "insiders": 12,
+      "insider_nets": 2,
+      "captured": "2026-07-22 03:27"
+    },
+    {
+      "symbol": "USOH",
+      "addr": "8SK9VM4S",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 11,
+      "insiders": 1607,
+      "insider_nets": 2,
+      "captured": "2026-07-22 05:13"
+    },
+    {
+      "symbol": "MOGE",
+      "addr": "qzEh3fo2",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 13,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 07:24"
+    },
+    {
+      "symbol": "BRAC",
+      "addr": "2T29BGgD",
+      "outcome": "pending",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 15,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 08:07"
+    },
+    {
+      "symbol": "RAT",
+      "addr": "4FWfPWMR",
+      "outcome": "pending",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 11,
+      "n_funded": 4,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 06:45"
+    },
+    {
+      "symbol": "Odysseus",
+      "addr": "23G8wWSs",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 07:17"
+    },
+    {
+      "symbol": "Elonius",
+      "addr": "H2QT2dBo",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 12,
+      "n_funded": 6,
+      "insiders": 13,
+      "insider_nets": 2,
+      "captured": "2026-07-22 05:02"
+    },
+    {
+      "symbol": "USOH",
+      "addr": "gChn5qjL",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 15,
+      "insiders": 603,
+      "insider_nets": 3,
+      "captured": "2026-07-22 03:59"
+    },
+    {
+      "symbol": "ANSEMOTHY",
+      "addr": "cdxxwBUA",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 2,
+      "n_funded": 1,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-21 23:47"
+    },
+    {
+      "symbol": "HEHE",
+      "addr": "J78L8sAd",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 5,
+      "n_funded": 1,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 07:01"
+    },
+    {
+      "symbol": "ROKO",
+      "addr": "9tGLRvTT",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 10,
+      "n_funded": 8,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-22 00:14"
+    },
+    {
+      "symbol": "USWR",
+      "addr": "FSuzL25Z",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 20,
+      "insiders": 804,
+      "insider_nets": 1,
+      "captured": "2026-07-22 07:40"
+    },
+    {
+      "symbol": "Virehn",
+      "addr": "FwqvEcME",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 8,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 08:01"
+    },
+    {
+      "symbol": "Meowpin",
+      "addr": "GXNZZRJN",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 7,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 07:18"
+    },
+    {
+      "symbol": "psyopcat",
+      "addr": "8JjeSHi4",
+      "outcome": "pending",
+      "max_cluster": 0,
+      "genesis": false,
+      "n_buyers": 0,
+      "n_funded": 0,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:08"
+    }
+  ]
+};
+
+let DATA = EXAMPLE, isSnapshot = true;
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = (v,max) => max>0 ? Math.round(Math.min(v,max)/max*100) : 0;
+
+function render(){
+  const d = DATA;
+  const enough = d.enough;
+  const genRate = d.n_captured ? Math.round(100*(d.n_genesis||0)/d.n_captured) : 0;
+
+  $("meta").innerHTML =
+    `<span class="chip">Stand <b>${esc(d.generated)}</b></span>`+
+    `<span class="chip">erfasst <b class="num">${d.n_captured}</b></span>`+
+    `<span class="chip">Launch-Fenster <b class="num">${genRate}%</b></span>`+
+    (isSnapshot ? `<span class="chip" style="color:var(--accent)">Momentaufnahme</span>` : `<span class="chip" style="color:var(--good)">live</span>`);
+
+  // verdict
+  const v = $("verdict");
+  const need = 8;
+  if(!enough){
+    const haveR = Math.min(d.n_rug, need), haveS = Math.min(d.n_survivor, need);
+    const prog = Math.round(100*(haveR+haveS)/(2*need));
+    v.className = "verdict pend";
+    v.innerHTML =
+      `<div class="vmark">◴</div>`+
+      `<div class="vbody">`+
+        `<div class="vtitle">Sammelt noch — ${d.n_rug} Rug, ${d.n_survivor} Survivor aufgelöst</div>`+
+        `<div class="vsub">Aussagekräftig ab <b>≥${need} je Klasse</b>. Survivors brauchen 24h+ Überleben — deshalb kommen sie später als die (schnellen) Rugs. Zahlen unten sind bis dahin <b>vorläufig</b> (ohne Survivor-Klasse keine Fehlalarme).</div>`+
+        `<div class="prog"><i style="width:${prog}%"></i></div>`+
+      `</div>`;
+  } else {
+    const win = (d.bundle_sep||0) > (d.baseline_sep||0) && (d.bundle_sep||0) > 0;
+    v.className = "verdict " + (win ? "pass":"fail");
+    v.innerHTML =
+      `<div class="vmark">${win?"✓":"✕"}</div>`+
+      `<div class="vbody">`+
+        `<div class="vtitle">${win?"Bundle-Cluster trägt — trennt besser als die Zählung":"Bundle-Cluster trägt nicht besser"}</div>`+
+        `<div class="vsub">Auf ${d.n_rug} Rug / ${d.n_survivor} Survivor: max_cluster-Trennung <b>${fmt(d.bundle_sep)}</b> vs. beste Insider-Baseline <b>${fmt(d.baseline_sep)}</b>.</div>`+
+      `</div>`+
+      `<div class="vsep"><span class="big">${fmt(d.bundle_sep)}</span><small>Bundle-Trennschärfe</small></div>`;
+  }
+
+  // kpis
+  $("kpis").innerHTML =
+    tile("","Erfasst",d.n_captured,"Launch-Graphen")+
+    tile("bad","Rug",d.n_rug,"aufgelöst")+
+    tile("good","Survivor",d.n_survivor,"≥24h überlebt")+
+    tile("","Pending",d.n_pending,"noch offen");
+
+  // methods
+  const maxRug = Math.max(1, d.n_rug), maxSrv = Math.max(1, d.n_survivor);
+  $("methods").innerHTML = (d.methods||[]).map((m,i)=>{
+    const hero = i<2;   // die beiden max_cluster-Zeilen hervorheben
+    return `<div class="mrow ${hero?"hero":""}">`+
+      `<div class="mname">${esc(m.name)}</div>`+
+      `<div class="mbars">`+
+        bar("good",m.tp,maxRug,d.n_rug)+
+        bar("bad",m.fp,maxSrv,d.n_survivor)+
+      `</div>`+
+      `<div class="msep ${hero && enough && m.sep>(d.baseline_sep||-9)?"win":""}">${fmt(m.sep)}<small>sep</small></div>`+
+    `</div>`;
+  }).join("");
+
+  // rows
+  $("rows").innerHTML = (d.rows||[]).map(r=>{
+    const c = r.max_cluster||0;
+    const badge = r.outcome==="rug" ? `<span class="badge rug">💀 Rug</span>`
+                : r.outcome==="survivor" ? `<span class="badge survivor">🌱 Survivor</span>`
+                : `<span class="badge pending">⏳ offen</span>`;
+    const gen = r.genesis===true ? `<span class="gen ok">✓ Launch</span>`
+              : r.genesis===false ? `<span class="gen no">≈ Fenster</span>` : "—";
+    return `<tr class="${c>=2?"hasbundle":""}">`+
+      `<td><span class="tok">${esc(r.symbol)}<span class="addr">${esc(r.addr)}…</span></span></td>`+
+      `<td>${badge}</td>`+
+      `<td><span class="cluster ${c>=2?"hit":"none"}">${c>=2?"◆ ":""}${c}</span></td>`+
+      `<td class="kv">${r.n_buyers==null?"—":r.n_buyers} / ${r.n_funded==null?"—":r.n_funded}</td>`+
+      `<td class="kv">${r.insider_nets==null?"?":r.insider_nets} / ${r.insiders==null?"?":r.insiders}</td>`+
+      `<td>${gen}</td>`+
+    `</tr>`;
+  }).join("");
+
+  $("foot").innerHTML =
+    `<b>Wie es läuft:</b> Der <code>dex_bundle_collector</code> erfasst jeden frischen Watchlist-Token (≤6h) am Launch — billig, weil noch wenige Transaktionen. Das Label (Rug/Survivor) kommt gratis aus der screening_log-Trajektorie, die der Monitor eh schreibt. Sobald genug Survivors aufgelaufen sind, zeigt sich, ob <code>max_cluster</code> die Rugs fängt, wo die Insider-Zählung (0 bei fast allen) versagt. Trägt es → wird's ein Screening-Filter; falls das Muster feiner ist → dann erst lohnt Fable.`;
+}
+
+function fmt(n){ return (n>=0?"+":"")+n; }
+function tile(cls,k,v,sub){
+  return `<div class="tile ${cls}"><div class="k">${esc(k)}</div><div class="v num">${v}</div>`+
+    (sub?`<div class="sub">${esc(sub)}</div>`:"")+`</div>`;
+}
+function bar(cls,val,scale,total){
+  return `<div class="bar"><div class="track"><div class="fill ${cls}" style="width:${pct(val,scale)}%"></div></div>`+
+    `<span class="blabel">${val}<i>/${total}</i></span></div>`;
+}
+
+fetch("bundle_probe/live_report.json",{cache:"no-store"})
+  .then(r=>r.ok?r.json():Promise.reject())
+  .then(j=>{ DATA=j; isSnapshot=false; render(); })
+  .catch(()=>render());
+render();
+</script>
+</body>
+</html>

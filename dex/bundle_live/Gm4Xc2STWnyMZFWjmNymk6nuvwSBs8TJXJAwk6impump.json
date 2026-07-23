@@ -1,0 +1,27 @@
+{
+  "addr": "Gm4Xc2STWnyMZFWjmNymk6nuvwSBs8TJXJAwk6impump",
+  "symbol": "SIDELINED",
+  "first_seen": "2026-07-22 11:35",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-22 11:38",
+  "reached_genesis": true,
+  "n_buyers": 3,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": null,
+  "insider_nets": null,
+  "buyers": [
+    {
+      "wallet": "3yNpKXAMj2T5gNUwBzkjGZxLNFGfofMj8T1YP12iDMNt",
+      "first_buy_ts": 1784710439
+    },
+    {
+      "wallet": "h9WNEoDFn6jV5ALZGRpKSDB44zgcVcwCPxqAC6KcdUc",
+      "first_buy_ts": 1784710439
+    },
+    {
+      "wallet": "Rfyr64EFv1FWUR8eEXbJQ9EjLfEbh8ckv328LGn3gFt",
+      "first_buy_ts": 1784710439
+    }
+  ]
+}

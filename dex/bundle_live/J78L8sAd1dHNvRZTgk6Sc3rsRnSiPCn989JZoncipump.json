@@ -1,0 +1,39 @@
+{
+  "addr": "J78L8sAd1dHNvRZTgk6Sc3rsRnSiPCn989JZoncipump",
+  "symbol": "HEHE",
+  "first_seen": "2026-07-22 06:59",
+  "age_h_at_capture": 2.3,
+  "captured": "2026-07-22 07:01",
+  "reached_genesis": false,
+  "n_buyers": 5,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "Fk3LqCC65NEsk2CvrKBBN8KChbcnZ1bXc7aGYH5geK4m",
+      "first_buy_ts": 1784695933
+    },
+    {
+      "wallet": "G3Puakei1bVeCeKyt55GHPkS3vRuPwNjATnU66hWuhpP",
+      "first_buy_ts": 1784695933
+    },
+    {
+      "wallet": "TzpiDXECKWZmTVG4SbUTF6bqVFfGjPitkbvCt95GYS7",
+      "first_buy_ts": 1784695933,
+      "funder": "E1DpzQ9VZZ1NkP7rk3YegSA2njPSwR5xko2tta8gCqAM",
+      "funder_ts": 1772943284,
+      "sol": 2.2122,
+      "sec_before_buy": 11752649
+    },
+    {
+      "wallet": "41PM1HNLiVAv1nJxQoguthpkevjkFpR6RkmzkVa8kxBT",
+      "first_buy_ts": 1784695934
+    },
+    {
+      "wallet": "A5GQaNc37XMKPhn1hbzc12cvBaXj7Uk1qNmMeS9pRfAz",
+      "first_buy_ts": 1784695934
+    }
+  ]
+}

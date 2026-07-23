@@ -1,0 +1,19 @@
+{
+  "addr": "ABNJ7kXmi7SEUUExaE1MqnAbvrCZ5GBZfBeoX6qJpump",
+  "symbol": "Li",
+  "first_seen": "2026-07-22 17:46",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-22 17:50",
+  "reached_genesis": true,
+  "n_buyers": 1,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "G9coyXfgw1YPmYc6qN6XitQ19LT8KVFyv9kwWGuP1Bef",
+      "first_buy_ts": 1784731718
+    }
+  ]
+}

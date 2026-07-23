@@ -23,7 +23,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 from config import config
 import dex_bundle_probe as _probe
-from dex_bundle_probe import early_buyers, funder_of, _atomic_write
+from dex_bundle_probe import early_buyers, funder_of, _atomic_write, analyze_live
 
 # Live-Tuning: frische Tokens erreichen Genesis weit unter 60 Seiten -> Seiten + Kaeufer
 # knapper halten (schnellere, guenstigere Zyklen). Die importierten Funktionen lesen diese
@@ -121,10 +121,14 @@ def run(once=False):
     print("  DEX BUNDLE-COLLECTOR (vorwaerts, read-only, isoliert)")
     print("  faengt Launch-Funding-Graphen frischer Tokens (Alter <=" + str(CAPTURE_MAX_AGE_H) + "h)")
     print("=" * 55, flush=True)
+    ncyc = 0
     while True:
         try:
             n = cycle()
             print("[CYCLE] " + datetime.now().strftime("%H:%M") + " | " + str(n) + " neu erfasst", flush=True)
+            ncyc += 1
+            if ncyc % 6 == 0:                       # ~alle 30 Min live_report.json fuers Dashboard auffrischen
+                analyze_live()
         except Exception as e:
             print("[CYCLE-ERR] " + str(e)[:80], flush=True)
         if once:

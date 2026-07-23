@@ -1,0 +1,35 @@
+{
+  "addr": "4oH1EvpvdaduSUNdRQHLs9RDPpY5oeATfbQXx5oHpump",
+  "symbol": "SHIT",
+  "first_seen": "2026-07-22 13:47",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-22 13:52",
+  "reached_genesis": true,
+  "n_buyers": 3,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 9,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "DsGJkPzFEQZuwy7JjZzPcJEyEfdC6StV7rarXG4ftRSA",
+      "first_buy_ts": 1784715859
+    },
+    {
+      "wallet": "Dbux5PKvxgmMkiJGzCtrzp5FRfsyReeDdkqP6KP7JAYi",
+      "first_buy_ts": 1784715859,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784714284,
+      "sol": 4.9725,
+      "sec_before_buy": 1575
+    },
+    {
+      "wallet": "DYzLARER3bvZdWMcDXZ2K2zNcJk9HziyHYUFFuq1bPqm",
+      "first_buy_ts": 1784715862,
+      "funder": "DsGJkPzFEQZuwy7JjZzPcJEyEfdC6StV7rarXG4ftRSA",
+      "funder_ts": 1784715859,
+      "sol": 0.02,
+      "sec_before_buy": 3
+    }
+  ]
+}

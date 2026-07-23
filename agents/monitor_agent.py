@@ -157,7 +157,7 @@ BOTS = {
         "cmd": (
             "fuser -k 8091/tcp 2>/dev/null; sleep 1; "
             "cd /home/trading2025/trading_bot/dex && "
-            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json paper_heartbeat_v11.json paper_state_v11.json paper_trades_v11.json paper_heartbeat_v12.json paper_state_v12.json paper_trades_v12.json > /tmp/dex_dashboard.log 2>&1"
+            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json paper_heartbeat_v11.json paper_state_v11.json paper_trades_v11.json paper_heartbeat_v12.json paper_state_v12.json paper_trades_v12.json bundle_live.html bundle_probe/live_report.json bundle_probe.html bundle_probe/report.json > /tmp/dex_dashboard.log 2>&1"
         ),
     },
     "gateway": {

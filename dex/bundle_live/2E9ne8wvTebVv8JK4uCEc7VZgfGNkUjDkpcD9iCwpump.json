@@ -1,0 +1,63 @@
+{
+  "addr": "2E9ne8wvTebVv8JK4uCEc7VZgfGNkUjDkpcD9iCwpump",
+  "symbol": "DUCK",
+  "first_seen": "2026-07-23 00:46",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 00:47",
+  "reached_genesis": false,
+  "n_buyers": 7,
+  "n_funded": 5,
+  "max_cluster": 1,
+  "insiders": 16,
+  "insider_nets": 4,
+  "buyers": [
+    {
+      "wallet": "8RYJNSR4qNpam2oZCoHNFmapHdaxXq7ViXb5MWcbHy2g",
+      "first_buy_ts": 1784759961,
+      "funder": "2R1M2cas1BEookRdDuBdZgUoB1zup8BhuGKHGGR3dWig",
+      "funder_ts": 1772833721,
+      "sol": 0.0,
+      "sec_before_buy": 11926240
+    },
+    {
+      "wallet": "13uofDoLShzaRgxiFV6YAWjQeG5qxLyGHWd3UmkzruMp",
+      "first_buy_ts": 1784759961
+    },
+    {
+      "wallet": "H5rMpTN1RyAJ9EQ22Nrha7QXq1T3wGDZrYHtCsywXdvy",
+      "first_buy_ts": 1784759961,
+      "funder": "24oLU7gYotsCN7kghMD7ubsZD9Mn1WfsJPh6vn1HTnVK",
+      "funder_ts": 1767251315,
+      "sol": 0.002,
+      "sec_before_buy": 17508646
+    },
+    {
+      "wallet": "ARu4n5mFdZogZAravu7CcizaojWnS6oqka37gdLT5SZn",
+      "first_buy_ts": 1784759962
+    },
+    {
+      "wallet": "3q71wBoaXmZNctweVAFwpuQDX6MzskYWKHvkaJATqQEi",
+      "first_buy_ts": 1784759962,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1731739266,
+      "sol": 1.4057,
+      "sec_before_buy": 53020696
+    },
+    {
+      "wallet": "5Y4gvqkmykNmhd6LYP7rgMEPiRy6tGhtegCwb4LUYt3f",
+      "first_buy_ts": 1784759962,
+      "funder": "4F33chKH2UdqZGH69XDNBSviAHdFy5fSbYFWdKFWrDeN",
+      "funder_ts": 1783610970,
+      "sol": 0.002,
+      "sec_before_buy": 1148992
+    },
+    {
+      "wallet": "4HGen7Z7JPsTc6uWXmHV6Rxb6iGk5YHdDAR8oDPKNbeK",
+      "first_buy_ts": 1784759963,
+      "funder": "5oKTnGH1svf7xQ1LMu7XxPSBCK755vMZZaMRfdNc8p8u",
+      "funder_ts": 1784578523,
+      "sol": 2.1342,
+      "sec_before_buy": 181440
+    }
+  ]
+}

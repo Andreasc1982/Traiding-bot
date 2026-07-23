@@ -1,0 +1,43 @@
+{
+  "addr": "BQ6Hi7ag6SPydUazvU5hkbz9frC78dm9AX55pFqJpump",
+  "symbol": "HAGGIS",
+  "first_seen": "2026-07-22 17:26",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-22 17:29",
+  "reached_genesis": true,
+  "n_buyers": 5,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "FZBHsvuYhE4tDvPv374cpfAntMockvfJgePiwVMajzrb",
+      "first_buy_ts": 1784730810,
+      "funder": "F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe",
+      "funder_ts": 1773455928,
+      "sol": 1.061,
+      "sec_before_buy": 11274882
+    },
+    {
+      "wallet": "41VsoLSykdvvFjmN6qmf2gQ1uVGCmP2bKVKHp7DZ6x6g",
+      "first_buy_ts": 1784730810,
+      "funder": "5REmxrBkXYe4q5vKyVEU8FsdQ3g9uJoykadzNTdsgyoA",
+      "funder_ts": 1784043860,
+      "sol": 0.0,
+      "sec_before_buy": 686950
+    },
+    {
+      "wallet": "CysQdg6PRy4b55D6Rzv7vVMHXJgZSZkep8fvtkDV6RvB",
+      "first_buy_ts": 1784730810
+    },
+    {
+      "wallet": "HtJXLm4k8kRKv4RJhjyZ1ey1EDubT6jXuHpFQGofjuik",
+      "first_buy_ts": 1784730810
+    },
+    {
+      "wallet": "2CQgjcdNEo7WtbQLpJTAVcC3Ga61pNvRDTgP5grzctFG",
+      "first_buy_ts": 1784730810
+    }
+  ]
+}

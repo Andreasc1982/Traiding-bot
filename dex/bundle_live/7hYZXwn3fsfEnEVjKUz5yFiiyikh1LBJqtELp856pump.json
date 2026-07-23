@@ -1,0 +1,59 @@
+{
+  "addr": "7hYZXwn3fsfEnEVjKUz5yFiiyikh1LBJqtELp856pump",
+  "symbol": "POPMOTHY",
+  "first_seen": "2026-07-22 23:55",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 00:00",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 5,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "FRWeHAViGL9NyrJi7tBKmEarBepY5DEhBiYugqzNrbmv",
+      "first_buy_ts": 1784755281,
+      "funder": "Btwg4aCWVBDEPrhoJBbiy27RizVRXWV6jTzCb15KQw9q",
+      "funder_ts": 1784734179,
+      "sol": 18.0473,
+      "sec_before_buy": 21102
+    },
+    {
+      "wallet": "GVEobzaz2V5hNZ28f3RKFmL6Up4HNWVBotiNdjsubA7r",
+      "first_buy_ts": 1784755281,
+      "funder": "EdPtcEuTFP16Dzgv8BxZmFujHrtkdQdg2eB4nzjATg7o",
+      "funder_ts": 1784734178,
+      "sol": 0.9999,
+      "sec_before_buy": 21103
+    },
+    {
+      "wallet": "FeXSE7YpLK7jKGHoFvLrVoUNLTRLF8Tujfs3xiJJreQF",
+      "first_buy_ts": 1784755281,
+      "funder": "BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6",
+      "funder_ts": 1784344968,
+      "sol": 3.0,
+      "sec_before_buy": 410313
+    },
+    {
+      "wallet": "6nVjbTj4gBknrzewizKCdaCHqCTNVWE9HcUFCGoCekqa",
+      "first_buy_ts": 1784755281,
+      "funder": "C7HaUt9CYZSd3LW2pdBMHiDo6Q52H6DJU7Ar3M5xFgCM",
+      "funder_ts": 1784700275,
+      "sol": 0.0,
+      "sec_before_buy": 55006
+    },
+    {
+      "wallet": "GEcF6sHyGDLrJ6NYzj2uEv2hRbSpwvLmmvm1k8A9VGhc",
+      "first_buy_ts": 1784755282,
+      "funder": "odinQUSwuaUhAeW4RJR8r8dG1MYLpBvkKEkz76sA7DX",
+      "funder_ts": 1776646593,
+      "sol": 0.0,
+      "sec_before_buy": 8108689
+    },
+    {
+      "wallet": "6hh9uNdE2idxjZ2SUit4M2z2tGKe14sNsLiN6tZNNfew",
+      "first_buy_ts": 1784755282
+    }
+  ]
+}

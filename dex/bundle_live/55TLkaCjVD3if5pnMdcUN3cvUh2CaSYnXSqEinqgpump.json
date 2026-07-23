@@ -1,0 +1,31 @@
+{
+  "addr": "55TLkaCjVD3if5pnMdcUN3cvUh2CaSYnXSqEinqgpump",
+  "symbol": "GOONMA",
+  "first_seen": "2026-07-23 00:24",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 00:25",
+  "reached_genesis": false,
+  "n_buyers": 3,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 5,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "8aKsM53y7mgpJ8nMscG7sbJ5phsHDBDDvMo4SS2Jpanb",
+      "first_buy_ts": 1784757679
+    },
+    {
+      "wallet": "4FEG8kNMVz4HTLL6SrBVmUAj5YAnccKzPpAkrEEnkWTF",
+      "first_buy_ts": 1784757679,
+      "funder": "9W7kAZHmXFPAwn6CUvyASw29pmh3EbxtFghtGhCxLFcr",
+      "funder_ts": 1779440069,
+      "sol": 0.002,
+      "sec_before_buy": 5317610
+    },
+    {
+      "wallet": "Gun5bTYcGtNpoaPocyJj2RPeVh2GChAEY6LDvyqGJAx1",
+      "first_buy_ts": 1784757679
+    }
+  ]
+}

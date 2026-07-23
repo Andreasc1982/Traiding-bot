@@ -1,0 +1,51 @@
+{
+  "addr": "AMs3eNu8i633ey9Fe3RbDBDQq2Bnc6P3ceP3ztmrpump",
+  "symbol": "ESPORTS",
+  "first_seen": "2026-07-22 19:10",
+  "age_h_at_capture": 4.8,
+  "captured": "2026-07-22 19:15",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "BCeuiCa3hweNo4mFuQJBqD3rAguU4pQArVAuFCnCdpap",
+      "first_buy_ts": 1784645570,
+      "funder": "3Mc4SB3MzWrekxfj8EEvj9Q5XwrcpJ3dDrqu5NZL9XH2",
+      "funder_ts": 1784505203,
+      "sol": 1.75,
+      "sec_before_buy": 140367
+    },
+    {
+      "wallet": "6hh9uNdE2idxjZ2SUit4M2z2tGKe14sNsLiN6tZNNfew",
+      "first_buy_ts": 1784645571
+    },
+    {
+      "wallet": "9U4M3hDNxGprhhetLBUFpwrjtZ3iK4xDbLGijq269WHr",
+      "first_buy_ts": 1784645571
+    },
+    {
+      "wallet": "BFDrbhKd1F5yhv8AKuofb8U3FKZMfDgvfnZCFVqakbh1",
+      "first_buy_ts": 1784645571,
+      "funder": "GNbMuxrobbGFcuRc4uJXdBaZpfkQyXDrMtL3vPbXzuBF",
+      "funder_ts": 1784526065,
+      "sol": 0.8271,
+      "sec_before_buy": 119506
+    },
+    {
+      "wallet": "C6Fzsv9ve1efkXiNXx5ZyUo8mQaWu66pVQ4sA7aJV99W",
+      "first_buy_ts": 1784645571,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1784272288,
+      "sol": 0.0,
+      "sec_before_buy": 373283
+    },
+    {
+      "wallet": "4dniuvskLMwsqB83ZVA5EmFcK5zhDZa934H3XRg4WCsc",
+      "first_buy_ts": 1784645572
+    }
+  ]
+}

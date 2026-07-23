@@ -1,0 +1,23 @@
+{
+  "addr": "HiCobJK3JaFYzKvGmii5aPzHkKzYvPeNXF16b65Kpump",
+  "symbol": "Kev",
+  "first_seen": "2026-07-22 23:03",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-22 23:08",
+  "reached_genesis": false,
+  "n_buyers": 1,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "FQ4cumZzFbsq2V75QmrbPAyLRzcGLjHpzM4APPueXBaE",
+      "first_buy_ts": 1784753677,
+      "funder": "EMnz4QpuKdEFVeEfQemQ3rHi85YWy4QSBoDSLsAraDad",
+      "funder_ts": 1782333156,
+      "sol": 0.2465,
+      "sec_before_buy": 2420521
+    }
+  ]
+}
