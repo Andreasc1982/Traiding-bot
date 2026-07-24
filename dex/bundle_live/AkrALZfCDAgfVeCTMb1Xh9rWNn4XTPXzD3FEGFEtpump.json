@@ -1,0 +1,47 @@
+{
+  "addr": "AkrALZfCDAgfVeCTMb1Xh9rWNn4XTPXzD3FEGFEtpump",
+  "symbol": "longy",
+  "first_seen": "2026-07-23 22:46",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 22:49",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 4,
+  "max_cluster": 2,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "FLrwvU7AjNm3WX9W8naYmNRBj45oRePR9igiejDxezRr",
+      "first_buy_ts": 1784838166,
+      "funder": "52Ewb2DfT969FQ4s5Gz2mozPbTPiuTv135Xd5DB2QHFJ",
+      "funder_ts": 1783265222,
+      "sol": 0.1566,
+      "sec_before_buy": 1572944
+    },
+    {
+      "wallet": "597Aa17CHtyARnd85A1XVFqDjFb8EFtyAqyKiUMSf7Zb",
+      "first_buy_ts": 1784838166,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784825732,
+      "sol": 10.0,
+      "sec_before_buy": 12434
+    },
+    {
+      "wallet": "82XMNHhyxva8QpEUjBG1Yf6JYSh8jwWBYVs64dmNbSSd",
+      "first_buy_ts": 1784838166,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1782618642,
+      "sol": 0.0257,
+      "sec_before_buy": 2219524
+    },
+    {
+      "wallet": "8JkCvu4EbmLXb5PuwBcnY2xXHpmv3zpcokkCBX8jxjFb",
+      "first_buy_ts": 1784838166,
+      "funder": "BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6",
+      "funder_ts": 1782609468,
+      "sol": 0.0283,
+      "sec_before_buy": 2228698
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "addr": "CJ9bGgfwdrfGzDvSR344B27FUTpbN9mfbj2wvQ9Qpump",
+  "symbol": "DOP",
+  "first_seen": "2026-07-23 07:54",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 07:57",
+  "reached_genesis": true,
+  "n_buyers": 1,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 12,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "Rfyr64EFv1FWUR8eEXbJQ9EjLfEbh8ckv328LGn3gFt",
+      "first_buy_ts": 1784784969
+    }
+  ]
+}

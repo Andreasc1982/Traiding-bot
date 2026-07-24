@@ -1,0 +1,67 @@
+{
+  "addr": "F5d1jdoNK161F5b38h9foUD8mAHS8tXMHjYrDYw8pump",
+  "symbol": "HONEY",
+  "first_seen": "2026-07-23 15:44",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 15:48",
+  "reached_genesis": false,
+  "n_buyers": 7,
+  "n_funded": 6,
+  "max_cluster": 1,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "2CZ4MRrsmc5jPHCeEMYKN7ejLv2yuUvHtdSEu1PXg2nr",
+      "first_buy_ts": 1784814199,
+      "funder": "H8sMJSCQxfKiFTCfDR3DUMLPwcRbM61LGFJ8N4dK3WjS",
+      "funder_ts": 1781256493,
+      "sol": 0.2673,
+      "sec_before_buy": 3557706
+    },
+    {
+      "wallet": "FHsZua8fBYxqCNgQ1fqt55cRm8j9pa5h9PRbBeBEo3dS",
+      "first_buy_ts": 1784814199,
+      "funder": "JBZzokpVcmAY5ZmY32r37SLAken3kDbTAhGJWWCFPZN2",
+      "funder_ts": 1784682734,
+      "sol": 0.002,
+      "sec_before_buy": 131465
+    },
+    {
+      "wallet": "Bw7GcqDrKUkDy16o4syX99WEJaki53Q46udcCaeaTRX1",
+      "first_buy_ts": 1784814199,
+      "funder": "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm",
+      "funder_ts": 1784695724,
+      "sol": 0.269,
+      "sec_before_buy": 118475
+    },
+    {
+      "wallet": "7Bc5Js8a7iCZC36qqjCcm4ni8K8ucRtRsxB8Fia2EHjT",
+      "first_buy_ts": 1784814199,
+      "funder": "7t1aEMCDFpXW7hczxp3bXRSKLTUSkSay1w8cDPEXmbaE",
+      "funder_ts": 1773263699,
+      "sol": 0.0,
+      "sec_before_buy": 11550500
+    },
+    {
+      "wallet": "GgHCJwsMpVXjkaRzBwoe6iwH7g6ZfLasPWUN5tiEZuSQ",
+      "first_buy_ts": 1784814199,
+      "funder": "AxiomRXZAq1Jgjj9pHmNqVP7Lhu67wLXZJZbaK87TTSk",
+      "funder_ts": 1773719312,
+      "sol": 1.0009,
+      "sec_before_buy": 11094887
+    },
+    {
+      "wallet": "CFFecZNLXgh8xej42XXXmnRBDL3MYDKPQCahQnKd6Ryp",
+      "first_buy_ts": 1784814200,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1765889890,
+      "sol": 0.7558,
+      "sec_before_buy": 18924310
+    },
+    {
+      "wallet": "H4HSqzTuYB5HvxbBopjBykXpupqA8B5mkXo4fvSTFa22",
+      "first_buy_ts": 1784814201
+    }
+  ]
+}

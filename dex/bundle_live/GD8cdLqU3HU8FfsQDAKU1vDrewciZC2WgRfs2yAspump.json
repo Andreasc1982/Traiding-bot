@@ -1,0 +1,23 @@
+{
+  "addr": "GD8cdLqU3HU8FfsQDAKU1vDrewciZC2WgRfs2yAspump",
+  "symbol": "Syrax",
+  "first_seen": "2026-07-23 09:29",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 09:33",
+  "reached_genesis": true,
+  "n_buyers": 2,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "DVDiUa47uEUYLaVTHfHAuBLf43gPBvok3JdyFPd7nEBZ",
+      "first_buy_ts": 1784733676
+    },
+    {
+      "wallet": "CCHNuP2zm8NhmJvifGQ9qD3WvkfWzvBpqmjMkysHWahu",
+      "first_buy_ts": 1784733676
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "addr": "EP8QJoR6LnMidjv818MWGs7Mm4hQR6vv1gNdT7NK4Lgy",
+  "symbol": "bitcat",
+  "first_seen": "2026-07-23 03:22",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 03:24",
+  "reached_genesis": false,
+  "n_buyers": 3,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "79P1xhz3TNi3Unqoueskhum8s5oEauYks4mCCj63tTeA",
+      "first_buy_ts": 1784769281,
+      "funder": "AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51",
+      "funder_ts": 1784322112,
+      "sol": 0.01,
+      "sec_before_buy": 447169
+    },
+    {
+      "wallet": "4foKbQ9EnnvkSAB4P74omKJiAxyTJHEmy53yi8SiUMGf",
+      "first_buy_ts": 1784769282
+    },
+    {
+      "wallet": "54xrJ798DGwH1UA2H35QtAzKT55t8pL8bjBs9Arz3eoP",
+      "first_buy_ts": 1784769282,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1784069838,
+      "sol": 0.0,
+      "sec_before_buy": 699444
+    }
+  ]
+}

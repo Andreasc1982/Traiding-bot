@@ -1,0 +1,27 @@
+{
+  "addr": "AsHhg6ZXnuQ2VDfSzMp2L9cJV7hH8TiFVDrCPKrYpump",
+  "symbol": "SEC",
+  "first_seen": "2026-07-23 22:20",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 22:21",
+  "reached_genesis": true,
+  "n_buyers": 2,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "9U4M3hDNxGprhhetLBUFpwrjtZ3iK4xDbLGijq269WHr",
+      "first_buy_ts": 1784835623
+    },
+    {
+      "wallet": "3UmxwibjEBrHwPkFD2dVbquj32fe4g3mLnzEjpqzV4pP",
+      "first_buy_ts": 1784835623,
+      "funder": "Dj82XbyESmK8RBg81feUwNWE4qfGLRVnofycWo2ffCJk",
+      "funder_ts": 1784833191,
+      "sol": 5.2384,
+      "sec_before_buy": 2432
+    }
+  ]
+}

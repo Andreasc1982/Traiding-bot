@@ -1,0 +1,71 @@
+{
+  "addr": "GBDW5Mkc9bAnG6Ctmfdw4aPeWeDdCqf6FcunfRwdpump",
+  "symbol": "\u515c\u798f",
+  "first_seen": "2026-07-23 19:06",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 19:08",
+  "reached_genesis": true,
+  "n_buyers": 11,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "DjdfUKnnGeptDgeH23XVfMHcDSKBPu4TxCwLxXbxA2M9",
+      "first_buy_ts": 1784824850
+    },
+    {
+      "wallet": "Anubis512ho5t7S6LNSwoxUWdeQmX2kf3RvZ8ApHHF5w",
+      "first_buy_ts": 1784824850
+    },
+    {
+      "wallet": "5brv79eFZ2rGprXNvqgVJBkBptkkw8GJX1XydJyZLyAr",
+      "first_buy_ts": 1784824850
+    },
+    {
+      "wallet": "9LUgfzet43ZdwdAzbvV5msQjGzx9g6sqvtgLaQyQAEog",
+      "first_buy_ts": 1784824850
+    },
+    {
+      "wallet": "3EiUr6AW4P2K69fUCTkGRJWt5616pbAiLXHGw1cnVxnc",
+      "first_buy_ts": 1784824850,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784299382,
+      "sol": 4.319,
+      "sec_before_buy": 525468
+    },
+    {
+      "wallet": "24678QKx2Dy8ZCw6Ra8o9DeTqPLL5GR9ZQKxt5FddHmq",
+      "first_buy_ts": 1784824850
+    },
+    {
+      "wallet": "8G93ToDmQssdFt4a2CDPsNGjXt16yNHPrULpMTMUzjLX",
+      "first_buy_ts": 1784824851
+    },
+    {
+      "wallet": "DMrSfrqhBC4WQUwkKRDCTMResvg9RaRu7DTRRvLzzXBS",
+      "first_buy_ts": 1784824851,
+      "funder": "H5mG8X8MorXsDC3NiMuyzjkUznSi7X7xUUhdy4PS48aY",
+      "funder_ts": 1781809693,
+      "sol": 0.2686,
+      "sec_before_buy": 3015158
+    },
+    {
+      "wallet": "7SpZs7u3hZwvunqGwDZzYckSwixAgoZwr4ZL9gzQy86i",
+      "first_buy_ts": 1784824851,
+      "funder": "6uxWfu4nVhZG5zWWPXfjVqT1Cezr1euJRQWJMBE7ESm5",
+      "funder_ts": 1781809693,
+      "sol": 0.2914,
+      "sec_before_buy": 3015158
+    },
+    {
+      "wallet": "6VU48s9zi8As6XQUVqRLDMbD5iCzZ4mkyHk88EFkMnna",
+      "first_buy_ts": 1784824851
+    },
+    {
+      "wallet": "7cp6zxvhxbfS7QgYTB7ts2RqFf7zDYwtjfuHcEHhKLAz",
+      "first_buy_ts": 1784824851
+    }
+  ]
+}

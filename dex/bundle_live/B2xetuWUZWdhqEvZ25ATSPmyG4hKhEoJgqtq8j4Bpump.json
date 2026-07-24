@@ -1,0 +1,123 @@
+{
+  "addr": "B2xetuWUZWdhqEvZ25ATSPmyG4hKhEoJgqtq8j4Bpump",
+  "symbol": "Lih",
+  "first_seen": "2026-07-23 15:10",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 15:12",
+  "reached_genesis": true,
+  "n_buyers": 20,
+  "n_funded": 7,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "8ik9TbDMMm7iXErRA7ohCEGf3X4KjnbBfsJiCCSCFxdX",
+      "first_buy_ts": 1784810607
+    },
+    {
+      "wallet": "HieXn5GgdKtXKa92WR3JuJPGyuR7pSMJTZw2KszQEPtJ",
+      "first_buy_ts": 1784810607,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784632763,
+      "sol": 6.8592,
+      "sec_before_buy": 177844
+    },
+    {
+      "wallet": "6ED9YuJXMRjUCEYWQGbbsy8fXW9ae9WtpDHYGEoKstjV",
+      "first_buy_ts": 1784810607
+    },
+    {
+      "wallet": "Cw7pbRWRqVxBR44hDyYVAL5yxc4dWrBVwghrLDmRzJmF",
+      "first_buy_ts": 1784810607
+    },
+    {
+      "wallet": "FDKdqQc5YfCNM3Y1VFwrc7NjY3SjKvn4dnyJv363yarJ",
+      "first_buy_ts": 1784810607
+    },
+    {
+      "wallet": "DSmkz9ztNRJGjqWMB3zmxR6bTg1y42AvSZciWj3f74Ut",
+      "first_buy_ts": 1784810607
+    },
+    {
+      "wallet": "F5K7wpAkG1UZEt53nu6tepNeXspFd7ZFYk162VrZ2J7E",
+      "first_buy_ts": 1784810607,
+      "funder": "is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV",
+      "funder_ts": 1784468307,
+      "sol": 2.0,
+      "sec_before_buy": 342300
+    },
+    {
+      "wallet": "2CQgjcdNEo7WtbQLpJTAVcC3Ga61pNvRDTgP5grzctFG",
+      "first_buy_ts": 1784810607
+    },
+    {
+      "wallet": "ErqAfUXdNNRRR4nRFgZjRYZ76ZLied2i11yiR6Ab8F7n",
+      "first_buy_ts": 1784810607,
+      "funder": "H3b9vAUEzcnuRZareWcCy7PS9ngGQSttn63QLRK4UrAu",
+      "funder_ts": 1771368235,
+      "sol": 0.002,
+      "sec_before_buy": 13442372
+    },
+    {
+      "wallet": "AXFCRwnrSxNFW54unHmTzxRZiF1RHjc4zyQfAsM8jiSN",
+      "first_buy_ts": 1784810607,
+      "funder": "pohJj8FSmifd5V2kpgbzekrnnwZ89LmDg7kEFEu5vuW",
+      "funder_ts": 1770977413,
+      "sol": 0.0,
+      "sec_before_buy": 13833194
+    },
+    {
+      "wallet": "MAnS64396b9VT95VZe3XeoqL847qSZ1M6nVwUrZuSXB",
+      "first_buy_ts": 1784810607,
+      "funder": "39fNtpikVKvHFuiWGzg2avGqjdvh81PaQWXf2yLr1ef8",
+      "funder_ts": 1767997819,
+      "sol": 0.0,
+      "sec_before_buy": 16812788
+    },
+    {
+      "wallet": "4frkCTj2HmJN7naXZL3e4m4Fj2nbXDAHRFzuCTmRvJEW",
+      "first_buy_ts": 1784810608
+    },
+    {
+      "wallet": "C1rLF7X1TiYUAGRv95N1G9MZ3S3S2GD6ydLsNFq8oiNT",
+      "first_buy_ts": 1784810608,
+      "funder": "FqCQsS2AAWduD7xUmPZEHRSTDv5DEQrerbC7ZphLtoXR",
+      "funder_ts": 1784809605,
+      "sol": 1.9678,
+      "sec_before_buy": 1003
+    },
+    {
+      "wallet": "76VMCqqzCdny4658aDFFU7jw44jRTiqCCRdtWF8cAJwb",
+      "first_buy_ts": 1784810608
+    },
+    {
+      "wallet": "AmoTosp6DmCpdnbfi2vfewi6xiZVPnihBmg3ETcKMUnh",
+      "first_buy_ts": 1784810608
+    },
+    {
+      "wallet": "6yRBpeDDba4yASyjmWBLstxv1gYHVsvdHfuBpVpr63N2",
+      "first_buy_ts": 1784810608
+    },
+    {
+      "wallet": "nya666pQkP3PzWxi7JngU3rRMHuc7zbLK8c8wxQ4qpT",
+      "first_buy_ts": 1784810608
+    },
+    {
+      "wallet": "GhNgR53EzCuFrusWGvLW51P4bX6TSTtBzjf8qLEcFeMv",
+      "first_buy_ts": 1784810608
+    },
+    {
+      "wallet": "AWrTFnoSjCbJ4KhTzCQsjHwWrCt8jhXNKQubjdT1ENWw",
+      "first_buy_ts": 1784810608,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1783943008,
+      "sol": 0.0,
+      "sec_before_buy": 867600
+    },
+    {
+      "wallet": "Anubis512ho5t7S6LNSwoxUWdeQmX2kf3RvZ8ApHHF5w",
+      "first_buy_ts": 1784810608
+    }
+  ]
+}

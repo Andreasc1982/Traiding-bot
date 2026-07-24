@@ -1,0 +1,47 @@
+{
+  "addr": "uHN76PavA1wCkxXVfaU92GJnqZGTJKYBTSRtqsJpump",
+  "symbol": "Glenjamin",
+  "first_seen": "2026-07-23 10:46",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 10:48",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "A8Z1ejQGk45EJibBPJviWnM3UvwKSuYun53nSCkWKM52",
+      "first_buy_ts": 1784787641
+    },
+    {
+      "wallet": "DsPd3d75roRt4wmWbe2XNAFGsqPfDSx2kqAHwky3RE6D",
+      "first_buy_ts": 1784787641,
+      "funder": "DQ5JWbJyWdJeyBxZuuyu36sUBud6L6wo3aN1QC1bRmsR",
+      "funder_ts": 1779793877,
+      "sol": 0.9613,
+      "sec_before_buy": 4993764
+    },
+    {
+      "wallet": "HrhUPLh8azcGE2ESpr93SU4vkRJ4bBS4uUBHac7mPEBd",
+      "first_buy_ts": 1784787641,
+      "funder": "A77HErqtfN1hLLpvZ9pCtu66FEtM8BveoaKbbMoZ4RiR",
+      "funder_ts": 1779799471,
+      "sol": 0.9805,
+      "sec_before_buy": 4988170
+    },
+    {
+      "wallet": "F58LFGbv7wCEbsMkHZZqRmESc5KVVsp7A8iLCb4U7zdr",
+      "first_buy_ts": 1784787641
+    },
+    {
+      "wallet": "Rfyr64EFv1FWUR8eEXbJQ9EjLfEbh8ckv328LGn3gFt",
+      "first_buy_ts": 1784787642
+    },
+    {
+      "wallet": "7kQUNiXdHTH33hfThq3vLBghVrBTVw2MuDVxa2kAt7i2",
+      "first_buy_ts": 1784787643
+    }
+  ]
+}

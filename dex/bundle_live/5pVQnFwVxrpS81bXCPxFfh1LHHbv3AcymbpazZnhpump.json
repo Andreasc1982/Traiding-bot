@@ -1,0 +1,71 @@
+{
+  "addr": "5pVQnFwVxrpS81bXCPxFfh1LHHbv3AcymbpazZnhpump",
+  "symbol": "MATH",
+  "first_seen": "2026-07-23 12:08",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 12:11",
+  "reached_genesis": true,
+  "n_buyers": 9,
+  "n_funded": 5,
+  "max_cluster": 2,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "9zzuA356LMUZiKVmq1kkAUrHKHxLL7CxCuaeM3cSJ9Ph",
+      "first_buy_ts": 1784800003,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1783909405,
+      "sol": 1.999,
+      "sec_before_buy": 890598
+    },
+    {
+      "wallet": "EQ5WSWiean8KrS5Z1mpsoyRwViESb9RVA6F1AdtP4Y8D",
+      "first_buy_ts": 1784800003,
+      "funder": "is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV",
+      "funder_ts": 1782880405,
+      "sol": 5.0,
+      "sec_before_buy": 1919598
+    },
+    {
+      "wallet": "3P7nPUPzngXgptr4LMjUHmnpmJicQC4voQt5BAaVFweU",
+      "first_buy_ts": 1784800003,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784792571,
+      "sol": 71.0,
+      "sec_before_buy": 7432
+    },
+    {
+      "wallet": "8ik9TbDMMm7iXErRA7ohCEGf3X4KjnbBfsJiCCSCFxdX",
+      "first_buy_ts": 1784800004
+    },
+    {
+      "wallet": "Hv3fPDH9bd1VNK1BjRQyjCYUK9HrXwLGfJ37mEeUJdrJ",
+      "first_buy_ts": 1784800004,
+      "funder": "ELEMfMEy4svh1iiTtL8UXVfhZ2MzJH1P29Q4QZAGAtkH",
+      "funder_ts": 1784145220,
+      "sol": 0.002,
+      "sec_before_buy": 654784
+    },
+    {
+      "wallet": "Rfyr64EFv1FWUR8eEXbJQ9EjLfEbh8ckv328LGn3gFt",
+      "first_buy_ts": 1784800004
+    },
+    {
+      "wallet": "3GF5kZrJaaR6LqQyzVLzqYr3ZxbARURDjsTfzojEgZhY",
+      "first_buy_ts": 1784800004,
+      "funder": "9zzuA356LMUZiKVmq1kkAUrHKHxLL7CxCuaeM3cSJ9Ph",
+      "funder_ts": 1784800003,
+      "sol": 0.8889,
+      "sec_before_buy": 1
+    },
+    {
+      "wallet": "8DS2pqspcQkTBmnkSqbXHsUH3fvwwJfM1mG9brPpzMDD",
+      "first_buy_ts": 1784800004
+    },
+    {
+      "wallet": "DsGJkPzFEQZuwy7JjZzPcJEyEfdC6StV7rarXG4ftRSA",
+      "first_buy_ts": 1784800004
+    }
+  ]
+}

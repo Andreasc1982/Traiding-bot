@@ -1,0 +1,47 @@
+{
+  "addr": "7kbA4Wnyg8u8QrtUCao3oArLg9sdhcDa6z6WhWWJpump",
+  "symbol": "BULLMAN",
+  "first_seen": "2026-07-23 08:31",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 08:35",
+  "reached_genesis": true,
+  "n_buyers": 5,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "DcdjigrLaBDCyn5i2ZiYhmmZkDipMnBJZxaEgMLLNXFa",
+      "first_buy_ts": 1784786153,
+      "funder": "ASTyfSima4LLAdDgoFGkgqoKowG1LZFDr9fAQrg7iaJZ",
+      "funder_ts": 1783527364,
+      "sol": 2.0,
+      "sec_before_buy": 1258789
+    },
+    {
+      "wallet": "83fRso6y7SnkEoqWv7fb9WQiArrRmPkMRKuZD6C8jtWa",
+      "first_buy_ts": 1784786153,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1783932108,
+      "sol": 0.0,
+      "sec_before_buy": 854045
+    },
+    {
+      "wallet": "8tr2RQBBt3hGNbKNrCwvb7MwcHsW1JDwPEkjH35U7t8w",
+      "first_buy_ts": 1784786153,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784142939,
+      "sol": 6.999,
+      "sec_before_buy": 643214
+    },
+    {
+      "wallet": "7tn9FLz1RigFyabtd8Bye3zNxQNh7UqVVJ3iH96VWc63",
+      "first_buy_ts": 1784786154
+    },
+    {
+      "wallet": "76VMCqqzCdny4658aDFFU7jw44jRTiqCCRdtWF8cAJwb",
+      "first_buy_ts": 1784786155
+    }
+  ]
+}

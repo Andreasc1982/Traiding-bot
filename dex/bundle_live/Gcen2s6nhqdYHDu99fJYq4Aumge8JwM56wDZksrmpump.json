@@ -1,0 +1,23 @@
+{
+  "addr": "Gcen2s6nhqdYHDu99fJYq4Aumge8JwM56wDZksrmpump",
+  "symbol": "DBG",
+  "first_seen": "2026-07-23 19:58",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 20:01",
+  "reached_genesis": true,
+  "n_buyers": 1,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "BX3No2qkX8QnLJ8wtzZ6xwHBuwDiXKWnVWaHeFSYRTt8",
+      "first_buy_ts": 1784828217,
+      "funder": "2snHHreXbpJ7UwZxPe37gnUNf7Wx7wv6UKDSR2JckKuS",
+      "funder_ts": 1783903516,
+      "sol": 5.1544,
+      "sec_before_buy": 924701
+    }
+  ]
+}

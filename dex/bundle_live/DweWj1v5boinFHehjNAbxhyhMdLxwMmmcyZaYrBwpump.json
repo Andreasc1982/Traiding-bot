@@ -1,0 +1,71 @@
+{
+  "addr": "DweWj1v5boinFHehjNAbxhyhMdLxwMmmcyZaYrBwpump",
+  "symbol": "DRAIL",
+  "first_seen": "2026-07-23 17:50",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 17:56",
+  "reached_genesis": true,
+  "n_buyers": 8,
+  "n_funded": 6,
+  "max_cluster": 2,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "aDRLBGKSJSTZrSPzmHXydGpiTtxRHLzjSS92Wc3pCUD",
+      "first_buy_ts": 1784820214
+    },
+    {
+      "wallet": "naGRmqB18CFRLwEzNaoeBYnqm8uZqzDqzNKD8aSj2Bs",
+      "first_buy_ts": 1784820214,
+      "funder": "8hrU4xZLQDr6V2iHuFen2t5e657S6JYsN5QHxPLrKP2",
+      "funder_ts": 1776373531,
+      "sol": 0.05,
+      "sec_before_buy": 8446683
+    },
+    {
+      "wallet": "8DS2pqspcQkTBmnkSqbXHsUH3fvwwJfM1mG9brPpzMDD",
+      "first_buy_ts": 1784820214,
+      "funder": "DUZwLJ9HGV7zCrPB9WryUP5wseopW7u2hA4z3uNZT6eg",
+      "funder_ts": 1784145220,
+      "sol": 0.002,
+      "sec_before_buy": 674994
+    },
+    {
+      "wallet": "EUF3FQkyqT45up5Vitrf8ePKzwMq7A8k87B3F8oqgikt",
+      "first_buy_ts": 1784820214,
+      "funder": "CqpyundZiAHvRL3wYYuoLSr4D8c3Hvomf6FEhjzJK81t",
+      "funder_ts": 1784769368,
+      "sol": 1.0,
+      "sec_before_buy": 50846
+    },
+    {
+      "wallet": "E6R3SRT1jJJVsVzeUvLJarN8oUEQzHBLdQZtmjCxYf46",
+      "first_buy_ts": 1784820214,
+      "funder": "6Cim6AeheQC6eSsGM7UjqPPrJFnJonVLxtkPnfrm4oXa",
+      "funder_ts": 1772927521,
+      "sol": 0.0,
+      "sec_before_buy": 11892693
+    },
+    {
+      "wallet": "2vRhXKm7w5VMhSMHLHKA3Hb6YUneKMDxj68xTPYiwZB9",
+      "first_buy_ts": 1784820214
+    },
+    {
+      "wallet": "BS34RpaickSHbkgMUCRLyDcF8FtQnyeuXx8XgrAopDwF",
+      "first_buy_ts": 1784820214,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784818349,
+      "sol": 0.599,
+      "sec_before_buy": 1865
+    },
+    {
+      "wallet": "8Ax4MQ7q7jVD9RhSayXyU8arUhCegPyMNDmRjaLC4iBK",
+      "first_buy_ts": 1784820214,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1783448238,
+      "sol": 6.599,
+      "sec_before_buy": 1371976
+    }
+  ]
+}

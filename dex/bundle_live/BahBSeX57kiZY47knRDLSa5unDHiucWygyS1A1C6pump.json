@@ -1,0 +1,55 @@
+{
+  "addr": "BahBSeX57kiZY47knRDLSa5unDHiucWygyS1A1C6pump",
+  "symbol": "GME",
+  "first_seen": "2026-07-23 08:16",
+  "age_h_at_capture": 0.5,
+  "captured": "2026-07-23 08:19",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "CJZeDsV14PzC4DVj1XS22UJhc1SZsNE8r3VFKpEGkjwg",
+      "first_buy_ts": 1784785499,
+      "funder": "DF4HCPQS8HKmeKx6dhU6D3vPCgaQ11okZpvQc2Yv7AHS",
+      "funder_ts": 1784785226,
+      "sol": 2.6288,
+      "sec_before_buy": 273
+    },
+    {
+      "wallet": "5MxzDDMJCLBqq2HKjETaQM8hHHKYRYGNd5KnVGu9c8pp",
+      "first_buy_ts": 1784785499,
+      "funder": "A1QHAjchu429ThjZTgJ2vfgjj21rhNb4iqWPiWqRbf3x",
+      "funder_ts": 1784785258,
+      "sol": 1.5705,
+      "sec_before_buy": 241
+    },
+    {
+      "wallet": "CzwWvTVn39dSd4LiVc6W9gZxgu36737M2fcX4EWhquh4",
+      "first_buy_ts": 1784785499,
+      "funder": "13asEp8CFDEqCSZcd5veoH6oBGzvouxpqFybiQruMaRh",
+      "funder_ts": 1784622945,
+      "sol": 0.0021,
+      "sec_before_buy": 162554
+    },
+    {
+      "wallet": "GoTPJr3otMKnDKqMouV4DRRNo22ivbwy5ToBTruNcwst",
+      "first_buy_ts": 1784785500
+    },
+    {
+      "wallet": "HJpLfepMHUWFMFkeefNEatJrGDMZfaaXKWCdCLTomNtx",
+      "first_buy_ts": 1784785500,
+      "funder": "EtEv4XwM4PSnVGbwJQbXRarits2gEYZDwecMtDMG2emr",
+      "funder_ts": 1784671194,
+      "sol": 0.002,
+      "sec_before_buy": 114306
+    },
+    {
+      "wallet": "B9mnUiUzMJXZqV6p5XwRqRiV7tS6CsmYwztPHQCiwgqu",
+      "first_buy_ts": 1784785500
+    }
+  ]
+}

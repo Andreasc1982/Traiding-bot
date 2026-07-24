@@ -1,0 +1,43 @@
+{
+  "addr": "LjooxmEzxya3daL2sYw5t7BiVkW177kH17BU8fApump",
+  "symbol": "CHIMP",
+  "first_seen": "2026-07-24 00:25",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-24 00:31",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 6,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "CRe8B9xFxw4VAjddnH6p4HfKpdQj1Wageyv9AcP1J39K",
+      "first_buy_ts": 1784843854
+    },
+    {
+      "wallet": "7cfabsYCge1ky2RiMDKfa64rKLNnGH1FtMWdsDbH9UVh",
+      "first_buy_ts": 1784843854,
+      "funder": "ASTyfSima4LLAdDgoFGkgqoKowG1LZFDr9fAQrg7iaJZ",
+      "funder_ts": 1783417745,
+      "sol": 1.164,
+      "sec_before_buy": 1426109
+    },
+    {
+      "wallet": "F7Dzh2oGwjk8SyphAmCUh9FQaBEdkHoxfDQHTY4yr2iQ",
+      "first_buy_ts": 1784843854,
+      "funder": "HTcEAnNVUPRa6TBHEQAawiARp81zoxt6EFdKWfeF2qrX",
+      "funder_ts": 1778317332,
+      "sol": 0.0,
+      "sec_before_buy": 6526522
+    },
+    {
+      "wallet": "919ngyGiowsRdRWH4zzPJHQAyjCSXdKtrqaEpvY2iorZ",
+      "first_buy_ts": 1784843854,
+      "funder": "6NdhoCwusrKJYtsxmBZfzL5TAHqbUHCt6kYUeqFBC2Cq",
+      "funder_ts": 1780572848,
+      "sol": 0.002,
+      "sec_before_buy": 4271006
+    }
+  ]
+}

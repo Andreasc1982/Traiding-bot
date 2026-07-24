@@ -1,0 +1,47 @@
+{
+  "addr": "HQz4DSDrvgiSeEALGJv1gzSxJx4xfAdigG89pZqMpump",
+  "symbol": "TRASHCOIN",
+  "first_seen": "2026-07-23 15:47",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 15:48",
+  "reached_genesis": true,
+  "n_buyers": 7,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "GPTiXW9j9yqRm7zThp7JzSBJjaQFHjJgMRgxQococcTo",
+      "first_buy_ts": 1784813012
+    },
+    {
+      "wallet": "GCugR7H1xnqhuMARvXJEiJNGvBx9oKy1TF7771FPHRFM",
+      "first_buy_ts": 1784813012,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1782608486,
+      "sol": 0.0205,
+      "sec_before_buy": 2204526
+    },
+    {
+      "wallet": "Anubis512ho5t7S6LNSwoxUWdeQmX2kf3RvZ8ApHHF5w",
+      "first_buy_ts": 1784813012
+    },
+    {
+      "wallet": "6hh9uNdE2idxjZ2SUit4M2z2tGKe14sNsLiN6tZNNfew",
+      "first_buy_ts": 1784813012
+    },
+    {
+      "wallet": "3ajGGwXj4TgjgdW4hH6ALxGptUevgMb52Dxehu8Dzuxq",
+      "first_buy_ts": 1784813012
+    },
+    {
+      "wallet": "2Kx98yK2JUbNGNQdwkCrT84hG1c58DKqb23feUiG56Gi",
+      "first_buy_ts": 1784813012
+    },
+    {
+      "wallet": "3qsTZTo9tsSna6zZEyWWe2NeLxrdTYmpRptP9gaFcQSW",
+      "first_buy_ts": 1784813013
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "addr": "7dCekbBTNx6owtiqWGkn8Rtx2ZFp1JtZKWxGM3xMpump",
+  "symbol": "Lilly",
+  "first_seen": "2026-07-23 10:40",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 10:42",
+  "reached_genesis": true,
+  "n_buyers": 10,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 8,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "C5rB7GcmDZMDFVdgFZ4RBcbnUpyh6SXPPJBmi52irL28",
+      "first_buy_ts": 1784793390,
+      "funder": "9fU9vrRVGMwgGSJuT2b81eYAW1YoS8QtGwoNwbDEo5EE",
+      "funder_ts": 1784786293,
+      "sol": 0.05,
+      "sec_before_buy": 7097
+    },
+    {
+      "wallet": "Rfyr64EFv1FWUR8eEXbJQ9EjLfEbh8ckv328LGn3gFt",
+      "first_buy_ts": 1784793390,
+      "funder": "CDt1xQmPxkC8r4ekjnwuPeA8RNHgwZkgTo6XGNXLP9ef",
+      "funder_ts": 1784768059,
+      "sol": 0.002,
+      "sec_before_buy": 25331
+    },
+    {
+      "wallet": "DvgGZQbaPV6wT4u8w8g4A4GmsCL7gKpxCv8G6bgNX8wd",
+      "first_buy_ts": 1784793390
+    },
+    {
+      "wallet": "ET9941hoFkMK7MRJiHHgwvTLY9KxNFzkzrjTprMFueca",
+      "first_buy_ts": 1784793390
+    },
+    {
+      "wallet": "24678QKx2Dy8ZCw6Ra8o9DeTqPLL5GR9ZQKxt5FddHmq",
+      "first_buy_ts": 1784793390
+    },
+    {
+      "wallet": "83fRso6y7SnkEoqWv7fb9WQiArrRmPkMRKuZD6C8jtWa",
+      "first_buy_ts": 1784793390,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1783958285,
+      "sol": 0.0,
+      "sec_before_buy": 835105
+    },
+    {
+      "wallet": "2CQgjcdNEo7WtbQLpJTAVcC3Ga61pNvRDTgP5grzctFG",
+      "first_buy_ts": 1784793390
+    },
+    {
+      "wallet": "FghSNSK5UHuW9eVoycr1PLATN1YCkkcTdGGsWhKkLxZX",
+      "first_buy_ts": 1784793390,
+      "funder": "GpaQ1dLwrXweSrEjbTTZ3oSU1J7aEo7B9cYU2vH2Rv21",
+      "funder_ts": 1780324777,
+      "sol": 0.0,
+      "sec_before_buy": 4468613
+    },
+    {
+      "wallet": "Cv4iKTEkmjBcSTURuU2pXDca3JMcYH9EJw5DAstcqyy7",
+      "first_buy_ts": 1784793390
+    },
+    {
+      "wallet": "866SrsMfwKsErATZDCLAPbxH3NuqjKn7zQ1xXMqixoz1",
+      "first_buy_ts": 1784793390
+    }
+  ]
+}

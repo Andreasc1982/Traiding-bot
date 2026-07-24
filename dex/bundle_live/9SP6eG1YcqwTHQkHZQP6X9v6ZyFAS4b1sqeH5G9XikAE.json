@@ -1,0 +1,47 @@
+{
+  "addr": "9SP6eG1YcqwTHQkHZQP6X9v6ZyFAS4b1sqeH5G9XikAE",
+  "symbol": "Gigaroo",
+  "first_seen": "2026-07-23 02:52",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 02:53",
+  "reached_genesis": false,
+  "n_buyers": 6,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 12,
+  "insider_nets": 3,
+  "buyers": [
+    {
+      "wallet": "BJL8HaHmKWRgZXWRdEyqyQHw9vf5mLEdR3hKtDDsDD3p",
+      "first_buy_ts": 1784767410
+    },
+    {
+      "wallet": "2R2aczGpWBdi1qB6yA7aDDmZw6rjPgykeGf8uKS1r8iA",
+      "first_buy_ts": 1784767410,
+      "funder": "Habp5bncMSsBC3vkChyebepym5dcTNRYeg2LVG464E96",
+      "funder_ts": 1741642090,
+      "sol": 0.0,
+      "sec_before_buy": 43125320
+    },
+    {
+      "wallet": "7C8ph3B72P9gfVZsvYsBjqDrMbqBLGf8nDZHZiACdLXT",
+      "first_buy_ts": 1784767411
+    },
+    {
+      "wallet": "94iQuYjVgTwGXxtM7ywfpzfLvx3gN4oQRuc9osRE2pEm",
+      "first_buy_ts": 1784767411
+    },
+    {
+      "wallet": "7FqMNbijKbmhu86QG2G9m7YkqGdWdTBY8aapY5rN4guh",
+      "first_buy_ts": 1784767411
+    },
+    {
+      "wallet": "DQtHrFkcj1zLWzj9GPJ8b3seyG25PHAJeXAHNW2Te6Wh",
+      "first_buy_ts": 1784767411,
+      "funder": "Hm1STY3U83XnY47Hy3jJrvvazQLMqvFaVZMoMotKSNQi",
+      "funder_ts": 1780794411,
+      "sol": 0.002,
+      "sec_before_buy": 3973000
+    }
+  ]
+}

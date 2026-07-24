@@ -1,0 +1,67 @@
+{
+  "addr": "3gpvMLeLCzH4o44yDi6chZ2yd6f2Xhf41scjx5WNpump",
+  "symbol": "ISHI",
+  "first_seen": "2026-07-23 05:21",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 05:26",
+  "reached_genesis": true,
+  "n_buyers": 9,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 9,
+  "insider_nets": 2,
+  "buyers": [
+    {
+      "wallet": "8ik9TbDMMm7iXErRA7ohCEGf3X4KjnbBfsJiCCSCFxdX",
+      "first_buy_ts": 1784669358
+    },
+    {
+      "wallet": "6PmjWBz9a4WFF1fNxEwKcChmcpu23hcXXVh2sKu1a3HA",
+      "first_buy_ts": 1784669358
+    },
+    {
+      "wallet": "5brv79eFZ2rGprXNvqgVJBkBptkkw8GJX1XydJyZLyAr",
+      "first_buy_ts": 1784669358
+    },
+    {
+      "wallet": "2CQgjcdNEo7WtbQLpJTAVcC3Ga61pNvRDTgP5grzctFG",
+      "first_buy_ts": 1784669358
+    },
+    {
+      "wallet": "4yFAz7dp5WwuZs3vbWKedbRiUmSFxTVGCdsLAxfEQrG3",
+      "first_buy_ts": 1784669358,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1784231882,
+      "sol": 0.0,
+      "sec_before_buy": 437476
+    },
+    {
+      "wallet": "FYfSEsc5DxwKH2LbxNpWE9KiGvajN8bYVHSe1mk4oSDy",
+      "first_buy_ts": 1784669358,
+      "funder": "iGdFcQoyR2MwbXMHQskhmNsqddZ6rinsipHc4TNSdwu",
+      "funder_ts": 1769202519,
+      "sol": 2.9535,
+      "sec_before_buy": 15466839
+    },
+    {
+      "wallet": "EeW5TP8TExc8ytVCWwnmV8a5tkyFGWGK3raz54pvtSRw",
+      "first_buy_ts": 1784669358,
+      "funder": "8piwTnZMQVf4SxtpymhymHue2BP74ePnJtE6RJwWSy9a",
+      "funder_ts": 1767655389,
+      "sol": 0.0,
+      "sec_before_buy": 17013969
+    },
+    {
+      "wallet": "ZqsbMnESjhQn1fXTaXeP1pWYS7WVjGMBTJCoCbsMFEZ",
+      "first_buy_ts": 1784669358,
+      "funder": "7Wd3yTrFZQbpZzPcpz9DaSRPof2dLrnheLf4anj1Jrx5",
+      "funder_ts": 1767794293,
+      "sol": 6.4528,
+      "sec_before_buy": 16875065
+    },
+    {
+      "wallet": "iPUp3qkm39ycMGbywWFMUyvaDhiiPGXeWXaDtmHNe6C",
+      "first_buy_ts": 1784669358
+    }
+  ]
+}

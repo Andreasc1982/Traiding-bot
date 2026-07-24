@@ -1,0 +1,71 @@
+{
+  "addr": "6vq7paa8SgVMHvSvUeaoBwgdbzbhxEMc3QXRwX6vpump",
+  "symbol": "CASHRAT",
+  "first_seen": "2026-07-23 07:51",
+  "age_h_at_capture": 0.9,
+  "captured": "2026-07-23 07:52",
+  "reached_genesis": true,
+  "n_buyers": 8,
+  "n_funded": 6,
+  "max_cluster": 2,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "6hh9uNdE2idxjZ2SUit4M2z2tGKe14sNsLiN6tZNNfew",
+      "first_buy_ts": 1784782626
+    },
+    {
+      "wallet": "EzTKGvN4Jv3sFeNM4jVhZPoyP32nQtPNT9MPQTD4SxRL",
+      "first_buy_ts": 1784782626
+    },
+    {
+      "wallet": "AGGFUGfqRubTEFNPCFJQJPY7eV8vahGPJd6irtTSrugU",
+      "first_buy_ts": 1784782626,
+      "funder": "AHaqN6L3LgX6cK1o3grds7nNeFU7joJbyDyAouk8a41R",
+      "funder_ts": 1771030729,
+      "sol": 0.5,
+      "sec_before_buy": 13751897
+    },
+    {
+      "wallet": "5NDaAW36Hgefvd4SP56MVQNkqZ3oYbd6MDwyESPXjZ3B",
+      "first_buy_ts": 1784782626,
+      "funder": "68FHzrtEs6Gzbnr3xa5MYumh68K7STsUemB1Z6NWTMnQ",
+      "funder_ts": 1784769009,
+      "sol": 0.8483,
+      "sec_before_buy": 13617
+    },
+    {
+      "wallet": "7K9PUh9XjVsNvup5P7dAw5VCpx2oAcgkruiQHP8huaDK",
+      "first_buy_ts": 1784782626,
+      "funder": "is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV",
+      "funder_ts": 1784771533,
+      "sol": 2.0,
+      "sec_before_buy": 11093
+    },
+    {
+      "wallet": "22SUxkd2rAShc67aNK4RKuy8W4bD7H7JBvK3ECWdMYx5",
+      "first_buy_ts": 1784782626,
+      "funder": "egA7NVnHjjXRgCHbqGawe59ziSkRreWFa8v8LXSRTmD",
+      "funder_ts": 1783697665,
+      "sol": 1.0,
+      "sec_before_buy": 1084961
+    },
+    {
+      "wallet": "4ZtXk1FjRHHzdufddZbaGX4PVHct7VMfNgrtDgk25nwQ",
+      "first_buy_ts": 1784782626,
+      "funder": "is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV",
+      "funder_ts": 1784782095,
+      "sol": 40.0,
+      "sec_before_buy": 531
+    },
+    {
+      "wallet": "GaUYTDxSEGcXEVZdb416YwA1g1FdkBm9qp95NS5bFb2R",
+      "first_buy_ts": 1784782626,
+      "funder": "FV6cHMsmhUdWKxAytyQG1qAWzjNTmdEszsYcJSQpp2kh",
+      "funder_ts": 1784217991,
+      "sol": 3.0,
+      "sec_before_buy": 564635
+    }
+  ]
+}

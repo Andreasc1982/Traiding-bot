@@ -1,0 +1,23 @@
+{
+  "addr": "6sGzthpxkhNyp6FZMFsWwoU8tkjW5U3ZczHw8Kcupump",
+  "symbol": "COREY",
+  "first_seen": "2026-07-23 03:43",
+  "age_h_at_capture": 1.2,
+  "captured": "2026-07-23 03:46",
+  "reached_genesis": false,
+  "n_buyers": 1,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 27,
+  "insider_nets": 5,
+  "buyers": [
+    {
+      "wallet": "F4u5V1uiwEatwD2uVqyu5JM9LxdRDcpGPpcJdbNP9K7S",
+      "first_buy_ts": 1784766690,
+      "funder": "FpwQQhQQoEaVu3WU2qZMfF1hx48YyfwsLoRgXG83E99Q",
+      "funder_ts": 1736554796,
+      "sol": 0.2589,
+      "sec_before_buy": 48211894
+    }
+  ]
+}

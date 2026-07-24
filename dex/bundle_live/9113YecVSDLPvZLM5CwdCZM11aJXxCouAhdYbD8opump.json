@@ -1,0 +1,43 @@
+{
+  "addr": "9113YecVSDLPvZLM5CwdCZM11aJXxCouAhdYbD8opump",
+  "symbol": "Crane",
+  "first_seen": "2026-07-23 03:56",
+  "age_h_at_capture": 0.5,
+  "captured": "2026-07-23 03:56",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 8,
+  "insider_nets": 2,
+  "buyers": [
+    {
+      "wallet": "4fP3F8z8byXco8QYX7ykN5PDmRNYKD2hswRFuGjGyg4S",
+      "first_buy_ts": 1783358619
+    },
+    {
+      "wallet": "D1P9dPB1VLnPBMXe52hpJXgScaKjexZ3jx3KctwqHfAS",
+      "first_buy_ts": 1783358619
+    },
+    {
+      "wallet": "C5EMTGGE87SqLyuvhShLDMj2jUBwqBLJAZF6ybK8Jyqw",
+      "first_buy_ts": 1783358619
+    },
+    {
+      "wallet": "9su3UPQW3txjtKDZAkf2Kdimp5tEb9TM6hnJrGC1U7pY",
+      "first_buy_ts": 1783358619
+    },
+    {
+      "wallet": "2CQgjcdNEo7WtbQLpJTAVcC3Ga61pNvRDTgP5grzctFG",
+      "first_buy_ts": 1783358619
+    },
+    {
+      "wallet": "DqHChnrHoFYGagN6oZgqbSd4wKr9aSbBA25gTfY1fffw",
+      "first_buy_ts": 1783358619,
+      "funder": "429fEKUVSB3KscQKxeQkWxgZEEhVzUGrjWXxudvQaquU",
+      "funder_ts": 1780010376,
+      "sol": 2.0,
+      "sec_before_buy": 3348243
+    }
+  ]
+}

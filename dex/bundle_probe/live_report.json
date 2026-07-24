@@ -1,39 +1,39 @@
 {
-  "generated": "2026-07-23 01:42",
-  "n_captured": 116,
-  "n_rug": 98,
-  "n_survivor": 3,
-  "n_pending": 15,
-  "n_genesis": 86,
+  "generated": "2026-07-24 01:54",
+  "n_captured": 212,
+  "n_rug": 184,
+  "n_survivor": 8,
+  "n_pending": 20,
+  "n_genesis": 153,
   "methods": [
     {
       "name": "max_cluster \u2265 2",
-      "tp": 24,
-      "fp": 0,
-      "sep": 24
+      "tp": 40,
+      "fp": 2,
+      "sep": 38
     },
     {
       "name": "max_cluster \u2265 3",
-      "tp": 10,
-      "fp": 0,
-      "sep": 10
+      "tp": 14,
+      "fp": 2,
+      "sep": 12
     },
     {
       "name": "insider_nets \u2265 1",
-      "tp": 30,
-      "fp": 1,
-      "sep": 29
+      "tp": 60,
+      "fp": 3,
+      "sep": 57
     },
     {
       "name": "insiders \u2265 20",
-      "tp": 11,
+      "tp": 13,
       "fp": 0,
-      "sep": 11
+      "sep": 13
     }
   ],
-  "bundle_sep": 24,
-  "baseline_sep": 29,
-  "enough": false,
+  "bundle_sep": 38,
+  "baseline_sep": 57,
+  "enough": true,
   "rows": [
     {
       "symbol": "HOUSECOIN",
@@ -72,6 +72,30 @@
       "captured": "2026-07-22 14:32"
     },
     {
+      "symbol": "ROCCO",
+      "addr": "6T3JLxXT",
+      "outcome": "rug",
+      "max_cluster": 6,
+      "genesis": true,
+      "n_buyers": 7,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 18:44"
+    },
+    {
+      "symbol": "ROP",
+      "addr": "6ctwkKWs",
+      "outcome": "rug",
+      "max_cluster": 5,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 17,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 14:20"
+    },
+    {
       "symbol": "CTA",
       "addr": "fhzqAccP",
       "outcome": "rug",
@@ -82,6 +106,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 22:30"
+    },
+    {
+      "symbol": "GIGACHUD",
+      "addr": "6xVq3Nby",
+      "outcome": "rug",
+      "max_cluster": 5,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 19,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 18:57"
     },
     {
       "symbol": "Lanky",
@@ -156,6 +192,18 @@
       "captured": "2026-07-22 17:40"
     },
     {
+      "symbol": "GOATSEM",
+      "addr": "4VzF6EKX",
+      "outcome": "rug",
+      "max_cluster": 3,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 16,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 22:36"
+    },
+    {
       "symbol": "SHYFT",
       "addr": "7tnB2Dn6",
       "outcome": "rug",
@@ -166,6 +214,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 16:34"
+    },
+    {
+      "symbol": "GRAC",
+      "addr": "5B6dsHpN",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 19,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 21:29"
     },
     {
       "symbol": "SOBOT",
@@ -228,6 +288,18 @@
       "captured": "2026-07-22 22:30"
     },
     {
+      "symbol": "DRAIL",
+      "addr": "DweWj1v5",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 8,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 17:56"
+    },
+    {
       "symbol": "BullHouse",
       "addr": "D8dYdeqp",
       "outcome": "rug",
@@ -238,6 +310,42 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 11:44"
+    },
+    {
+      "symbol": "Lele",
+      "addr": "4moo1vE7",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 19,
+      "n_funded": 10,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 18:56"
+    },
+    {
+      "symbol": "BBL",
+      "addr": "AxDogUwQ",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 14,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 09:54"
+    },
+    {
+      "symbol": "Jimothy",
+      "addr": "Evx1KJ17",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 17,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 09:13"
     },
     {
       "symbol": "DOP",
@@ -252,6 +360,18 @@
       "captured": "2026-07-22 23:39"
     },
     {
+      "symbol": "CASHRAT",
+      "addr": "6vq7paa8",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 8,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 07:52"
+    },
+    {
       "symbol": "KOGA",
       "addr": "6YG3Jqkn",
       "outcome": "rug",
@@ -262,6 +382,66 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 14:05"
+    },
+    {
+      "symbol": "Bullmew",
+      "addr": "BNL2cV25",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 17,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 11:14"
+    },
+    {
+      "symbol": "FOMO",
+      "addr": "AGZp7Uvo",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": false,
+      "n_buyers": 9,
+      "n_funded": 8,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 16:40"
+    },
+    {
+      "symbol": "BECOON",
+      "addr": "6ND8GsVr",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 18,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 20:01"
+    },
+    {
+      "symbol": "CAPY",
+      "addr": "Do3WZFkV",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 8,
+      "n_funded": 3,
+      "insiders": 14,
+      "insider_nets": 1,
+      "captured": "2026-07-23 08:30"
+    },
+    {
+      "symbol": "Musk",
+      "addr": "E4WhnbNu",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": false,
+      "n_buyers": 15,
+      "n_funded": 12,
+      "insiders": 11,
+      "insider_nets": 1,
+      "captured": "2026-07-23 19:19"
     },
     {
       "symbol": "BRAC",
@@ -312,6 +492,18 @@
       "captured": "2026-07-22 06:45"
     },
     {
+      "symbol": "USWR",
+      "addr": "vTKXhkMr",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 14,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 19:30"
+    },
+    {
       "symbol": "ACTJ",
       "addr": "Eq9Dq64d",
       "outcome": "rug",
@@ -348,6 +540,30 @@
       "captured": "2026-07-22 21:32"
     },
     {
+      "symbol": "KINSJIMO",
+      "addr": "GTP5PX2p",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 12,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 07:46"
+    },
+    {
+      "symbol": "SWOLECAT",
+      "addr": "6n7RMRDh",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 16,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 07:46"
+    },
+    {
       "symbol": "ALIVE",
       "addr": "Ae1CkXFQ",
       "outcome": "rug",
@@ -372,6 +588,42 @@
       "captured": "2026-07-22 07:17"
     },
     {
+      "symbol": "DUCK",
+      "addr": "2E9ne8wv",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 5,
+      "insiders": 16,
+      "insider_nets": 4,
+      "captured": "2026-07-23 00:47"
+    },
+    {
+      "symbol": "Crane",
+      "addr": "9113YecV",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 6,
+      "n_funded": 1,
+      "insiders": 8,
+      "insider_nets": 2,
+      "captured": "2026-07-23 03:56"
+    },
+    {
+      "symbol": "DUCK",
+      "addr": "7pPLfgLw",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 6,
+      "n_funded": 2,
+      "insiders": 23,
+      "insider_nets": 5,
+      "captured": "2026-07-23 02:22"
+    },
+    {
       "symbol": "Piss",
       "addr": "91FxRsta",
       "outcome": "rug",
@@ -382,6 +634,18 @@
       "insiders": 4,
       "insider_nets": 1,
       "captured": "2026-07-22 14:22"
+    },
+    {
+      "symbol": "wifhat",
+      "addr": "CUqsXGf5",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 15,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 17:33"
     },
     {
       "symbol": "SPIDER",
@@ -408,6 +672,30 @@
       "captured": "2026-07-22 12:32"
     },
     {
+      "symbol": "DBG",
+      "addr": "Gcen2s6n",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 1,
+      "n_funded": 1,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 20:01"
+    },
+    {
+      "symbol": "TEXE",
+      "addr": "7SdsWCRw",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 13,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 17:06"
+    },
+    {
       "symbol": "Orca",
       "addr": "A4LETVGg",
       "outcome": "rug",
@@ -418,6 +706,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 16:22"
+    },
+    {
+      "symbol": "CA",
+      "addr": "HJk8C9CQ",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 10,
+      "n_funded": 8,
+      "insiders": 13,
+      "insider_nets": 3,
+      "captured": "2026-07-23 22:43"
     },
     {
       "symbol": "ROP",
@@ -456,6 +756,42 @@
       "captured": "2026-07-22 13:52"
     },
     {
+      "symbol": "GOAT",
+      "addr": "38D3bkkD",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 8,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 05:19"
+    },
+    {
+      "symbol": "finn",
+      "addr": "DpVQGZQP",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 5,
+      "n_funded": 4,
+      "insiders": 8,
+      "insider_nets": 2,
+      "captured": "2026-07-23 21:28"
+    },
+    {
+      "symbol": "Jimothy911",
+      "addr": "8nZxdpMF",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 19,
+      "n_funded": 14,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 16:50"
+    },
+    {
       "symbol": "Danko",
       "addr": "D5qVb7Af",
       "outcome": "rug",
@@ -480,6 +816,30 @@
       "captured": "2026-07-22 18:33"
     },
     {
+      "symbol": "Elonius",
+      "addr": "H2QT2dBo",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 12,
+      "n_funded": 6,
+      "insiders": 13,
+      "insider_nets": 2,
+      "captured": "2026-07-22 05:02"
+    },
+    {
+      "symbol": "BOP",
+      "addr": "Qs3Zkx6P",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 11,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 20:03"
+    },
+    {
       "symbol": "TOP",
       "addr": "3FiN2FHT",
       "outcome": "rug",
@@ -490,6 +850,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 16:56"
+    },
+    {
+      "symbol": "SEC",
+      "addr": "AsHhg6ZX",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 2,
+      "n_funded": 1,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 22:21"
     },
     {
       "symbol": "POPMOTHY",
@@ -516,6 +888,18 @@
       "captured": "2026-07-22 15:39"
     },
     {
+      "symbol": "TIMOTHY",
+      "addr": "7CsFSsX1",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 7,
+      "insiders": 8,
+      "insider_nets": 2,
+      "captured": "2026-07-23 08:41"
+    },
+    {
       "symbol": "JIMOJAK",
       "addr": "3zUqCv6r",
       "outcome": "rug",
@@ -526,6 +910,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 02:40"
+    },
+    {
+      "symbol": "jiffpom",
+      "addr": "3zK5g1qZ",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 17,
+      "n_funded": 9,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 23:28"
     },
     {
       "symbol": "DECCOON",
@@ -550,6 +946,30 @@
       "insiders": 16,
       "insider_nets": 2,
       "captured": "2026-07-22 19:00"
+    },
+    {
+      "symbol": "Glenjamin",
+      "addr": "uHN76Pav",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 6,
+      "n_funded": 2,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 10:48"
+    },
+    {
+      "symbol": "WAVE",
+      "addr": "EgoSDG6a",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 15,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 05:04"
     },
     {
       "symbol": "GUN",
@@ -624,6 +1044,18 @@
       "captured": "2026-07-22 19:36"
     },
     {
+      "symbol": "MeiMei",
+      "addr": "5JMjJ1LX",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 13,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 14:09"
+    },
+    {
       "symbol": "Kev",
       "addr": "HiCobJK3",
       "outcome": "rug",
@@ -646,6 +1078,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 12:00"
+    },
+    {
+      "symbol": "Destiny",
+      "addr": "5zqH3gpx",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 10,
+      "n_funded": 4,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 14:19"
     },
     {
       "symbol": "CashCat",
@@ -720,6 +1164,66 @@
       "captured": "2026-07-22 03:53"
     },
     {
+      "symbol": "Trudy",
+      "addr": "7ei4X5a7",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 6,
+      "insiders": 14,
+      "insider_nets": 3,
+      "captured": "2026-07-23 04:48"
+    },
+    {
+      "symbol": "cap",
+      "addr": "6pEJWtj3",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 16,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 07:04"
+    },
+    {
+      "symbol": "MAYA",
+      "addr": "GxSCeYib",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 16,
+      "n_funded": 9,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 05:46"
+    },
+    {
+      "symbol": "VIOLA",
+      "addr": "wSNtLYAE",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 14,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 15:22"
+    },
+    {
+      "symbol": "Gigaroo",
+      "addr": "9SP6eG1Y",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 6,
+      "n_funded": 2,
+      "insiders": 12,
+      "insider_nets": 3,
+      "captured": "2026-07-23 02:53"
+    },
+    {
       "symbol": "SAMECAT",
       "addr": "J95gpg99",
       "outcome": "rug",
@@ -730,6 +1234,42 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 12:38"
+    },
+    {
+      "symbol": "Gennie",
+      "addr": "HXEzw9ve",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 9,
+      "n_funded": 7,
+      "insiders": 8,
+      "insider_nets": 2,
+      "captured": "2026-07-23 06:33"
+    },
+    {
+      "symbol": "BULLMAN",
+      "addr": "7kbA4Wny",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 5,
+      "n_funded": 3,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 08:35"
+    },
+    {
+      "symbol": "HEART",
+      "addr": "DZQehws9",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 8,
+      "n_funded": 7,
+      "insiders": 12,
+      "insider_nets": 1,
+      "captured": "2026-07-23 17:44"
     },
     {
       "symbol": "JIMBERLY",
@@ -744,6 +1284,18 @@
       "captured": "2026-07-22 00:44"
     },
     {
+      "symbol": "TRASHCOIN",
+      "addr": "HQz4DSDr",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 7,
+      "n_funded": 1,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 15:48"
+    },
+    {
       "symbol": "Cowl",
       "addr": "3qc4StQh",
       "outcome": "rug",
@@ -754,6 +1306,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 13:21"
+    },
+    {
+      "symbol": "TAKEO",
+      "addr": "GiFTuLBS",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 13,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 16:57"
     },
     {
       "symbol": "Orca",
@@ -778,6 +1342,42 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 14:11"
+    },
+    {
+      "symbol": "IBRL",
+      "addr": "3tGJ5oSD",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 18,
+      "n_funded": 13,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 17:55"
+    },
+    {
+      "symbol": "Bobcat",
+      "addr": "DsuA7Grg",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 15,
+      "n_funded": 12,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 17:49"
+    },
+    {
+      "symbol": "\u65fa\u65fa",
+      "addr": "2nsXrYu8",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 19,
+      "insiders": 10,
+      "insider_nets": 2,
+      "captured": "2026-07-23 22:55"
     },
     {
       "symbol": "USOH",
@@ -828,6 +1428,18 @@
       "captured": "2026-07-22 05:38"
     },
     {
+      "symbol": "Lih",
+      "addr": "B2xetuWU",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 15:12"
+    },
+    {
       "symbol": "RACC",
       "addr": "Bb3q2gye",
       "outcome": "rug",
@@ -838,6 +1450,30 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 19:15"
+    },
+    {
+      "symbol": "frank",
+      "addr": "HtcrtXYS",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 4,
+      "n_funded": 1,
+      "insiders": 13,
+      "insider_nets": 3,
+      "captured": "2026-07-23 12:10"
+    },
+    {
+      "symbol": "TUCKER",
+      "addr": "AUk4rL7a",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 15,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 22:43"
     },
     {
       "symbol": "GokuSem",
@@ -852,6 +1488,42 @@
       "captured": "2026-07-22 00:08"
     },
     {
+      "symbol": "HONEY",
+      "addr": "9QRxnG9C",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 13,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 16:09"
+    },
+    {
+      "symbol": "ROKO",
+      "addr": "9tGLRvTT",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 10,
+      "n_funded": 8,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-22 00:14"
+    },
+    {
+      "symbol": "\u515c\u798f",
+      "addr": "GBDW5Mkc",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 11,
+      "n_funded": 3,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 19:08"
+    },
+    {
       "symbol": "HAGGIS",
       "addr": "BQ6Hi7ag",
       "outcome": "rug",
@@ -864,6 +1536,18 @@
       "captured": "2026-07-22 17:29"
     },
     {
+      "symbol": "ping",
+      "addr": "7eFMRLhW",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 11,
+      "n_funded": 5,
+      "insiders": 8,
+      "insider_nets": 2,
+      "captured": "2026-07-22 22:03"
+    },
+    {
       "symbol": "USOH",
       "addr": "fyNzBzoW",
       "outcome": "rug",
@@ -874,6 +1558,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 13:09"
+    },
+    {
+      "symbol": "UnemploJim",
+      "addr": "3pe8NChd",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 15,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 08:47"
     },
     {
       "symbol": "JIMOTHIUS",
@@ -900,6 +1596,30 @@
       "captured": "2026-07-22 00:08"
     },
     {
+      "symbol": "SHARK",
+      "addr": "3ncuf2Z4",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 19,
+      "n_funded": 3,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 21:27"
+    },
+    {
+      "symbol": "Rambo",
+      "addr": "FK9B5hUH",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 10,
+      "n_funded": 6,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 13:43"
+    },
+    {
       "symbol": "bitchwife",
       "addr": "8DLFn83W",
       "outcome": "rug",
@@ -910,6 +1630,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 05:59"
+    },
+    {
+      "symbol": "SPACEGOLD",
+      "addr": "C8uyVFj8",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 14,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 18:23"
     },
     {
       "symbol": "Fartcoon",
@@ -960,6 +1692,66 @@
       "captured": "2026-07-22 16:44"
     },
     {
+      "symbol": "short",
+      "addr": "Gw9bME9Z",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 2,
+      "n_funded": 1,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 21:40"
+    },
+    {
+      "symbol": "P&A",
+      "addr": "4dXU8ufy",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 23:34"
+    },
+    {
+      "symbol": "NAMI",
+      "addr": "6ewKfuRR",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 14,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 10:06"
+    },
+    {
+      "symbol": "Barney",
+      "addr": "GDfHju7P",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 6,
+      "n_funded": 2,
+      "insiders": 10,
+      "insider_nets": 2,
+      "captured": "2026-07-23 23:07"
+    },
+    {
+      "symbol": "GRAFFITI",
+      "addr": "6ZHHmRpE",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 18,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 08:09"
+    },
+    {
       "symbol": "Cuda",
       "addr": "Ar3vVpZt",
       "outcome": "rug",
@@ -984,6 +1776,30 @@
       "captured": "2026-07-22 17:08"
     },
     {
+      "symbol": "DRILLCAT",
+      "addr": "3LAmxkAZ",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 12,
+      "n_funded": 9,
+      "insiders": 5,
+      "insider_nets": 1,
+      "captured": "2026-07-24 01:13"
+    },
+    {
+      "symbol": "Lilly",
+      "addr": "7dCekbBT",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 10,
+      "n_funded": 4,
+      "insiders": 8,
+      "insider_nets": 1,
+      "captured": "2026-07-23 10:42"
+    },
+    {
       "symbol": "USOH",
       "addr": "iqreaEE3",
       "outcome": "rug",
@@ -1006,6 +1822,30 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 00:55"
+    },
+    {
+      "symbol": "ROP",
+      "addr": "BfPxiUJw",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 8,
+      "n_funded": 5,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-24 00:46"
+    },
+    {
+      "symbol": "TRUMP2",
+      "addr": "GGsN6iHY",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 18,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 06:22"
     },
     {
       "symbol": "PSYOPDOG",
@@ -1044,6 +1884,18 @@
       "captured": "2026-07-22 12:44"
     },
     {
+      "symbol": "Kermit",
+      "addr": "71PGedbf",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 11,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 18:24"
+    },
+    {
       "symbol": "GOONMA",
       "addr": "55TLkaCj",
       "outcome": "rug",
@@ -1054,6 +1906,42 @@
       "insiders": 5,
       "insider_nets": 1,
       "captured": "2026-07-23 00:25"
+    },
+    {
+      "symbol": "COW",
+      "addr": "6NvK4f38",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 15,
+      "n_funded": 9,
+      "insiders": 16,
+      "insider_nets": 3,
+      "captured": "2026-07-23 21:35"
+    },
+    {
+      "symbol": "GME",
+      "addr": "BahBSeX5",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 6,
+      "n_funded": 4,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 08:19"
+    },
+    {
+      "symbol": "NOBIKO",
+      "addr": "C8mV6Dgc",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 17,
+      "n_funded": 8,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 18:12"
     },
     {
       "symbol": "AFTER",
@@ -1068,6 +1956,18 @@
       "captured": "2026-07-22 01:51"
     },
     {
+      "symbol": "$CHONK",
+      "addr": "CqETdhQj",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 7,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 20:22"
+    },
+    {
       "symbol": "Virehn",
       "addr": "FwqvEcME",
       "outcome": "rug",
@@ -1078,6 +1978,30 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 08:01"
+    },
+    {
+      "symbol": "ISHI",
+      "addr": "3gpvMLeL",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 9,
+      "n_funded": 4,
+      "insiders": 9,
+      "insider_nets": 2,
+      "captured": "2026-07-23 05:26"
+    },
+    {
+      "symbol": "CHIMP",
+      "addr": "LjooxmEz",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 4,
+      "n_funded": 3,
+      "insiders": 6,
+      "insider_nets": 1,
+      "captured": "2026-07-24 00:31"
     },
     {
       "symbol": "USOH",
@@ -1116,6 +2040,42 @@
       "captured": "2026-07-22 00:01"
     },
     {
+      "symbol": "GOAT",
+      "addr": "Abtqxwyd",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 4,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 05:20"
+    },
+    {
+      "symbol": "GME",
+      "addr": "FfsprXbe",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 15,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 12:05"
+    },
+    {
+      "symbol": "LEND",
+      "addr": "MTdS9DHG",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 8,
+      "n_funded": 2,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 20:37"
+    },
+    {
       "symbol": "Jimberly",
       "addr": "JAF9prun",
       "outcome": "rug",
@@ -1140,6 +2100,18 @@
       "captured": "2026-07-22 16:28"
     },
     {
+      "symbol": "SHITTER",
+      "addr": "HavLUoxj",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 6,
+      "n_funded": 3,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 10:42"
+    },
+    {
       "symbol": "WOLF",
       "addr": "3pL8S3uu",
       "outcome": "rug",
@@ -1150,6 +2122,18 @@
       "insiders": 4,
       "insider_nets": 1,
       "captured": "2026-07-22 18:07"
+    },
+    {
+      "symbol": "SUNCOON",
+      "addr": "u5FmqbZ2",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 20,
+      "n_funded": 4,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 03:35"
     },
     {
       "symbol": "Meowpin",
@@ -1176,6 +2160,18 @@
       "captured": "2026-07-22 05:13"
     },
     {
+      "symbol": "REKT",
+      "addr": "EX15x3F5",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 4,
+      "n_funded": 3,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 17:06"
+    },
+    {
       "symbol": "MOGE",
       "addr": "qzEh3fo2",
       "outcome": "rug",
@@ -1186,6 +2182,42 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 07:24"
+    },
+    {
+      "symbol": "COREY",
+      "addr": "6sGzthpx",
+      "outcome": "rug",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 1,
+      "n_funded": 1,
+      "insiders": 27,
+      "insider_nets": 5,
+      "captured": "2026-07-23 03:46"
+    },
+    {
+      "symbol": "psyopcat",
+      "addr": "8JjeSHi4",
+      "outcome": "rug",
+      "max_cluster": 0,
+      "genesis": false,
+      "n_buyers": 0,
+      "n_funded": 0,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-22 00:08"
+    },
+    {
+      "symbol": "DOP",
+      "addr": "CJ9bGgfw",
+      "outcome": "rug",
+      "max_cluster": 0,
+      "genesis": true,
+      "n_buyers": 1,
+      "n_funded": 0,
+      "insiders": 12,
+      "insider_nets": 1,
+      "captured": "2026-07-23 07:57"
     },
     {
       "symbol": "Li",
@@ -1212,6 +2244,30 @@
       "captured": "2026-07-22 11:38"
     },
     {
+      "symbol": "fomo",
+      "addr": "3VK1F5r5",
+      "outcome": "survivor",
+      "max_cluster": 4,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 15,
+      "insiders": 12,
+      "insider_nets": 2,
+      "captured": "2026-07-22 10:31"
+    },
+    {
+      "symbol": "EVE",
+      "addr": "BQYc6c5h",
+      "outcome": "survivor",
+      "max_cluster": 3,
+      "genesis": true,
+      "n_buyers": 18,
+      "n_funded": 16,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 00:31"
+    },
+    {
       "symbol": "ANSEMOTHY",
       "addr": "cdxxwBUA",
       "outcome": "survivor",
@@ -1224,117 +2280,9 @@
       "captured": "2026-07-21 23:47"
     },
     {
-      "symbol": "ROKO",
-      "addr": "9tGLRvTT",
-      "outcome": "survivor",
-      "max_cluster": 1,
-      "genesis": true,
-      "n_buyers": 10,
-      "n_funded": 8,
-      "insiders": 4,
-      "insider_nets": 1,
-      "captured": "2026-07-22 00:14"
-    },
-    {
-      "symbol": "psyopcat",
-      "addr": "8JjeSHi4",
-      "outcome": "survivor",
-      "max_cluster": 0,
-      "genesis": false,
-      "n_buyers": 0,
-      "n_funded": 0,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-22 00:08"
-    },
-    {
-      "symbol": "fomo",
-      "addr": "3VK1F5r5",
-      "outcome": "pending",
-      "max_cluster": 4,
-      "genesis": true,
-      "n_buyers": 20,
-      "n_funded": 15,
-      "insiders": 12,
-      "insider_nets": 2,
-      "captured": "2026-07-22 10:31"
-    },
-    {
-      "symbol": "EVE",
-      "addr": "BQYc6c5h",
-      "outcome": "pending",
-      "max_cluster": 3,
-      "genesis": true,
-      "n_buyers": 18,
-      "n_funded": 16,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-23 00:31"
-    },
-    {
-      "symbol": "GOATSEM",
-      "addr": "4VzF6EKX",
-      "outcome": "pending",
-      "max_cluster": 3,
-      "genesis": true,
-      "n_buyers": 20,
-      "n_funded": 16,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-22 22:36"
-    },
-    {
-      "symbol": "DUCK",
-      "addr": "2E9ne8wv",
-      "outcome": "pending",
-      "max_cluster": 1,
-      "genesis": false,
-      "n_buyers": 7,
-      "n_funded": 5,
-      "insiders": 16,
-      "insider_nets": 4,
-      "captured": "2026-07-23 00:47"
-    },
-    {
-      "symbol": "Jimothy911",
-      "addr": "8nZxdpMF",
-      "outcome": "pending",
-      "max_cluster": 1,
-      "genesis": false,
-      "n_buyers": 19,
-      "n_funded": 14,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-22 16:50"
-    },
-    {
-      "symbol": "Elonius",
-      "addr": "H2QT2dBo",
-      "outcome": "pending",
-      "max_cluster": 1,
-      "genesis": false,
-      "n_buyers": 12,
-      "n_funded": 6,
-      "insiders": 13,
-      "insider_nets": 2,
-      "captured": "2026-07-22 05:02"
-    },
-    {
-      "symbol": "BOP",
-      "addr": "Qs3Zkx6P",
-      "outcome": "pending",
-      "max_cluster": 1,
-      "genesis": true,
-      "n_buyers": 20,
-      "n_funded": 11,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-22 20:03"
-    },
-    {
       "symbol": "SAMECAT",
       "addr": "beXjn8Eg",
-      "outcome": "pending",
+      "outcome": "survivor",
       "max_cluster": 1,
       "genesis": true,
       "n_buyers": 17,
@@ -1344,21 +2292,9 @@
       "captured": "2026-07-22 15:41"
     },
     {
-      "symbol": "TAKEO",
-      "addr": "GiFTuLBS",
-      "outcome": "pending",
-      "max_cluster": 1,
-      "genesis": true,
-      "n_buyers": 20,
-      "n_funded": 13,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-22 16:57"
-    },
-    {
       "symbol": "BOUNCE",
       "addr": "4cpHamPv",
-      "outcome": "pending",
+      "outcome": "survivor",
       "max_cluster": 1,
       "genesis": false,
       "n_buyers": 2,
@@ -1368,33 +2304,9 @@
       "captured": "2026-07-22 20:08"
     },
     {
-      "symbol": "ping",
-      "addr": "7eFMRLhW",
-      "outcome": "pending",
-      "max_cluster": 1,
-      "genesis": true,
-      "n_buyers": 11,
-      "n_funded": 5,
-      "insiders": 8,
-      "insider_nets": 2,
-      "captured": "2026-07-22 22:03"
-    },
-    {
-      "symbol": "SHARK",
-      "addr": "3ncuf2Z4",
-      "outcome": "pending",
-      "max_cluster": 1,
-      "genesis": true,
-      "n_buyers": 19,
-      "n_funded": 3,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-22 21:27"
-    },
-    {
       "symbol": "SOUNDSBIG",
       "addr": "KkMMW7qa",
-      "outcome": "pending",
+      "outcome": "survivor",
       "max_cluster": 1,
       "genesis": true,
       "n_buyers": 16,
@@ -1406,7 +2318,7 @@
     {
       "symbol": "BOP",
       "addr": "B62soche",
-      "outcome": "pending",
+      "outcome": "survivor",
       "max_cluster": 1,
       "genesis": false,
       "n_buyers": 4,
@@ -1418,7 +2330,7 @@
     {
       "symbol": "normoids",
       "addr": "57HrLUAX",
-      "outcome": "pending",
+      "outcome": "survivor",
       "max_cluster": 0,
       "genesis": false,
       "n_buyers": 2,
@@ -1426,6 +2338,246 @@
       "insiders": 4,
       "insider_nets": 1,
       "captured": "2026-07-22 23:19"
+    },
+    {
+      "symbol": "RDLN",
+      "addr": "HzdLSN25",
+      "outcome": "pending",
+      "max_cluster": 5,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 17,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 23:02"
+    },
+    {
+      "symbol": "UNCLEAR",
+      "addr": "qXjNksWU",
+      "outcome": "pending",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 16,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 18:50"
+    },
+    {
+      "symbol": "MATH",
+      "addr": "5pVQnFwV",
+      "outcome": "pending",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 9,
+      "n_funded": 5,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 12:11"
+    },
+    {
+      "symbol": "fefer",
+      "addr": "13Uhk4Fk",
+      "outcome": "pending",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 10:00"
+    },
+    {
+      "symbol": "longy",
+      "addr": "AkrALZfC",
+      "outcome": "pending",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 4,
+      "n_funded": 4,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 22:49"
+    },
+    {
+      "symbol": "Stork",
+      "addr": "Bm4Czuq3",
+      "outcome": "pending",
+      "max_cluster": 2,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 6,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 03:24"
+    },
+    {
+      "symbol": "PUFFLING",
+      "addr": "EoqY8P2g",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 19,
+      "n_funded": 11,
+      "insiders": 8,
+      "insider_nets": 2,
+      "captured": "2026-07-24 01:49"
+    },
+    {
+      "symbol": "BUNKEE",
+      "addr": "23LGuH8W",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 1,
+      "n_funded": 1,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-24 01:28"
+    },
+    {
+      "symbol": "FROST",
+      "addr": "FNS1uTEX",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 11,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 22:37"
+    },
+    {
+      "symbol": "Kyle",
+      "addr": "qnPzgfxz",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 18,
+      "n_funded": 8,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 12:27"
+    },
+    {
+      "symbol": "SUITCAT",
+      "addr": "Du9Gtdce",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 7,
+      "n_funded": 5,
+      "insiders": 12,
+      "insider_nets": 3,
+      "captured": "2026-07-24 01:07"
+    },
+    {
+      "symbol": "bitcat",
+      "addr": "EP8QJoR6",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 3,
+      "n_funded": 2,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 03:24"
+    },
+    {
+      "symbol": "RACHUA",
+      "addr": "BSXiu8in",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 17,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 22:56"
+    },
+    {
+      "symbol": "DESTINY",
+      "addr": "SMTBQpPy",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 11,
+      "n_funded": 6,
+      "insiders": 5,
+      "insider_nets": 1,
+      "captured": "2026-07-23 23:50"
+    },
+    {
+      "symbol": "HONEY",
+      "addr": "F5d1jdoN",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 6,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 15:48"
+    },
+    {
+      "symbol": "CCAT",
+      "addr": "GsRDb9do",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": true,
+      "n_buyers": 5,
+      "n_funded": 4,
+      "insiders": 695,
+      "insider_nets": 9,
+      "captured": "2026-07-23 17:27"
+    },
+    {
+      "symbol": "TIT",
+      "addr": "5xhJC2F2",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 4,
+      "n_funded": 2,
+      "insiders": 22,
+      "insider_nets": 4,
+      "captured": "2026-07-23 23:29"
+    },
+    {
+      "symbol": "looong",
+      "addr": "AkchGAUd",
+      "outcome": "pending",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 1,
+      "insiders": 4,
+      "insider_nets": 1,
+      "captured": "2026-07-23 18:57"
+    },
+    {
+      "symbol": "Syrax",
+      "addr": "GD8cdLqU",
+      "outcome": "pending",
+      "max_cluster": 0,
+      "genesis": true,
+      "n_buyers": 2,
+      "n_funded": 0,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 09:33"
+    },
+    {
+      "symbol": "INFINITY",
+      "addr": "3pz7Xrps",
+      "outcome": "pending",
+      "max_cluster": 0,
+      "genesis": false,
+      "n_buyers": 12,
+      "n_funded": 0,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-23 22:01"
     }
   ]
 }

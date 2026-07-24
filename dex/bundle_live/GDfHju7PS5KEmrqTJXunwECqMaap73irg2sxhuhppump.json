@@ -1,0 +1,47 @@
+{
+  "addr": "GDfHju7PS5KEmrqTJXunwECqMaap73irg2sxhuhppump",
+  "symbol": "Barney",
+  "first_seen": "2026-07-23 23:04",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 23:07",
+  "reached_genesis": false,
+  "n_buyers": 6,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 10,
+  "insider_nets": 2,
+  "buyers": [
+    {
+      "wallet": "4XBqViD1XYF1qHrErrsXBzDrCapvP9fEFX4LPjXZi9YU",
+      "first_buy_ts": 1784840529
+    },
+    {
+      "wallet": "4CAQCoovpeMRWfCzXvN7bsFKeDYfJ6o9TdgBrmEQinUF",
+      "first_buy_ts": 1784840529
+    },
+    {
+      "wallet": "Fk3LqCC65NEsk2CvrKBBN8KChbcnZ1bXc7aGYH5geK4m",
+      "first_buy_ts": 1784840529
+    },
+    {
+      "wallet": "freeupq4fM9nSdZ5Q52AjSUp5NQ1UXC3y3y9rZVEByC",
+      "first_buy_ts": 1784840529
+    },
+    {
+      "wallet": "AQ3MK4mf4i4r3G9rkbAvfoxGP6eZ7yscuiy5Syyuq27U",
+      "first_buy_ts": 1784840529,
+      "funder": "AQ3MK4mf4i4r3G9rkbAvfoxGP6eZ7yscuiy5Syyuq27U",
+      "funder_ts": 1784800723,
+      "sol": 0.001,
+      "sec_before_buy": 39806
+    },
+    {
+      "wallet": "kEFiAX3jo5NmemysQov342TZ9mGh6yp92GDRjhA8XDf",
+      "first_buy_ts": 1784840529,
+      "funder": "B2dPU9oHqPwhRz4ayMbMWR8DpupAkBYQSKDdbgYpRjGn",
+      "funder_ts": 1784821903,
+      "sol": 1.78,
+      "sec_before_buy": 18626
+    }
+  ]
+}

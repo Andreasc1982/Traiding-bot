@@ -1,0 +1,23 @@
+{
+  "addr": "23LGuH8WeZYVXRUSvqHcxzAZpSZT1PzTG8yYJfXPpump",
+  "symbol": "BUNKEE",
+  "first_seen": "2026-07-24 01:28",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 01:28",
+  "reached_genesis": true,
+  "n_buyers": 1,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "2n3TGQyYGd4dTTTsj6cS9c4rjWtA6tvCcPZ4fLSS85bm",
+      "first_buy_ts": 1784835080,
+      "funder": "Adfbx1HXV4Uq1EG6C1ebLnXBj3W1h5AmVvMD2ULTh4Sz",
+      "funder_ts": 1784787529,
+      "sol": 0.09,
+      "sec_before_buy": 47551
+    }
+  ]
+}

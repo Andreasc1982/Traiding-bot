@@ -1,0 +1,51 @@
+{
+  "addr": "HavLUoxjtfkjBMC6ueBx6ebYX5gf66tMpqZkMQUXpump",
+  "symbol": "SHITTER",
+  "first_seen": "2026-07-23 10:40",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 10:42",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "3ffu3rp7qiQb7JwDXyESGFfwRsUAviuSpXm3UGDtNi5T",
+      "first_buy_ts": 1784794932
+    },
+    {
+      "wallet": "2CQgjcdNEo7WtbQLpJTAVcC3Ga61pNvRDTgP5grzctFG",
+      "first_buy_ts": 1784794932
+    },
+    {
+      "wallet": "93mxcTuBPydKn44XKReEWeSyeKE667uNBTPCpiCSuQDL",
+      "first_buy_ts": 1784794932,
+      "funder": "B48kNVXs4YK4amkBCH2XokQiv1SeiVQGHDR17xDeKAAn",
+      "funder_ts": 1782189112,
+      "sol": 2.4654,
+      "sec_before_buy": 2605820
+    },
+    {
+      "wallet": "AB44Hf91c4cPuWxxXZqt2m9PbmASHxnhFAMF7U7scJBc",
+      "first_buy_ts": 1784794932,
+      "funder": "iGdFcQoyR2MwbXMHQskhmNsqddZ6rinsipHc4TNSdwu",
+      "funder_ts": 1782188038,
+      "sol": 2.4351,
+      "sec_before_buy": 2606894
+    },
+    {
+      "wallet": "GE9GKumLsbqwNCjtXGWZgLBEd5APU4icgzc5mmQXiFA",
+      "first_buy_ts": 1784794932,
+      "funder": "2QViEk39SNYcNB3a7JHADD7LH3NNbLhNFohvL9Rgtcjg",
+      "funder_ts": 1778213360,
+      "sol": 18.4808,
+      "sec_before_buy": 6581572
+    },
+    {
+      "wallet": "3NXfA5d5xFes6DDiXuoQLJfx4EfJQPqTGexpABcpyB5K",
+      "first_buy_ts": 1784794932
+    }
+  ]
+}

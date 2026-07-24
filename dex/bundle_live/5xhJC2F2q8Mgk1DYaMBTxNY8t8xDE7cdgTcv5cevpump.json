@@ -1,0 +1,39 @@
+{
+  "addr": "5xhJC2F2q8Mgk1DYaMBTxNY8t8xDE7cdgTcv5cevpump",
+  "symbol": "TIT",
+  "first_seen": "2026-07-23 23:25",
+  "age_h_at_capture": 1.8,
+  "captured": "2026-07-23 23:29",
+  "reached_genesis": false,
+  "n_buyers": 4,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 22,
+  "insider_nets": 4,
+  "buyers": [
+    {
+      "wallet": "ARu4n5mFdZogZAravu7CcizaojWnS6oqka37gdLT5SZn",
+      "first_buy_ts": 1784836283
+    },
+    {
+      "wallet": "AV4XkoLRRc1JpsPnLG9gej8UqaeLRbA6n17Vwpohi625",
+      "first_buy_ts": 1784836283
+    },
+    {
+      "wallet": "4h48C5NoLFVD44VtBbCwtggFRH7vmCKxAsTCgo6o13WN",
+      "first_buy_ts": 1784836285,
+      "funder": "AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51",
+      "funder_ts": 1781805364,
+      "sol": 0.01,
+      "sec_before_buy": 3030921
+    },
+    {
+      "wallet": "BLUEZYapTJn89Rq5Mb48gD6XdT2ZJtDMw9iXBeNq8ntx",
+      "first_buy_ts": 1784836286,
+      "funder": "8ZRrYbpXWHsPLVFRcjMwtEKDWdDSTec7oTnWAu1AFoWu",
+      "funder_ts": 1784626713,
+      "sol": 0.3358,
+      "sec_before_buy": 209573
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "addr": "Do3WZFkVpJ5PHnVBF3oP7ckAZCbtQJXBe6U3gUQapump",
+  "symbol": "CAPY",
+  "first_seen": "2026-07-23 08:27",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 08:30",
+  "reached_genesis": true,
+  "n_buyers": 8,
+  "n_funded": 3,
+  "max_cluster": 2,
+  "insiders": 14,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "Rfyr64EFv1FWUR8eEXbJQ9EjLfEbh8ckv328LGn3gFt",
+      "first_buy_ts": 1784785318
+    },
+    {
+      "wallet": "FDKdqQc5YfCNM3Y1VFwrc7NjY3SjKvn4dnyJv363yarJ",
+      "first_buy_ts": 1784785318
+    },
+    {
+      "wallet": "9su3UPQW3txjtKDZAkf2Kdimp5tEb9TM6hnJrGC1U7pY",
+      "first_buy_ts": 1784785318,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1784049356,
+      "sol": 0.0,
+      "sec_before_buy": 735962
+    },
+    {
+      "wallet": "timeworn2X1EwMLSzeVhdVTbVSzSCKuibKd2kQ2Lsyn",
+      "first_buy_ts": 1784785318
+    },
+    {
+      "wallet": "DsU5Up8wYJ7skNfxxv5NDZ2iGgwJxUZbgwPs7TvqS53m",
+      "first_buy_ts": 1784785318,
+      "funder": "iGdFcQoyR2MwbXMHQskhmNsqddZ6rinsipHc4TNSdwu",
+      "funder_ts": 1777019223,
+      "sol": 0.9622,
+      "sec_before_buy": 7766095
+    },
+    {
+      "wallet": "24678QKx2Dy8ZCw6Ra8o9DeTqPLL5GR9ZQKxt5FddHmq",
+      "first_buy_ts": 1784785318
+    },
+    {
+      "wallet": "DSmkz9ztNRJGjqWMB3zmxR6bTg1y42AvSZciWj3f74Ut",
+      "first_buy_ts": 1784785318
+    },
+    {
+      "wallet": "6cDWypTeYxfdKmZuZKvAzMuYSB34FVzCv3BaoyCHtFtF",
+      "first_buy_ts": 1784785318,
+      "funder": "iGdFcQoyR2MwbXMHQskhmNsqddZ6rinsipHc4TNSdwu",
+      "funder_ts": 1780863340,
+      "sol": 0.9845,
+      "sec_before_buy": 3921978
+    }
+  ]
+}

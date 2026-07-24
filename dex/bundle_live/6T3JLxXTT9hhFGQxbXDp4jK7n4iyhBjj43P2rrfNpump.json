@@ -1,0 +1,71 @@
+{
+  "addr": "6T3JLxXTT9hhFGQxbXDp4jK7n4iyhBjj43P2rrfNpump",
+  "symbol": "ROCCO",
+  "first_seen": "2026-07-23 18:43",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-23 18:44",
+  "reached_genesis": true,
+  "n_buyers": 7,
+  "n_funded": 7,
+  "max_cluster": 6,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "DbPz7E3ENwBWDU8Ex5yZg8C9v4UYkXrAc9hLw3H1qP4H",
+      "first_buy_ts": 1784823261,
+      "funder": "9cfooeDTnh7Q8aVZ86uZEQTtqEtx3V2d41gqxzciH7G9",
+      "funder_ts": 1773094989,
+      "sol": 0.0,
+      "sec_before_buy": 11728272
+    },
+    {
+      "wallet": "5gSM85UBnM7CkSj914qJQ6UXLvnNPmxDhvXLGwuJkn4b",
+      "first_buy_ts": 1784823261,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784712145,
+      "sol": 3.0,
+      "sec_before_buy": 111116
+    },
+    {
+      "wallet": "HhUQG61ybH6Gr23Sfw8PhKXDVWBrwAXBx96zkNCNo21W",
+      "first_buy_ts": 1784823261,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784807992,
+      "sol": 8.0,
+      "sec_before_buy": 15269
+    },
+    {
+      "wallet": "9k2NqoTQkusRoiXe1v8wdNgHQrR3apknB2Sgbpit7NVN",
+      "first_buy_ts": 1784823261,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784822260,
+      "sol": 0.449,
+      "sec_before_buy": 1001
+    },
+    {
+      "wallet": "8cK14tHPNDG5s6pnidrbZuLkRxaCJKWnMbS8Uyd292xS",
+      "first_buy_ts": 1784823261,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784617642,
+      "sol": 2.099,
+      "sec_before_buy": 205619
+    },
+    {
+      "wallet": "46wrMpaWKt9rhaZ16VB9eHHJgcJcCY84CZn5vBAwvqGM",
+      "first_buy_ts": 1784823261,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784822527,
+      "sol": 34.999,
+      "sec_before_buy": 734
+    },
+    {
+      "wallet": "FUE7sHmy55nVPj3kDYxwg21qbFdnY1jRiitWHEe42wKv",
+      "first_buy_ts": 1784823262,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1778938954,
+      "sol": 3.455,
+      "sec_before_buy": 5884308
+    }
+  ]
+}

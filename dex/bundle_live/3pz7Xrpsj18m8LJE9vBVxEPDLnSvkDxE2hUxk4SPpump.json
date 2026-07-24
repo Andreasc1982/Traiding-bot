@@ -1,0 +1,63 @@
+{
+  "addr": "3pz7Xrpsj18m8LJE9vBVxEPDLnSvkDxE2hUxk4SPpump",
+  "symbol": "INFINITY",
+  "first_seen": "2026-07-23 21:56",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-23 22:01",
+  "reached_genesis": false,
+  "n_buyers": 12,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "FyoE7aufG5L1RD1YzGVnCBVp5WfXfYW5Yq29bvKC2RoE",
+      "first_buy_ts": 1784836525
+    },
+    {
+      "wallet": "Ec6xP7iJcHqyjqW6KXfXZBDsx9mYMssdhEb1A1Rm7fWY",
+      "first_buy_ts": 1784836525
+    },
+    {
+      "wallet": "2F3sLFxgMRFGSn6DnDT41icCWLVjpx7dfQWaKe1tJjq7",
+      "first_buy_ts": 1784836526
+    },
+    {
+      "wallet": "GzxiLAxcwNVZHJmHiYNQp8zfz5KnaVmYGmYGzoyaTJ39",
+      "first_buy_ts": 1784836526
+    },
+    {
+      "wallet": "6FBwaGr5wJhfjg77hmetnK9pcq3uNvuteWtUig4z1Z9S",
+      "first_buy_ts": 1784836526
+    },
+    {
+      "wallet": "36VPhH9pmDww2GbS99pD3rcSRsczE5Ta67zaW2C3ERc2",
+      "first_buy_ts": 1784836526
+    },
+    {
+      "wallet": "BwHgwLoq2eYGS78KMGFCH2fcPxZ3faTsWP18LakL45Ns",
+      "first_buy_ts": 1784836526
+    },
+    {
+      "wallet": "9ARSB1hDtFeqT8YVNFzLWX2pCpBh8yx3T2P7vGhtRVXP",
+      "first_buy_ts": 1784836527
+    },
+    {
+      "wallet": "Au5wreW1QcvnWSnRmnYBi3hCNAFxnYom14mwmfxVAJVY",
+      "first_buy_ts": 1784836527
+    },
+    {
+      "wallet": "3rAsF3s4o2xTLhE4thd5URoLuZvCMXxV8EBxXrGroPbN",
+      "first_buy_ts": 1784836527
+    },
+    {
+      "wallet": "FhRDb3Gmw5xm8z3KgHaa3KtHQKayYBwkSX37AVG7igJK",
+      "first_buy_ts": 1784836527
+    },
+    {
+      "wallet": "7ivZzBMEAbuYhkucWg2wg68W71pqp6N24UxUf55eKfoE",
+      "first_buy_ts": 1784836527
+    }
+  ]
+}

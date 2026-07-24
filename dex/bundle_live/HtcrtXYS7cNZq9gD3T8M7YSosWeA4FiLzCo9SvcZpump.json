@@ -1,0 +1,35 @@
+{
+  "addr": "HtcrtXYS7cNZq9gD3T8M7YSosWeA4FiLzCo9SvcZpump",
+  "symbol": "frank",
+  "first_seen": "2026-07-23 12:06",
+  "age_h_at_capture": 0.9,
+  "captured": "2026-07-23 12:10",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 13,
+  "insider_nets": 3,
+  "buyers": [
+    {
+      "wallet": "3pk5yRhwwFdvDBrBuuC5CRorVafHG2EQmzNEYy8Ny2K6",
+      "first_buy_ts": 1784797776
+    },
+    {
+      "wallet": "rzyTyP3gNnAwmkutS1FY7Wv2RdSFzZi5BbzmU4Cw73t",
+      "first_buy_ts": 1784797776,
+      "funder": "6ujZxnphRxTqveaQtLAQHFoWz16xhLWZbTijcgZN4fRp",
+      "funder_ts": 1782517433,
+      "sol": 31.6977,
+      "sec_before_buy": 2280343
+    },
+    {
+      "wallet": "6ujZxnphRxTqveaQtLAQHFoWz16xhLWZbTijcgZN4fRp",
+      "first_buy_ts": 1784797776
+    },
+    {
+      "wallet": "8Lmwp2vdzM4uqGchu548yXKrGdK36Z6pYLPV82CQEgXY",
+      "first_buy_ts": 1784797777
+    }
+  ]
+}
