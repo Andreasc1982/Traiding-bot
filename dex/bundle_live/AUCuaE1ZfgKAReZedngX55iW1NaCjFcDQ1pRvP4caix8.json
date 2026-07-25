@@ -1,0 +1,59 @@
+{
+  "addr": "AUCuaE1ZfgKAReZedngX55iW1NaCjFcDQ1pRvP4caix8",
+  "symbol": "LePhilly",
+  "first_seen": "2026-07-24 18:40",
+  "age_h_at_capture": 1.0,
+  "captured": "2026-07-24 18:44",
+  "reached_genesis": false,
+  "n_buyers": 6,
+  "n_funded": 5,
+  "max_cluster": 1,
+  "insiders": 8,
+  "insider_nets": 2,
+  "buyers": [
+    {
+      "wallet": "69FiNrwsRH37HRyYXB47sTzZLM3im8ospDCch4tvsiXG",
+      "first_buy_ts": 1784911157,
+      "funder": "3ATLJrjc2B7L7Ph6s8bL9mX9Un89g1RXkMEL7zzrTyxc",
+      "funder_ts": 1784902196,
+      "sol": 0.0312,
+      "sec_before_buy": 8961
+    },
+    {
+      "wallet": "J1PbmLiqccyxdCyGzeGRm9Gnc4ypnaB3xqKvXbV31j4s",
+      "first_buy_ts": 1784911157,
+      "funder": "AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51",
+      "funder_ts": 1784747739,
+      "sol": 0.01,
+      "sec_before_buy": 163418
+    },
+    {
+      "wallet": "5qRDAQKNaMfKDLRTbEvXXLAtR3LV3anH9Zx8TPRXdEKM",
+      "first_buy_ts": 1784911157
+    },
+    {
+      "wallet": "BcqTX23dPkooBZGXF5hWf2p5yke9oYt65qoayHqNwU1X",
+      "first_buy_ts": 1784911158,
+      "funder": "Hm1L7kH2DimtZFKY5WfmWR56RneKyiorVq8t7Yef7Uaw",
+      "funder_ts": 1784911082,
+      "sol": 4.0624,
+      "sec_before_buy": 76
+    },
+    {
+      "wallet": "HmnoD2K1A4J6g8cYPuo3pZoMzx96qRqvxCJmfL26Airx",
+      "first_buy_ts": 1784911158,
+      "funder": "3iH38Nwns38SvfE4cLZo1uH4cLFZS5XvLFxbNXpsn3eu",
+      "funder_ts": 1784025602,
+      "sol": 3.9525,
+      "sec_before_buy": 885556
+    },
+    {
+      "wallet": "DTLx5aPi5mRcf2Wi2u1HuJrwJ7D7CdW9ckMfZkxuwWP6",
+      "first_buy_ts": 1784911158,
+      "funder": "CVsaobrcR3cu7aRUoDhWJtZSXPCdHkNXGF5Knw4YbAvy",
+      "funder_ts": 1772206395,
+      "sol": 0.002,
+      "sec_before_buy": 12704763
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "addr": "CWT9WK9DC7ex3jZ2CVcHmj9fCUHTghi5YkhDHbCSpump",
+  "symbol": "Friendship",
+  "first_seen": "2026-07-24 16:15",
+  "age_h_at_capture": 1.0,
+  "captured": "2026-07-24 16:17",
+  "reached_genesis": false,
+  "n_buyers": 4,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "B8qYogDN13v64vdu4W9C52gjz1KUkKrhUhsihRd9KFCZ",
+      "first_buy_ts": 1784899243
+    },
+    {
+      "wallet": "2DhTajCDwp3rTc4HgXnZVRrSXZsMHE2jUFTXMustHPSY",
+      "first_buy_ts": 1784899243,
+      "funder": "GRJ3kF74W4byFRd1BrNLunq18xgL7bXjdzCQMoWk47wT",
+      "funder_ts": 1781607978,
+      "sol": 0.2614,
+      "sec_before_buy": 3291265
+    },
+    {
+      "wallet": "J8C2BcYzV1cCWqqfTrzsTmkLBs9c6DSNnzCKN36eNcij",
+      "first_buy_ts": 1784899244,
+      "funder": "5F1seMKUqSNhv45f6FhB2cFmgJbk8U1avJw7M6TexUq1",
+      "funder_ts": 1783184174,
+      "sol": 0.674,
+      "sec_before_buy": 1715070
+    },
+    {
+      "wallet": "6aa89USZ9fwM1xAqgwh1kb7pnsuh58ohzBxBnJVtfokZ",
+      "first_buy_ts": 1784899244,
+      "funder": "7WsWx2NFv3Y11LNLu2sXwyr39gRboBtc9tzpWhnCweYv",
+      "funder_ts": 1784886411,
+      "sol": 0.0134,
+      "sec_before_buy": 12833
+    }
+  ]
+}

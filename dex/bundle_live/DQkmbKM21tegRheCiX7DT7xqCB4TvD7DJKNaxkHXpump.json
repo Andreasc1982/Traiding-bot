@@ -1,0 +1,55 @@
+{
+  "addr": "DQkmbKM21tegRheCiX7DT7xqCB4TvD7DJKNaxkHXpump",
+  "symbol": "Squeaky",
+  "first_seen": "2026-07-24 19:21",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 19:22",
+  "reached_genesis": true,
+  "n_buyers": 5,
+  "n_funded": 5,
+  "max_cluster": 2,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "EgrEtV8nqx3Xj4nXNaKJSdRkzD84tAt7KP9bkXXV4bhS",
+      "first_buy_ts": 1784912462,
+      "funder": "9aqSKP5brKyMYQjE9UJwtriyT1HwgzTYvmnvnwDRoTJg",
+      "funder_ts": 1770925555,
+      "sol": 4.0,
+      "sec_before_buy": 13986907
+    },
+    {
+      "wallet": "DUQ56Ux6XLs5wsYtAXanPhPvomWHNGfQ2ngeLrTyzfqf",
+      "first_buy_ts": 1784912462,
+      "funder": "HtyDTfRDPZVsXkVZFx8nJHAQpgy1P4uxEtArBQZS3nYM",
+      "funder_ts": 1774199499,
+      "sol": 0.0,
+      "sec_before_buy": 10712963
+    },
+    {
+      "wallet": "9srzbVHMnpCW2iVkCoQpMtiroF7FPJkgyF5aYFq9dxZj",
+      "first_buy_ts": 1784912462,
+      "funder": "HtyDTfRDPZVsXkVZFx8nJHAQpgy1P4uxEtArBQZS3nYM",
+      "funder_ts": 1774488524,
+      "sol": 0.0,
+      "sec_before_buy": 10423938
+    },
+    {
+      "wallet": "3m1qH5NwpT9vTRf9XdcNrXhSehjQzbbQfS1tkLozdyxY",
+      "first_buy_ts": 1784912462,
+      "funder": "AFXigaYuRKYmvd9HZQCobtZ98FNAwnwpsnjvJRztUGb6",
+      "funder_ts": 1774310716,
+      "sol": 0.0,
+      "sec_before_buy": 10601746
+    },
+    {
+      "wallet": "HZ31eb27ix1AZ6dqQTQ6iJdPayn6HP4GR25hhWy8Pidz",
+      "first_buy_ts": 1784912462,
+      "funder": "ARaAHqYuw9E2LijRqfEmdETUbj2S3hny9kuskkgJAxoW",
+      "funder_ts": 1783311432,
+      "sol": 0.0779,
+      "sec_before_buy": 1601030
+    }
+  ]
+}

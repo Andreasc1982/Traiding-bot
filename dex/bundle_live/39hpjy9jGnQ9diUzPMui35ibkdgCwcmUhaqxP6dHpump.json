@@ -1,0 +1,63 @@
+{
+  "addr": "39hpjy9jGnQ9diUzPMui35ibkdgCwcmUhaqxP6dHpump",
+  "symbol": "FRANCOIS",
+  "first_seen": "2026-07-24 07:08",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 07:12",
+  "reached_genesis": false,
+  "n_buyers": 8,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "2tcghisXQNiK7wyLCviAD4B9LYbbWo5nZdppRG2uWyon",
+      "first_buy_ts": 1784869027,
+      "funder": "HV3SmgcbaXiaQDxENns3LhA5eHiaS2P7eKFU5nxtWfgi",
+      "funder_ts": 1784864228,
+      "sol": 0.0021,
+      "sec_before_buy": 4799
+    },
+    {
+      "wallet": "6WJfN1fqrEEMSVKnzZkR4vJTMTxBaqvka2KA7aQHJMfF",
+      "first_buy_ts": 1784869027
+    },
+    {
+      "wallet": "EqQDzDTHbViDYu9Xzcxyqgo4AHqbZY3YuVFa8fmN3CQ3",
+      "first_buy_ts": 1784869027
+    },
+    {
+      "wallet": "ErmtXEBHWVVxDdGxBg5qFxgRXfsWYZHfatuwbh9GEdXA",
+      "first_buy_ts": 1784869027
+    },
+    {
+      "wallet": "gWTmSBYYJhDf8kM9CKdej7pL96Jjq7rhTiBd6pyv2Yb",
+      "first_buy_ts": 1784869027
+    },
+    {
+      "wallet": "FoDtXWikLJVhHJbrt7oP7r4tUtUc7QQqHMxr3daTcqzC",
+      "first_buy_ts": 1784869028,
+      "funder": "C8xDgW99BkrpwxN4zM4tAEJQ4WCNChMkFy5bF2ZzRKqj",
+      "funder_ts": 1783655954,
+      "sol": 0.02,
+      "sec_before_buy": 1213074
+    },
+    {
+      "wallet": "5sA8BBkoafdjHcX5PQd7y88ZgcqRBugi6bXLSMeRjNfg",
+      "first_buy_ts": 1784869028,
+      "funder": "J7r9YcSuq7dVP1CKxy6q6py9vSGrserMrNDPLq8TwRLn",
+      "funder_ts": 1777714933,
+      "sol": 0.4487,
+      "sec_before_buy": 7154095
+    },
+    {
+      "wallet": "95WryEL6ty192XT5qNqvwQFDDpi4gRhpyPNwZqaVsrZ8",
+      "first_buy_ts": 1784869028,
+      "funder": "CtpPdgxAeFstgXzJTac3NELCpanc4JjZMnWYVTz7sKaW",
+      "funder_ts": 1783213042,
+      "sol": 0.02,
+      "sec_before_buy": 1655986
+    }
+  ]
+}

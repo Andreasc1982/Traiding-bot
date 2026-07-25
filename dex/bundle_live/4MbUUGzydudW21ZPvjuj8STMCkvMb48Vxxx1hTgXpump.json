@@ -1,0 +1,43 @@
+{
+  "addr": "4MbUUGzydudW21ZPvjuj8STMCkvMb48Vxxx1hTgXpump",
+  "symbol": "tutu",
+  "first_seen": "2026-07-24 11:18",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 11:20",
+  "reached_genesis": false,
+  "n_buyers": 4,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "GLcMwbENErqNexkMqMQBmQPUgUEBdoMeVeghtGCyjGGG",
+      "first_buy_ts": 1784884513,
+      "funder": "fr6yQkDmWy6R6pecbUsxXaw6EvRJznZ2HsK5frQgud8",
+      "funder_ts": 1784120545,
+      "sol": 0.3194,
+      "sec_before_buy": 763968
+    },
+    {
+      "wallet": "AgEFgNCffN1d31NtoCvoEC87vGmDK6dvx6ZU9xofTLBp",
+      "first_buy_ts": 1784884513
+    },
+    {
+      "wallet": "J2NASYzwyNXiwmfk3gqQJrwd9UyxYBRGMi7y7W2iFPf4",
+      "first_buy_ts": 1784884513,
+      "funder": "EAPJ7P9Zz4DQC7WWpiZMTai18uEoC2u1BU1tEnsS9N9Q",
+      "funder_ts": 1784804239,
+      "sol": 0.0,
+      "sec_before_buy": 80274
+    },
+    {
+      "wallet": "8y82j1uwLjRmfJGthcUsqmpn4KGShPex3NujgQHBQ3Mv",
+      "first_buy_ts": 1784884513,
+      "funder": "CzzVUNZEqtBmAjWuMSj9v4eJR95JtjueRrcNakotZ89S",
+      "funder_ts": 1784555740,
+      "sol": 0.0547,
+      "sec_before_buy": 328773
+    }
+  ]
+}

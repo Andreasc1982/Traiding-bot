@@ -1,0 +1,39 @@
+{
+  "addr": "7W2qhTPr3dzK7fVwWkqkSt3ZRjtLjjimrDikpz37pump",
+  "symbol": "Lambocheesi",
+  "first_seen": "2026-07-24 04:58",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 05:02",
+  "reached_genesis": true,
+  "n_buyers": 3,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "9aTVpm4nqSRvt9z11CEUQ7EjpZZ6S3PHCy5t7sAsu1o9",
+      "first_buy_ts": 1784846139,
+      "funder": "5s9rZj7VKVzvjsAT6oot9PhLXWqQTUngCQzEwXPQgTWt",
+      "funder_ts": 1771962728,
+      "sol": 0.2641,
+      "sec_before_buy": 12883411
+    },
+    {
+      "wallet": "A1VtyWpvCc4928qLwtwu1BPnvaSvGac2z6S8f7WKFMEw",
+      "first_buy_ts": 1784846139,
+      "funder": "2fCwoMkN2JJxpR7WsvGPTtX8vKJMbpqJ1tST7JDzQUcB",
+      "funder_ts": 1771890771,
+      "sol": 0.4657,
+      "sec_before_buy": 12955368
+    },
+    {
+      "wallet": "5X1FBr1SSzJak6eRTLz9bEwuJVWaBE6b8ULhwCnqSfxH",
+      "first_buy_ts": 1784846139,
+      "funder": "9ekwHBLK4cSyw3NZZsvPSHGpbiT3aeePsJBGJwyAA6Md",
+      "funder_ts": 1784716217,
+      "sol": 4.0821,
+      "sec_before_buy": 129922
+    }
+  ]
+}

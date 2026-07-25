@@ -180,16 +180,6 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u clone.py A_baseline > /tmp/clone_A_baseline.log 2>&1"
         ),
     },
-    "clone_F_contrarian_vix28": {
-        "name":         "Clone F (deep-fear contrarian)",
-        "session":      "clone_F_contrarian_vix28",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py F_contrarian_vix28 > /tmp/clone_F.log 2>&1"
-        ),
-    },
     "clone_G_core": {
         "name":         "Clone G (mid-cap core)",
         "session":      "clone_G_core",
@@ -200,24 +190,24 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u clone.py G_core > /tmp/clone_G_core.log 2>&1"
         ),
     },
-    "clone_H_contra_refined": {
-        "name":         "Clone H (refined contrarian)",
-        "session":      "clone_H_contra_refined",
+    "clone_G_mexc": {
+        "name":         "Clone G_mexc (Core auf MEXC ask/bid)",
+        "session":      "clone_G_mexc",
         "trading_only": False,
         "cmd": (
             "cd /home/trading2025/trading_bot/crypto && "
             "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py H_contra_refined > /tmp/clone_H_contra_refined.log 2>&1"
+            "PYTHONUNBUFFERED=1 python3 -u clone.py G_mexc > /tmp/clone_G_mexc.log 2>&1"
         ),
     },
-    "clone_G_big": {
-        "name":         "Clone G_big (2x Einsatz)",
-        "session":      "clone_G_big",
+    "clone_I_wide": {
+        "name":         "Clone I (MEXC + weites Universum)",
+        "session":      "clone_I_wide",
         "trading_only": False,
         "cmd": (
             "cd /home/trading2025/trading_bot/crypto && "
             "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py G_big > /tmp/clone_G_big.log 2>&1"
+            "PYTHONUNBUFFERED=1 python3 -u clone.py I_wide > /tmp/clone_I_wide.log 2>&1"
         ),
     },
     "clones_dashboard": {
@@ -228,8 +218,8 @@ BOTS = {
             "fuser -k 8090/tcp 2>/dev/null; sleep 1; "
             "cd /home/trading2025/trading_bot/crypto/clones && "
             "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
-            "A_baseline_dashboard.json F_contrarian_vix28_dashboard.json "
-            "G_core_dashboard.json H_contra_refined_dashboard.json G_big_dashboard.json "
+            "A_baseline_dashboard.json G_core_dashboard.json "
+            "G_mexc_dashboard.json I_wide_dashboard.json "
             "> /tmp/clones_dashboard.log 2>&1"
         ),
     },
@@ -313,6 +303,7 @@ SEC_ALERT_COOLDOWN = 1800                            # 30 min between repeated s
 # -- Telegram -----------------------------------------------------------------
 
 def tg(msg):
+    msg = "🖥️ MONITOR · " + msg          # Sender-Signatur vor jeder Monitor-Meldung
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("[TG] " + msg)
         return

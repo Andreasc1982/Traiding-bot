@@ -584,9 +584,9 @@ def score():
 
 # ── STUFE 5: Live-Auswertung (vom Collector gesammelte Captures) ─────────────
 def analyze_live():
-    """Joint die Live-Captures (bundle_live/) gegen die Outcomes (screening_log-Trajektorie)
-    und misst, ob max_cluster (Bundle-Proxy) Rugs von Survivors trennt — auf SAUBEREN,
-    unverzerrten Daten (am echten Launch erfasst). Schreibt live_report.json fuers Dashboard."""
+    """Joint die Live-Captures (bundle_live/) gegen die Outcomes (screening_log-Trajektorie).
+    RATEN-basiert (Rug-Feuerrate minus Survivor-Feuerrate in %-Pkt) — fair trotz Klassen-Unwucht.
+    Plus Schwellen-Sensitivitaet (Survivor-Alter 24/12/6h). Schreibt live_report.json."""
     import csv
     caps = {}
     if os.path.isdir(BUNDLE_LIVE):
@@ -622,61 +622,96 @@ def analyze_live():
                 if "graveyard_vanished" in r[12]: s["vanished"] = True
 
     now = datetime.now()
-    rows = []
+    base = []                                               # je Capture: Signale + Trajektorie + Alter
     for a, g in caps.items():
         s = st.get(a, {})
-        outcome = "pending"
-        if s.get("vanished") or (s.get("last_liq", 1e9) < RUG_LIQ and s.get("peak", 0) >= 8000):
-            outcome = "rug"
-        elif s.get("last_liq", 0) >= SURVIVE_LIQ:
-            try:
-                fs = datetime.strptime(g.get("first_seen", ""), "%Y-%m-%d %H:%M")
-                if (now - fs).total_seconds() / 3600 >= LIVE_SURVIVOR_AGE_H:
-                    outcome = "survivor"
-            except Exception:
-                pass
-        rows.append({"symbol": g.get("symbol", "?"), "addr": a[:8], "outcome": outcome,
+        try:
+            fs = datetime.strptime(g.get("first_seen", ""), "%Y-%m-%d %H:%M")
+            age_h = (now - fs).total_seconds() / 3600
+        except Exception:
+            age_h = None
+        base.append({"symbol": g.get("symbol", "?"), "addr": a[:8],
                      "max_cluster": g.get("max_cluster", 0), "genesis": g.get("reached_genesis"),
                      "n_buyers": g.get("n_buyers"), "n_funded": g.get("n_funded"),
                      "insiders": g.get("insiders"), "insider_nets": g.get("insider_nets"),
-                     "captured": g.get("captured")})
+                     "captured": g.get("captured"),
+                     "_van": s.get("vanished", False), "_last": s.get("last_liq"),
+                     "_peak": s.get("peak", 0), "_age": age_h})
 
-    rug = [r for r in rows if r["outcome"] == "rug"]
-    srv = [r for r in rows if r["outcome"] == "survivor"]
+    def outcome(r, surv_h):
+        if r["_van"] or (r["_last"] is not None and r["_last"] < RUG_LIQ and r["_peak"] >= 8000):
+            return "rug"
+        if r["_last"] is not None and r["_last"] >= SURVIVE_LIQ and r["_age"] is not None and r["_age"] >= surv_h:
+            return "survivor"
+        return "pending"
 
-    def method(name, key, thr):
-        tp = sum(1 for r in rug if (r[key] or 0) >= thr)
-        fp = sum(1 for r in srv if (r[key] or 0) >= thr)
-        return {"name": name, "tp": tp, "fp": fp, "sep": tp - fp}
+    def methods_at(surv_h):
+        rug = [r for r in base if outcome(r, surv_h) == "rug"]
+        srv = [r for r in base if outcome(r, surv_h) == "survivor"]
 
-    methods = [method("max_cluster ≥ 2", "max_cluster", 2), method("max_cluster ≥ 3", "max_cluster", 3),
-               method("insider_nets ≥ 1", "insider_nets", 1), method("insiders ≥ 20", "insiders", 20)]
-    bundle_sep = max((m["sep"] for m in methods[:2]), default=0)
-    base_sep = max((m["sep"] for m in methods[2:]), default=0)
+        def m(name, key, thr):
+            tp = sum(1 for r in rug if (r[key] or 0) >= thr)
+            fp = sum(1 for r in srv if (r[key] or 0) >= thr)
+            rr = tp / len(rug) if rug else 0
+            sr = fp / len(srv) if srv else 0
+            return {"name": name, "tp": tp, "fp": fp,
+                    "rug_rate": round(rr * 100), "surv_rate": round(sr * 100),
+                    "sep": round((rr - sr) * 100)}          # Raten-Differenz in %-Pkt
+        ms = [m("max_cluster ≥ 2", "max_cluster", 2), m("max_cluster ≥ 3", "max_cluster", 3),
+              m("insider_nets ≥ 1", "insider_nets", 1), m("insiders ≥ 20", "insiders", 20)]
+        return rug, srv, ms
 
-    report = {"generated": now.strftime("%Y-%m-%d %H:%M"),
-              "n_captured": len(rows), "n_rug": len(rug), "n_survivor": len(srv),
-              "n_pending": len(rows) - len(rug) - len(srv),
-              "n_genesis": sum(1 for r in rows if r["genesis"]),
+    PRIMARY = LIVE_SURVIVOR_AGE_H
+    rug, srv, methods = methods_at(PRIMARY)
+    bundle_sep = max((x["sep"] for x in methods[:2]), default=0)
+    base_sep = max((x["sep"] for x in methods[2:]), default=0)
+
+    sensitivity = []                                        # Survivor-Alter lockern -> mehr Survivors?
+    for th in (24, 12, 6):
+        r2, s2, ms2 = methods_at(th)
+        sensitivity.append({"h": th, "n_rug": len(r2), "n_survivor": len(s2),
+                            "bundle_sep": max((x["sep"] for x in ms2[:2]), default=0),
+                            "baseline_sep": max((x["sep"] for x in ms2[2:]), default=0)})
+
+    rows = []
+    for r in base:
+        oc = outcome(r, PRIMARY)
+        rows.append({"symbol": r["symbol"], "addr": r["addr"], "outcome": oc,
+                     "max_cluster": r["max_cluster"], "genesis": r["genesis"],
+                     "n_buyers": r["n_buyers"], "n_funded": r["n_funded"],
+                     "insiders": r["insiders"], "insider_nets": r["insider_nets"],
+                     "captured": r["captured"]})
+    # Survivors zuerst (selten/wichtig), dann Rugs nach Bundle-Cluster, dann pending; fuers Dashboard kappen
+    rows.sort(key=lambda r: ({"survivor": 0, "rug": 1, "pending": 2}[r["outcome"]], -(r["max_cluster"] or 0)))
+    rows = rows[:60]
+
+    report = {"generated": now.strftime("%Y-%m-%d %H:%M"), "survivor_age_h": PRIMARY,
+              "n_captured": len(base), "n_rug": len(rug), "n_survivor": len(srv),
+              "n_pending": len(base) - len(rug) - len(srv),
+              "n_genesis": sum(1 for r in base if r["genesis"]),
               "methods": methods, "bundle_sep": bundle_sep, "baseline_sep": base_sep,
               "enough": bool(len(rug) >= 8 and len(srv) >= 8),
-              "rows": sorted(rows, key=lambda r: ({"rug": 0, "survivor": 1, "pending": 2}[r["outcome"]],
-                                                  -(r["max_cluster"] or 0)))}
+              "sensitivity": sensitivity, "rows": rows}
     os.makedirs(PROBE_DIR, exist_ok=True)
     _atomic_write(LIVE_REPORT, report)
 
     print("=" * 66)
-    print("  LIVE-SAMMLUNG — Bundle-Proxy (max_cluster) auf sauberen Daten")
+    print("  LIVE-SAMMLUNG — RATEN-basiert (Rug-Rate minus Survivor-Rate, %-Pkt)")
     print("  %d erfasst | %d Rug / %d Survivor / %d pending | genesis %d"
-          % (len(rows), len(rug), len(srv), report["n_pending"], report["n_genesis"]))
+          % (len(base), len(rug), len(srv), report["n_pending"], report["n_genesis"]))
     print("=" * 66)
-    for m in methods:
-        print("  %-18s Rug %2d | Survivor-Fehlalarm %2d | Trennung %+d" % (m["name"], m["tp"], m["fp"], m["sep"]))
+    for x in methods:
+        print("  %-18s feuert Rug %2d%% / Survivor %2d%% -> Trennung %+d%%-Pkt"
+              % (x["name"], x["rug_rate"], x["surv_rate"], x["sep"]))
+    print("  Schwellen-Sensitivitaet (Survivor-Alter):")
+    for sv in sensitivity:
+        print("    >=%2dh: %3d Rug / %2d Survivor | Bundle %+d vs Baseline %+d"
+              % (sv["h"], sv["n_rug"], sv["n_survivor"], sv["bundle_sep"], sv["baseline_sep"]))
     if report["enough"]:
-        print("\n  -> max_cluster-Trennung %+d vs. beste Baseline %+d -> Bundle-Signal %s"
-              % (bundle_sep, base_sep, "traegt" if bundle_sep > base_sep else "traegt NICHT besser als die Zaehlung"))
+        v = "traegt besser" if (bundle_sep > base_sep and bundle_sep > 0) else "traegt NICHT"
+        print("  -> Bundle %+d vs Baseline %+d (%%-Pkt) -> Bundle-Signal %s" % (bundle_sep, base_sep, v))
     else:
-        print("\n  -> noch zu wenig aufgeloest (brauche >=8 Rug UND >=8 Survivor). Weiter sammeln.")
+        print("  -> noch zu wenig aufgeloest (>=8 Rug UND >=8 Survivor).")
     print("  -> live_report.json aktualisiert (Dashboard).")
     return report
 

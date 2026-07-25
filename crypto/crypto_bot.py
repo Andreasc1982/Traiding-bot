@@ -196,7 +196,7 @@ class CryptoBot:
         # Spike trading (gedrosselt 2026-06-10: 31% Win-Rate bei 266 Spikes)
         self.spike_size      = 0.04    # 4% of balance per spike trade
         self.spike_threshold = 20.0    # Volumen-Schwelle (war 10.0 -- Overtrading)
-        self.spike_max_day   = 3       # max Spike-Trades pro Tag
+        self.spike_max_day   = 0       # 0 = Spikes AUS (24.07: auch gedrosselt 40 Trades/-28$, 29x TIME-EXIT verpufft)
         self.spike_cooldown  = 7200    # 2h Sperre pro Symbol nach Spike
         self._spike_count      = 0
         self._spike_count_date = ""
@@ -490,6 +490,7 @@ class CryptoBot:
     def send(self, msg):
         if not (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
             return
+        msg = "💰 CRYPTO · " + msg          # Bot-Label vor jeder Nachricht (Buy/Sell/Alert)
         url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
         try:
             r = requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg,
@@ -2309,6 +2310,13 @@ class CryptoBot:
                 regime, threshold, size_mult = "TRANSITIONAL", 0.60, 0.6
             else:
                 regime, threshold, size_mult = "RANGING",      0.45, 0.4
+
+            # ── Fear-Gate (24.07): bei F&G<30 nur Top-Signale kaufen (Schwelle 75%).
+            # 15 Tage Fear-Markt: 34 harte Stops -187$ — die marginalen Entries bluten.
+            fg_now = (self.last_fg or {}).get("value", 50)
+            if fg_now < 30 and threshold < 0.75:
+                regime += "+FEAR"
+                threshold = 0.75
 
             # ── BTC Realized Volatility Regime — multiplied on top of ADX ─────
             vol_regime, vol_mult = self._get_vol_regime()

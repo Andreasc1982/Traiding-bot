@@ -1,0 +1,14 @@
+{
+  "addr": "9jzqkPV6P74XAfsQmWHmszi3CFm8ohPd8M7zCvX9pump",
+  "symbol": "Smudge",
+  "first_seen": "2026-07-24 10:04",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 10:08",
+  "reached_genesis": false,
+  "n_buyers": 0,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": []
+}

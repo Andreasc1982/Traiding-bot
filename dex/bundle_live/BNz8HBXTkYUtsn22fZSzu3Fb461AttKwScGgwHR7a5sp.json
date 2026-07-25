@@ -1,0 +1,31 @@
+{
+  "addr": "BNz8HBXTkYUtsn22fZSzu3Fb461AttKwScGgwHR7a5sp",
+  "symbol": "MAYBE",
+  "first_seen": "2026-07-24 04:37",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-24 04:41",
+  "reached_genesis": true,
+  "n_buyers": 2,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "HvT6hKMsGyyCipi1xS2w3HL9T6C7vAiMjgn4diBDgLhJ",
+      "first_buy_ts": 1784857417,
+      "funder": "EWWme3CVj1nUQ5nv6XfdBiuUTFoxSwMdJnRaGUus7EmH",
+      "funder_ts": 1766761640,
+      "sol": 0.0,
+      "sec_before_buy": 18095777
+    },
+    {
+      "wallet": "6akhpK39Q8NzHkoS1NEvz1vjDUfhVrtveyr2ePhGyUJC",
+      "first_buy_ts": 1784857417,
+      "funder": "HvT6hKMsGyyCipi1xS2w3HL9T6C7vAiMjgn4diBDgLhJ",
+      "funder_ts": 1768401745,
+      "sol": 10.0,
+      "sec_before_buy": 16455672
+    }
+  ]
+}

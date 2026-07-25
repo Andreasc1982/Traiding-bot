@@ -1,0 +1,47 @@
+{
+  "addr": "42dkTUTBz2BEJQeicTUkRTRod33D8yv7yWXiwwAopump",
+  "symbol": "RACCMOJI",
+  "first_seen": "2026-07-24 11:40",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 11:42",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 4,
+  "max_cluster": 2,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "8ghjQMiLZL2S9JpoThrfzzDQbs7RjeyW7Ya6NGDcbNYE",
+      "first_buy_ts": 1784884591,
+      "funder": "92HKnrGqHHuRFvVJ5q9ctL1QE5ydNJKJ4FaTC78U6L8K",
+      "funder_ts": 1784817560,
+      "sol": 1.3615,
+      "sec_before_buy": 67031
+    },
+    {
+      "wallet": "AF8wKeqfPRwv9uoW3KPmwPSUhZGqdWUUFXnMRoqinFYj",
+      "first_buy_ts": 1784884591,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784848167,
+      "sol": 0.459,
+      "sec_before_buy": 36424
+    },
+    {
+      "wallet": "EPnMoZ5itMkW184ZhGQ6j7xhmrX2L855R16h7KJSTxjo",
+      "first_buy_ts": 1784884591,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784848536,
+      "sol": 34.999,
+      "sec_before_buy": 36055
+    },
+    {
+      "wallet": "zYYPWD31Tv47t5jLzKNtWCjNm37BxWe8AsNs4odZ11W",
+      "first_buy_ts": 1784884594,
+      "funder": "iGdFcQoyR2MwbXMHQskhmNsqddZ6rinsipHc4TNSdwu",
+      "funder_ts": 1773528754,
+      "sol": 1.0,
+      "sec_before_buy": 11355840
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "addr": "BR8ihLAW4fuRHAjqKvGzacGk2nzNyRmU4REUeHXzZGHC",
+  "symbol": "LeRacist",
+  "first_seen": "2026-07-24 23:37",
+  "age_h_at_capture": 1.7,
+  "captured": "2026-07-24 23:40",
+  "reached_genesis": false,
+  "n_buyers": 2,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "DuPvRDSXLLYv58HRaxNwsSUuTGSsMPiZFTwhEes3EeLD",
+      "first_buy_ts": 1784923032
+    },
+    {
+      "wallet": "6TbDFs2dkHETrRWVbheiC11bwg7EWLDgszsCADF1ML1b",
+      "first_buy_ts": 1784923032,
+      "funder": "4aiZSNZUwqdYo59mrMo4VrjfcV11VVUNEb7zJnWwzUfN",
+      "funder_ts": 1783436991,
+      "sol": 6.6831,
+      "sec_before_buy": 1486041
+    }
+  ]
+}

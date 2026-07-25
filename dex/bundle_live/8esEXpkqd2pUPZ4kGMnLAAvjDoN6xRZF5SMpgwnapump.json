@@ -1,0 +1,55 @@
+{
+  "addr": "8esEXpkqd2pUPZ4kGMnLAAvjDoN6xRZF5SMpgwnapump",
+  "symbol": "BIRB",
+  "first_seen": "2026-07-24 20:53",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 20:56",
+  "reached_genesis": false,
+  "n_buyers": 6,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "5BTLeRN6fyR6r1F7jrB4zkHFePTBL5nUnnmBCKmk1ZBh",
+      "first_buy_ts": 1784919072
+    },
+    {
+      "wallet": "ARu4n5mFdZogZAravu7CcizaojWnS6oqka37gdLT5SZn",
+      "first_buy_ts": 1784919073,
+      "funder": "A6RjHxZgp8D4nBvoqqss3iQRoA7pazBAxVjWMfVYvwub",
+      "funder_ts": 1784918906,
+      "sol": 0.0,
+      "sec_before_buy": 167
+    },
+    {
+      "wallet": "9q4vf4uZRgjiFYiP8FF9mzLsi5JH7bisHU5WbstydaGF",
+      "first_buy_ts": 1784919073,
+      "funder": "C3NzctQXsPFjGr5B8wK5ATsKfLt2gfc9vcU4TjjgGfLx",
+      "funder_ts": 1784911693,
+      "sol": 3.9759,
+      "sec_before_buy": 7380
+    },
+    {
+      "wallet": "8psNvWTrdNTiVRNzAgsou9kETXNJm2SXZyaKuJraVRtf",
+      "first_buy_ts": 1784919074
+    },
+    {
+      "wallet": "CcJeeQdMTRpvQSXLVh2d4rGwBhFQ6K79ecxvFfcNXm9o",
+      "first_buy_ts": 1784919074,
+      "funder": "G2kcUg1uCYPBjoqNre3nvFC2oGrTbPVLcmzoCyNto8BR",
+      "funder_ts": 1784253477,
+      "sol": 1.3167,
+      "sec_before_buy": 665597
+    },
+    {
+      "wallet": "4HC1x5MjdpHd7kkG7KWKEaP4ZEowaiKMLXYhyHygxXkB",
+      "first_buy_ts": 1784919075,
+      "funder": "fr6yQkDmWy6R6pecbUsxXaw6EvRJznZ2HsK5frQgud8",
+      "funder_ts": 1770871152,
+      "sol": 1.226,
+      "sec_before_buy": 14047923
+    }
+  ]
+}

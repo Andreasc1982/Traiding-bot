@@ -1,0 +1,14 @@
+{
+  "addr": "H2PojEWHhRB8Y56PR8kGqvUxGaM9ZSwJAxHDBW6opump",
+  "symbol": "Solamal",
+  "first_seen": "2026-07-24 07:45",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 07:49",
+  "reached_genesis": false,
+  "n_buyers": 0,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": []
+}

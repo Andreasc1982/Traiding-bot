@@ -74,6 +74,7 @@ BOT_CMD = {
 }
 
 def tg(msg):
+    msg = "🛡️ RISK · " + msg          # Sender-Signatur vor jeder Risk-Meldung
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("[TG] " + msg); return
     try:

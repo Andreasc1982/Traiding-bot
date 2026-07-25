@@ -1,0 +1,31 @@
+{
+  "addr": "HqCqddd3PXXRTVaF89wk2QB7LvdKftiUqHDpGbV3pump",
+  "symbol": "ChooChoo",
+  "first_seen": "2026-07-24 08:00",
+  "age_h_at_capture": 1.9,
+  "captured": "2026-07-24 08:01",
+  "reached_genesis": true,
+  "n_buyers": 2,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "FAgFBbcPtsTJ3VodUfyQqTT15TncSpAcifSemCadr2V3",
+      "first_buy_ts": 1784862620,
+      "funder": "41ECUqmyEURR8RbMB5MhBQE1DYjAhrRX8xTNfyrd2UMn",
+      "funder_ts": 1775845814,
+      "sol": 0.5,
+      "sec_before_buy": 9016806
+    },
+    {
+      "wallet": "ToikNWRGSaTJAnRjYRLd5HaHwr6xxtFb7L8sPpmETMr",
+      "first_buy_ts": 1784862620,
+      "funder": "FLipgewPwNeqvwPFW3CvMTLpHTvuX7BQoXC6xhrWiCR3",
+      "funder_ts": 1759745721,
+      "sol": 0.0,
+      "sec_before_buy": 25116899
+    }
+  ]
+}

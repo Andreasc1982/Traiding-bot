@@ -1,0 +1,43 @@
+{
+  "addr": "F9XEfXHPbbi5QEjhG5C6hXwgUN99vSJASFehKdPjpump",
+  "symbol": "LARP",
+  "first_seen": "2026-07-24 18:44",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 18:49",
+  "reached_genesis": false,
+  "n_buyers": 4,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "Zj2QmGpx3t2RfHnktccXNyUA5GhM766ffz8EbdwHivv",
+      "first_buy_ts": 1784911233,
+      "funder": "ELvGrzC4VkBeagEfLN9gJFaVFjX6fahd8g3aLa7K6N3H",
+      "funder_ts": 1783747138,
+      "sol": 0.0954,
+      "sec_before_buy": 1164095
+    },
+    {
+      "wallet": "FmkSmSTEJf2f975f7v4pJf1DPXQxTX1kRrP8hzb4TVM7",
+      "first_buy_ts": 1784911233
+    },
+    {
+      "wallet": "Ag99GrGZLPdT9ZAw1pRQXvsar16XYN7tKKVcuAPREQe2",
+      "first_buy_ts": 1784911234,
+      "funder": "4MbvP5Woj5KRt2hn5Edf3ENBmQ8ms6A9urYgzsxMG9tN",
+      "funder_ts": 1781503693,
+      "sol": 0.002,
+      "sec_before_buy": 3407541
+    },
+    {
+      "wallet": "Bm4nAPWxeo8XpTwXgAEtAtDR73PWRbCftDjD5dVJwYwP",
+      "first_buy_ts": 1784911235,
+      "funder": "92k8Xovy5L6gGZUzFC2QUxX7sACr27jH5j89BCm2dNfy",
+      "funder_ts": 1783869691,
+      "sol": 0.0654,
+      "sec_before_buy": 1041544
+    }
+  ]
+}

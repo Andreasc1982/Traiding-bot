@@ -1,0 +1,47 @@
+{
+  "addr": "DKtVJrje2QZhJjr8mqTzcYsRMuf4wGHHAaA2e7DbLagi",
+  "symbol": "AGI",
+  "first_seen": "2026-07-24 22:58",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 23:01",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "vkr18Lcd1hUiWH7yv8YhEgjXvdPS5g5KVkTmSAkbG6p",
+      "first_buy_ts": 1784920581,
+      "funder": "DzxvMNoFfKvkwzcKyM7TmDA3xfpEfjuETYqVNbNbrNyt",
+      "funder_ts": 1782421626,
+      "sol": 0.002,
+      "sec_before_buy": 2498955
+    },
+    {
+      "wallet": "6nZn126w8Qd8mjiRNfWnA4nMUYvkfAnoCwKGd8Qtkwgj",
+      "first_buy_ts": 1784920584
+    },
+    {
+      "wallet": "6pZ84BcZtuR2rfNU7rJvjCTehrPY5pQVM42DPPu51HHX",
+      "first_buy_ts": 1784920584,
+      "funder": "AxiomRXZAq1Jgjj9pHmNqVP7Lhu67wLXZJZbaK87TTSk",
+      "funder_ts": 1784402466,
+      "sol": 0.0278,
+      "sec_before_buy": 518118
+    },
+    {
+      "wallet": "5n7mHo1u89fjwFD281m1vBoVCUbVmdFF6k1hvMEwW45W",
+      "first_buy_ts": 1784920584
+    },
+    {
+      "wallet": "8TYZKqAEayX21K8oa9JUnDqcULAPvRhMAp9oH5Vq45yE",
+      "first_buy_ts": 1784920584
+    },
+    {
+      "wallet": "3pk5yRhwwFdvDBrBuuC5CRorVafHG2EQmzNEYy8Ny2K6",
+      "first_buy_ts": 1784920584
+    }
+  ]
+}

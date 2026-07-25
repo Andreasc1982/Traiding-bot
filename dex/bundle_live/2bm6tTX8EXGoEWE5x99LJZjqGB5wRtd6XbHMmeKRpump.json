@@ -1,0 +1,47 @@
+{
+  "addr": "2bm6tTX8EXGoEWE5x99LJZjqGB5wRtd6XbHMmeKRpump",
+  "symbol": "Robmothy",
+  "first_seen": "2026-07-24 20:11",
+  "age_h_at_capture": 0.7,
+  "captured": "2026-07-24 20:15",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 23,
+  "insider_nets": 5,
+  "buyers": [
+    {
+      "wallet": "8bTAZpvMvUDgQcQFfXfk38hndqCLyYFUuz7PHGaDy4mA",
+      "first_buy_ts": 1784913602,
+      "funder": "8g4HMeTB5fT35gyku8tyeVtWxgCR5YbByPxSdaax2wov",
+      "funder_ts": 1784912967,
+      "sol": 3.0,
+      "sec_before_buy": 635
+    },
+    {
+      "wallet": "CQLLBQW9deii6Sow4i1VJFjyLKBxLRS6E89NaDC6BEGz",
+      "first_buy_ts": 1784913602,
+      "funder": "FEQk9VxDg88PE2nTKXsymVP8V4cZ6FeEwxTkKaUooUXr",
+      "funder_ts": 1784913301,
+      "sol": 24.172,
+      "sec_before_buy": 301
+    },
+    {
+      "wallet": "7St68k1Z6ibdfLdb6xfzD9RQA5a6GvHaqBUbrgiQKRw8",
+      "first_buy_ts": 1784913602,
+      "funder": "H5HAVDpcKLLX3VmsXtA9yXwDVj94wgRX2dUDiYZhV3jx",
+      "funder_ts": 1784551857,
+      "sol": 9.0,
+      "sec_before_buy": 361745
+    },
+    {
+      "wallet": "9aL66MLkQTAptrmww61jn79u9Akb55c5fDrxJKHA1TcU",
+      "first_buy_ts": 1784913603,
+      "funder": "5XEqWj9VH9BVKHdgv1DFF5cbvo2pbuo5SPQBtNFVdUM1",
+      "funder_ts": 1782803501,
+      "sol": 0.5766,
+      "sec_before_buy": 2110102
+    }
+  ]
+}

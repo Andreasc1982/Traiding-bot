@@ -52,6 +52,7 @@
 <body>
 <header>
   <h1>🧬 Clone-Experiment</h1>
+  <div style="color:var(--dim,#889);font-size:12px;margin:2px 0 10px">4 aktive Varianten · gestoppt 24.07.: F + H (feuerten nie) und G_big (2× Einsatz = nur 2× Verlust)</div>
   <span class="sub">7 Strategien · identische Gateway-Signale · je $5.000 Start</span>
   <span id="updated">lädt…</span>
 </header>
@@ -68,7 +69,8 @@ const META = {
   "I_wide":              { label:"I · Weites Universum 🌐", desc:"G_mexc + ATOM/NEAR/OP/INJ/FIL — mehr qualifizierte Signale, gleiche Messlatte" },
 };
 const START = 5000;
-const order = ["A_baseline","F_contrarian_vix28","G_core","H_contra_refined","G_big","G_mexc","I_wide"];
+// 24.07. konsolidiert: F/H (0 Trades in 12 Tagen) + G_big (2x Einsatz = 2x Verlust) gestoppt
+const order = ["A_baseline","G_core","G_mexc","I_wide"];
 
 function equityOf(d){
   let eq = d.balance || 0;

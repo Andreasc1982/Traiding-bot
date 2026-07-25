@@ -1,0 +1,59 @@
+{
+  "addr": "CSkonCmXgiiUTxKNarvpgmb5u7LA1YSx4ShXivdcpump",
+  "symbol": "AVOCADOG",
+  "first_seen": "2026-07-24 19:53",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 19:53",
+  "reached_genesis": true,
+  "n_buyers": 7,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "6bF5vRXMT4JnoKGcL3JU7nC9nJJKnTNVFucby4eJji4Q",
+      "first_buy_ts": 1784913896,
+      "funder": "FeXSE7YpLK7jKGHoFvLrVoUNLTRLF8Tujfs3xiJJreQF",
+      "funder_ts": 1784833703,
+      "sol": 3.4951,
+      "sec_before_buy": 80193
+    },
+    {
+      "wallet": "7JhKH6rCkLLVBfKZkY1A1koK25qvcbUkAvkPQ1FhcjaJ",
+      "first_buy_ts": 1784913896,
+      "funder": "Abk98tKjmK1Ns54pLLZnqHR2G6LmvAKmFmDZkqMcB29g",
+      "funder_ts": 1784830443,
+      "sol": 18.0473,
+      "sec_before_buy": 83453
+    },
+    {
+      "wallet": "58sgPGDPVVehVARDn1ZJCdkjKZchjtFdcPuXiDW9ty5t",
+      "first_buy_ts": 1784913896,
+      "funder": "78vkqChyhcAK6HJfrZoRpoFT5pjfSBDLkaYGotasrfTC",
+      "funder_ts": 1784830441,
+      "sol": 0.9999,
+      "sec_before_buy": 83455
+    },
+    {
+      "wallet": "6hh9uNdE2idxjZ2SUit4M2z2tGKe14sNsLiN6tZNNfew",
+      "first_buy_ts": 1784913897
+    },
+    {
+      "wallet": "8bTAZpvMvUDgQcQFfXfk38hndqCLyYFUuz7PHGaDy4mA",
+      "first_buy_ts": 1784913897,
+      "funder": "8g4HMeTB5fT35gyku8tyeVtWxgCR5YbByPxSdaax2wov",
+      "funder_ts": 1784912967,
+      "sol": 3.0,
+      "sec_before_buy": 930
+    },
+    {
+      "wallet": "2ycSqrgH71y5JNLmN59AWKy1a25axVTV8ZYghDEV9x5o",
+      "first_buy_ts": 1784913898
+    },
+    {
+      "wallet": "DZfQgRFqU6msk7TJxFgwSAbeWfa62Qk4EniW9FRvYh3x",
+      "first_buy_ts": 1784913898
+    }
+  ]
+}

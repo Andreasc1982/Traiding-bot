@@ -1,0 +1,47 @@
+{
+  "addr": "Cemy2FNey8Wa6e2LcbZQ9XsVPULS8zDoAQKPaV8Spump",
+  "symbol": "JIMWIF",
+  "first_seen": "2026-07-24 21:31",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 21:35",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 31,
+  "insider_nets": 2,
+  "buyers": [
+    {
+      "wallet": "cn1NXBFK5DgiDdmobsa72AixeQoRxy4tXHywaA8s6h1",
+      "first_buy_ts": 1784919764,
+      "funder": "1337tfZ2aYuCEY14XWz5d1bnYkSyREuwM5DaPBeaqKKo",
+      "funder_ts": 1784876252,
+      "sol": 1.0,
+      "sec_before_buy": 43512
+    },
+    {
+      "wallet": "GeqphVMRd9xQgi1oFqxoA78QAAGBJcf86UZGpukNVn4J",
+      "first_buy_ts": 1784919764,
+      "funder": "9GvdZHo3oCQTwcz8AntMfa2q4XqoxCRu9wQs6Pop2F5",
+      "funder_ts": 1784918974,
+      "sol": 0.9422,
+      "sec_before_buy": 790
+    },
+    {
+      "wallet": "7St68k1Z6ibdfLdb6xfzD9RQA5a6GvHaqBUbrgiQKRw8",
+      "first_buy_ts": 1784919764,
+      "funder": "H5HAVDpcKLLX3VmsXtA9yXwDVj94wgRX2dUDiYZhV3jx",
+      "funder_ts": 1784551857,
+      "sol": 9.0,
+      "sec_before_buy": 367907
+    },
+    {
+      "wallet": "C8A7x5JQrsH9gy7mcw6xnTyawpwmSxB6dCTmF6w9SVy7",
+      "first_buy_ts": 1784919764,
+      "funder": "EwEgUibwXec5Gno2jSiDxzxcv5n5wZADSKc6Hb4PPr1p",
+      "funder_ts": 1784216463,
+      "sol": 0.1,
+      "sec_before_buy": 703301
+    }
+  ]
+}

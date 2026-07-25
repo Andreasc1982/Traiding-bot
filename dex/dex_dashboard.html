@@ -58,7 +58,7 @@
 
 <!-- ─────────── PAPER-MOONSHOT ─────────── -->
 <section>
-  <h2>🚀 Paper-Moonshot <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— realistisch: 5% Slippage/Seite · ehrliche Rug-Verluste</span></h2>
+  <h2>🚀 Paper-Moonshot — v12 Jupiter-Fill <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— einzige aktive Variante · echte ausführbare Kurse · ehrliche Rug-Verluste</span></h2>
   <div class="wrap" style="margin-bottom:14px"><table>
     <thead><tr><th>A/B-Vergleich (Start $500)</th><th class="num">Equity</th><th class="num">Rendite</th><th class="num">Trades</th><th class="num">WR</th><th class="num">NET</th><th class="num">Ø/Trade</th></tr></thead>
     <tbody id="abrows"></tbody>
@@ -112,14 +112,17 @@ function pct(n){ n=Number(n)||0; return (n>=0?"+":"")+n.toFixed(1)+"%"; }
 async function getJSON(f){ try { return await (await fetch(f+"?_="+Date.now())).json(); } catch(e){ return null; } }
 
 async function load(){
-  const [ph, ps, pt, wl, hb, ph9, pt9, ph10, pt10, ph11, pt11, ph12, pt12] = await Promise.all([
+  const [ph, ps, pt, wl, hb, ph9, pt9, ph10, pt10, ph11, pt11, ph12, pt12, ps12] = await Promise.all([
     getJSON("paper_heartbeat.json"), getJSON("paper_state.json"),
     getJSON("paper_trades.json"), getJSON("watchlist.json"), getJSON("heartbeat.json"),
     getJSON("paper_heartbeat_v9.json"), getJSON("paper_trades_v9.json"),
     getJSON("paper_heartbeat_v10.json"), getJSON("paper_trades_v10.json"),
     getJSON("paper_heartbeat_v11.json"), getJSON("paper_trades_v11.json"),
-    getJSON("paper_heartbeat_v12.json"), getJSON("paper_trades_v12.json")
+    getJSON("paper_heartbeat_v12.json"), getJSON("paper_trades_v12.json"),
+    getJSON("paper_state_v12.json")
   ]);
+  // Haupt-Panel = v12 (einzige aktive Variante seit Sunset 20.07.); v7-Dateien sind eingefroren
+  const phA = ph12 || ph, psA = ps12 || ps, ptA = pt12 || pt;
 
   // ── A/B: Baseline v7 vs v8 Aggro-Pyramid ──
   const vstat = (h,tr)=>{ tr=tr||[]; const e=h?h.equity:500, n=h?h.trades:0,
@@ -135,19 +138,19 @@ async function load(){
   document.getElementById("abrows").innerHTML =
     abrow("v7 Kontrolle", vstat(ph,pt)) + abrow("v9 Fade-Cut", vstat(ph9,pt9)) + abrow("v10 Vel300", vstat(ph10,pt10)) + abrow("v11 Vel+Fade", vstat(ph11,pt11)) + abrow("v12 Jupiter-Fill", vstat(ph12,pt12));
 
-  // ── Paper KPIs ──
-  const eq = ph ? ph.equity : 500, start = 500;
+  // ── Paper KPIs (v12) ──
+  const eq = phA ? phA.equity : 500, start = 500;
   const ret = (eq/start - 1)*100;
-  const wr = (ph && ph.trades) ? (ph.wins/ph.trades*100) : 0;
+  const wr = (phA && phA.trades) ? (phA.wins/phA.trades*100) : 0;
   document.getElementById("pcards").innerHTML = `
     <div class="kpi"><div class="v ${ret>=0?'pos':'neg'}">${usd2(eq)}</div><div class="l">Equity (${pct(ret)})</div></div>
-    <div class="kpi"><div class="v">${usd2(ph?ph.bankroll:start)}</div><div class="l">Bankroll frei</div></div>
-    <div class="kpi"><div class="v">${ph?ph.open:0}</div><div class="l">offene Wetten</div></div>
-    <div class="kpi"><div class="v">${ph?ph.trades:0}</div><div class="l">Trades</div></div>
+    <div class="kpi"><div class="v">${usd2(phA?phA.bankroll:start)}</div><div class="l">Bankroll frei</div></div>
+    <div class="kpi"><div class="v">${phA?phA.open:0}</div><div class="l">offene Wetten</div></div>
+    <div class="kpi"><div class="v">${phA?phA.trades:0}</div><div class="l">Trades</div></div>
     <div class="kpi"><div class="v ${wr>=50?'pos':'dim'}">${wr.toFixed(0)}%</div><div class="l">Win-Rate</div></div>`;
 
-  // ── Open paper positions ──
-  const pos = (ps && ps.positions) ? Object.values(ps.positions) : [];
+  // ── Open paper positions (v12) ──
+  const pos = (psA && psA.positions) ? Object.values(psA.positions) : [];
   const ob = document.getElementById("popen"); ob.innerHTML = "";
   document.getElementById("popen_e").style.display = pos.length ? "none" : "block";
   pos.sort((a,b)=> ((b.last_price/b.entry)||0)-((a.last_price/a.entry)||0));
@@ -170,8 +173,8 @@ async function load(){
       <td>${st}</td></tr>`);
   });
 
-  // ── Recent paper trades ──
-  const trs = (pt||[]).slice(-15).reverse();
+  // ── Recent paper trades (v12) ──
+  const trs = (ptA||[]).slice(-15).reverse();
   const tb = document.getElementById("ptrades"); tb.innerHTML = "";
   document.getElementById("ptrades_e").style.display = trs.length ? "none" : "block";
   trs.forEach((t, i) => {
@@ -229,9 +232,9 @@ async function load(){
     <div class="kpi"><div class="v pos">${hb?hb.passed:0}</div><div class="l">bestanden</div></div>
     <div class="kpi"><div class="v">${rows.length}</div><div class="l">Watchlist</div></div>`;
 
-  const pa = ph && ph.ts ? Math.round((Date.now()/1000-ph.ts)/60) : "?";
+  const pa = phA && phA.ts ? Math.round((Date.now()/1000-phA.ts)/60) : "?";
   document.getElementById("updated").textContent =
-    "Paper-Zyklus " + (ph?ph.cycle:"?") + " · Update vor " + pa + " min · Refresh 15s";
+    "Paper-Zyklus v12 " + (phA?phA.cycle:"?") + " · Update vor " + pa + " min · Refresh 15s";
 }
 load();
 setInterval(load, 15000);

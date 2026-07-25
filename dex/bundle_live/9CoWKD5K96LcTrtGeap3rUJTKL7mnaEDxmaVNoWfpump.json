@@ -1,0 +1,35 @@
+{
+  "addr": "9CoWKD5K96LcTrtGeap3rUJTKL7mnaEDxmaVNoWfpump",
+  "symbol": "Freud",
+  "first_seen": "2026-07-24 15:59",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 16:02",
+  "reached_genesis": false,
+  "n_buyers": 3,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "4V6AY88Bj6nsCy6ui1wsF4rweXbuTXw4ckX4EAJE2ups",
+      "first_buy_ts": 1784901631
+    },
+    {
+      "wallet": "Axf8YZZk6diCB6YxVWC8ergC6pWLKimgxjAiZBJ5fYof",
+      "first_buy_ts": 1784901631,
+      "funder": "AZMYsNYvTsQyXv31RWzu6uqtuwrmN7qocCpTPCJN41dv",
+      "funder_ts": 1780251919,
+      "sol": 0.002,
+      "sec_before_buy": 4649712
+    },
+    {
+      "wallet": "HKxRFzTpyYVUeQcJE9kZVpga1vqtRKB7ni6UNBy9mc1P",
+      "first_buy_ts": 1784901631,
+      "funder": "E6B4YRWo9SBKrDTU4MT4XTJsjEXaqth95GaRUfiR6GX4",
+      "funder_ts": 1751041366,
+      "sol": 0.1,
+      "sec_before_buy": 33860265
+    }
+  ]
+}

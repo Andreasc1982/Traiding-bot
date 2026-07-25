@@ -21,7 +21,20 @@ CLONE_DIR   = os.path.join(BASE, "crypto", "clones")
 CSV         = os.path.join(CLONE_DIR, "equity_log.csv")
 START       = 5000.0
 ANOMALY_PCT = 25.0                       # Tagesrenditen > 25% sind unrealistisch -> Bug
-VARIANTS    = ["A_baseline", "B_nospikes", "C_conservative", "D_contrarian", "E_moonshot"]
+STALE_H     = 24                         # Dashboard aelter -> Clone laeuft nicht mehr -> nicht loggen
+
+
+def variants():
+    """Aktive Clones dynamisch entdecken (frische *_dashboard.json) — eine feste Liste
+    veraltet bei jedem Experiment-Wechsel (Bug: loggte noch A-E, F/G/H/I fehlten)."""
+    import time
+    out = []
+    for fn in sorted(os.listdir(CLONE_DIR)):
+        if fn.endswith("_dashboard.json"):
+            path = os.path.join(CLONE_DIR, fn)
+            if time.time() - os.path.getmtime(path) < STALE_H * 3600:
+                out.append(fn[:-len("_dashboard.json")])
+    return out
 
 
 def equity_of(d):
@@ -35,7 +48,7 @@ def main():
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     rows, anomalies = [], []
 
-    for v in VARIANTS:
+    for v in variants():
         try:
             d = json.load(open(os.path.join(CLONE_DIR, v + "_dashboard.json")))
         except Exception:

@@ -1,0 +1,51 @@
+{
+  "addr": "GcJSeygR41p11a9phsKdkGDg6SQpLSZqZ8g1c3vnpump",
+  "symbol": "BATHTUB",
+  "first_seen": "2026-07-24 08:18",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-24 08:22",
+  "reached_genesis": false,
+  "n_buyers": 5,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "HisqAtiWDkYwR5vphWGgxsmxKb4cRJhjaVTNEyT5c5M4",
+      "first_buy_ts": 1784872976
+    },
+    {
+      "wallet": "6aa89USZ9fwM1xAqgwh1kb7pnsuh58ohzBxBnJVtfokZ",
+      "first_buy_ts": 1784872976,
+      "funder": "7WsWx2NFv3Y11LNLu2sXwyr39gRboBtc9tzpWhnCweYv",
+      "funder_ts": 1784835621,
+      "sol": 0.36,
+      "sec_before_buy": 37355
+    },
+    {
+      "wallet": "kEFiAX3jo5NmemysQov342TZ9mGh6yp92GDRjhA8XDf",
+      "first_buy_ts": 1784872976,
+      "funder": "B2dPU9oHqPwhRz4ayMbMWR8DpupAkBYQSKDdbgYpRjGn",
+      "funder_ts": 1784853215,
+      "sol": 0.002,
+      "sec_before_buy": 19761
+    },
+    {
+      "wallet": "Ht7EEtRLqZJgrfyDbi1pLoMfKqytziChvcHzG11dj4xk",
+      "first_buy_ts": 1784872977,
+      "funder": "AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51",
+      "funder_ts": 1773716607,
+      "sol": 0.01,
+      "sec_before_buy": 11156370
+    },
+    {
+      "wallet": "3sHG3uiNzk2qDErWRNZvu1VzR9j8QGPyeYMKxJjhnozN",
+      "first_buy_ts": 1784872978,
+      "funder": "8QCVZ7KL65pBhUxbvfwbyyg4ronxNAEXbDrGLYLrRNn5",
+      "funder_ts": 1784872648,
+      "sol": 0.2563,
+      "sec_before_buy": 330
+    }
+  ]
+}

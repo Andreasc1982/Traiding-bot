@@ -1,0 +1,35 @@
+{
+  "addr": "DpHz68ok7iF9i4KniJzy7FaqvQkLBuN962giMtAJpump",
+  "symbol": "FREG",
+  "first_seen": "2026-07-24 20:09",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 20:15",
+  "reached_genesis": true,
+  "n_buyers": 3,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "33Hs81crVtrMbtkVRVYcd5yQcbSA8uGEp4b2Bqy9sxgw",
+      "first_buy_ts": 1784904625,
+      "funder": "DPqsobysNf5iA9w7zrQM8HLzCKZEDMkZsWbiidsAt1xo",
+      "funder_ts": 1756141357,
+      "sol": 1.5,
+      "sec_before_buy": 28763268
+    },
+    {
+      "wallet": "DpBUrt6HsNvdPXV7eXGvfDZsUD9QLQZvYdno52YqtffV",
+      "first_buy_ts": 1784904625
+    },
+    {
+      "wallet": "3wFZt8v9Cj6VNH1wqFus5Du5hQ8NnANuaXsoeC9E1wLN",
+      "first_buy_ts": 1784904626,
+      "funder": "DpBUrt6HsNvdPXV7eXGvfDZsUD9QLQZvYdno52YqtffV",
+      "funder_ts": 1784904625,
+      "sol": 0.0075,
+      "sec_before_buy": 1
+    }
+  ]
+}

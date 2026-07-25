@@ -236,7 +236,7 @@ class SuperTradingBot:
         if self.tg_ok and TELEGRAM_CHAT_ID:
             try:
                 url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
-                requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=5)
+                requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": "📈 SUPER · " + msg}, timeout=5)
             except Exception as e:
                 print("[TG Error] " + str(e))
 

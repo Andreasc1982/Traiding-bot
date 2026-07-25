@@ -1,0 +1,23 @@
+{
+  "addr": "G2rkkf17XjnQq7eeEKsjNL7XD4FeytKoToxeYd55pump",
+  "symbol": "Terp",
+  "first_seen": "2026-07-24 04:04",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 04:05",
+  "reached_genesis": false,
+  "n_buyers": 2,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "DjrJqc7PbR3UfZRtd8P8m4cpLx78B32h2HZK3NtaV7CJ",
+      "first_buy_ts": 1784857372
+    },
+    {
+      "wallet": "HZ3C8hHXcs1yAnmyY9VwiMjhFZ7ntQCg4raWJ3LSdTzc",
+      "first_buy_ts": 1784857372
+    }
+  ]
+}

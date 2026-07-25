@@ -1,0 +1,27 @@
+{
+  "addr": "8z4Znaw2S25kDedzyEft1KuhpKa4jDVqBBBiB7sctuUc",
+  "symbol": "RUSD",
+  "first_seen": "2026-07-24 03:14",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-24 03:17",
+  "reached_genesis": true,
+  "n_buyers": 2,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "7ZV54HcwtzRhZSEPskT8ox5hn9yNocK9xpe4BQXoziaP",
+      "first_buy_ts": 1784854508
+    },
+    {
+      "wallet": "87nJZku6KRrRmhAKFX29bb3uVZs2K4EgNAKHod5FZANP",
+      "first_buy_ts": 1784854509,
+      "funder": "AxiomRXZAq1Jgjj9pHmNqVP7Lhu67wLXZJZbaK87TTSk",
+      "funder_ts": 1784192934,
+      "sol": 0.0675,
+      "sec_before_buy": 661575
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "addr": "7Wcg6FynrTpHhSZLwHKSwDC4j9JzxCBjnSsqnpyXpump",
+  "symbol": "SEABULL",
+  "first_seen": "2026-07-24 07:50",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-24 07:56",
+  "reached_genesis": false,
+  "n_buyers": 8,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 13,
+  "insider_nets": 3,
+  "buyers": [
+    {
+      "wallet": "4sWPwW2BwGgGX7L4eGe5XCsAe4fLVU8yCjusH1icH6MW",
+      "first_buy_ts": 1784867389
+    },
+    {
+      "wallet": "UoDWLktSzQ6yPTZCVLto37Zs6Nu7w4MQFVTE5SmhfKq",
+      "first_buy_ts": 1784867389
+    },
+    {
+      "wallet": "J3hJBr4CemR7ak3BZg4dMwZbPDNCoLfoVDVwCt67M6ME",
+      "first_buy_ts": 1784867389
+    },
+    {
+      "wallet": "1mGRiNd5QgddUpASfGRftpQRKMB2peE5hj1gMF6f5Hp",
+      "first_buy_ts": 1784867389
+    },
+    {
+      "wallet": "2fg5QD1eD7rzNNCsvnhmXFm5hqNgwTTG8p7kQ6f3rx6f",
+      "first_buy_ts": 1784867389
+    },
+    {
+      "wallet": "7NAd2EpYGGeFofpyvgehSXhH5vg6Ry6VRMW2Y6jiqCu1",
+      "first_buy_ts": 1784867389,
+      "funder": "3XuvVat1wc728vgZLShuoUo5TpkAnrHMMUxVgoCsuAbY",
+      "funder_ts": 1784745891,
+      "sol": 0.002,
+      "sec_before_buy": 121498
+    },
+    {
+      "wallet": "FxN3VZ4BosL5urG2yoeQ156JSdmavm9K5fdLxjkPmaMR",
+      "first_buy_ts": 1784867389,
+      "funder": "5A9Kc3V2dmGhb8pXNAL2jaJKifVSZfvnCCNpJbf1aa7V",
+      "funder_ts": 1784744777,
+      "sol": 0.002,
+      "sec_before_buy": 122612
+    },
+    {
+      "wallet": "suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK",
+      "first_buy_ts": 1784867389
+    }
+  ]
+}

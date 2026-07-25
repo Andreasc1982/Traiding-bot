@@ -1,0 +1,31 @@
+{
+  "addr": "3a5mDJPMjrX6g9EchRtwnTBz7ccL7Qg9kcFK2GKfpump",
+  "symbol": "BOUNTY",
+  "first_seen": "2026-07-24 03:39",
+  "age_h_at_capture": 1.9,
+  "captured": "2026-07-24 03:44",
+  "reached_genesis": true,
+  "n_buyers": 2,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "B6VuNJXCoxkhX1bn46mhtZGSpfaR7BRS7uttPwJPZFBg",
+      "first_buy_ts": 1784850368,
+      "funder": "ASTyfSima4LLAdDgoFGkgqoKowG1LZFDr9fAQrg7iaJZ",
+      "funder_ts": 1784849703,
+      "sol": 5.105,
+      "sec_before_buy": 665
+    },
+    {
+      "wallet": "2WJTQ6q91HBZLqHuVuRLgsiGQV8yCgVKtzaLX4HBfwMo",
+      "first_buy_ts": 1784850368,
+      "funder": "2eiqnL7Wj5yLikWzxKBNNGzkseusf3WARA99HxBQ3wwP",
+      "funder_ts": 1782938495,
+      "sol": 0.55,
+      "sec_before_buy": 1911873
+    }
+  ]
+}
