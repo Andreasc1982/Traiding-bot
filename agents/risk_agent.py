@@ -645,4 +645,18 @@ def run():
         time.sleep(CHECK_INTERVAL)
 
 if __name__ == "__main__":
+    # Singleton-Lock (25.07.): ohne diesen liefen 2 Zombie-Risk-Agenten mit altem
+    # In-Memory-day_start weiter und killten nach dem $5000-Reset beide Bots (-92,5%).
+    try:
+        import health
+        _lock = health.acquire_singleton("risk_agent")
+        if _lock is None:
+            health.log("risk_agent", "DUPLICATE_BLOCKED", "andere Instanz laeuft bereits")
+            print("[SINGLETON] risk_agent laeuft bereits — diese Instanz beendet sich.")
+            raise SystemExit(0)
+        health.log("risk_agent", "START", "")
+    except SystemExit:
+        raise
+    except Exception as _e:
+        print("[SINGLETON] health-Modul nicht verfuegbar: " + str(_e))
     run()

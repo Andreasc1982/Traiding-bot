@@ -1,0 +1,51 @@
+{
+  "addr": "Hdxw7DVVUgwJRZhY6GShj94YH5FXnJvwuzax7LLNpump",
+  "symbol": "Octopus",
+  "first_seen": "2026-07-25 14:56",
+  "age_h_at_capture": 0.6,
+  "captured": "2026-07-25 15:01",
+  "reached_genesis": true,
+  "n_buyers": 5,
+  "n_funded": 4,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "daddyf7vJCcPamSuieGDzpvpK279zCQ7oFNFA9r3q4b",
+      "first_buy_ts": 1784916995,
+      "funder": "CR27iXkGbQMnGxoA6FP3ujVFvsQzAroS2ZeF7gyYyYX1",
+      "funder_ts": 1780496349,
+      "sol": 8.2357,
+      "sec_before_buy": 4420646
+    },
+    {
+      "wallet": "FzczrxtQeuejaiq4wXdzj9kSDQFH8KGAt6ZQjnLjAXfv",
+      "first_buy_ts": 1784916995,
+      "funder": "7c6BPTS6UNuhpecajS3Nq9ndDn5XifYRcGQsuiU71g3z",
+      "funder_ts": 1784663938,
+      "sol": 1.0399,
+      "sec_before_buy": 253057
+    },
+    {
+      "wallet": "4GsrCtUL21Q8tFQk62xBnibxWAGUk3djMGECNSCcgUzv",
+      "first_buy_ts": 1784916995,
+      "funder": "HYz9UwGwAbpMqKvPwBCyqWszYz6kCNDZQxYZ7Xq4XgJb",
+      "funder_ts": 1784388239,
+      "sol": 5.1274,
+      "sec_before_buy": 528756
+    },
+    {
+      "wallet": "BymxzSawaAAqmKA2qMJS9agXytrpvUPWqon1uSQBrBKx",
+      "first_buy_ts": 1784916995,
+      "funder": "8ZVN9Puj6UMPESqFxkYs9PJk9Cf9m1FwZDMo1iAeA62R",
+      "funder_ts": 1784912071,
+      "sol": 4.0,
+      "sec_before_buy": 4924
+    },
+    {
+      "wallet": "E4gw7CEg89X7qF1ePGAuwkkWSFJTusKyBE9yYxXLFzD7",
+      "first_buy_ts": 1784916996
+    }
+  ]
+}

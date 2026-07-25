@@ -1,15 +1,15 @@
 {
-  "generated": "2026-07-25 13:03",
+  "generated": "2026-07-25 15:11",
   "survivor_age_h": 24,
-  "n_captured": 342,
-  "n_rug": 306,
+  "n_captured": 353,
+  "n_rug": 315,
   "n_survivor": 15,
-  "n_pending": 21,
-  "n_genesis": 243,
+  "n_pending": 23,
+  "n_genesis": 250,
   "methods": [
     {
       "name": "max_cluster \u2265 2",
-      "tp": 71,
+      "tp": 74,
       "fp": 4,
       "rug_rate": 23,
       "surv_rate": 27,
@@ -17,7 +17,7 @@
     },
     {
       "name": "max_cluster \u2265 3",
-      "tp": 20,
+      "tp": 21,
       "fp": 3,
       "rug_rate": 7,
       "surv_rate": 20,
@@ -27,9 +27,9 @@
       "name": "insider_nets \u2265 1",
       "tp": 96,
       "fp": 8,
-      "rug_rate": 31,
+      "rug_rate": 30,
       "surv_rate": 53,
-      "sep": -22
+      "sep": -23
     },
     {
       "name": "insiders \u2265 20",
@@ -37,33 +37,33 @@
       "fp": 1,
       "rug_rate": 5,
       "surv_rate": 7,
-      "sep": -1
+      "sep": -2
     }
   ],
   "bundle_sep": -3,
-  "baseline_sep": -1,
+  "baseline_sep": -2,
   "enough": true,
   "sensitivity": [
     {
       "h": 24,
-      "n_rug": 306,
+      "n_rug": 315,
       "n_survivor": 15,
       "bundle_sep": -3,
-      "baseline_sep": -1
+      "baseline_sep": -2
     },
     {
       "h": 12,
-      "n_rug": 306,
-      "n_survivor": 20,
-      "bundle_sep": -7,
-      "baseline_sep": -5
+      "n_rug": 315,
+      "n_survivor": 21,
+      "bundle_sep": -8,
+      "baseline_sep": -4
     },
     {
       "h": 6,
-      "n_rug": 306,
+      "n_rug": 315,
       "n_survivor": 23,
-      "bundle_sep": -7,
-      "baseline_sep": -3
+      "bundle_sep": -6,
+      "baseline_sep": -4
     }
   ],
   "rows": [
@@ -114,6 +114,18 @@
       "insiders": 4,
       "insider_nets": 1,
       "captured": "2026-07-23 12:11"
+    },
+    {
+      "symbol": "Yuki",
+      "addr": "FB44zC6s",
+      "outcome": "survivor",
+      "max_cluster": 1,
+      "genesis": false,
+      "n_buyers": 9,
+      "n_funded": 7,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-24 13:20"
     },
     {
       "symbol": "BUNKEE",
@@ -198,18 +210,6 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 10:42"
-    },
-    {
-      "symbol": "tutu",
-      "addr": "4MbUUGzy",
-      "outcome": "survivor",
-      "max_cluster": 1,
-      "genesis": false,
-      "n_buyers": 4,
-      "n_funded": 3,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-24 11:20"
     },
     {
       "symbol": "looong",
@@ -378,6 +378,18 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-22 00:19"
+    },
+    {
+      "symbol": "$POLRAT",
+      "addr": "56sCWGUu",
+      "outcome": "rug",
+      "max_cluster": 4,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 19,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-25 13:35"
     },
     {
       "symbol": "Shiloh",
@@ -680,6 +692,18 @@
       "captured": "2026-07-23 17:56"
     },
     {
+      "symbol": "CPUFREQ",
+      "addr": "6Bo3JHdn",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 12,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-25 13:14"
+    },
+    {
       "symbol": "BullHouse",
       "addr": "D8dYdeqp",
       "outcome": "rug",
@@ -762,30 +786,6 @@
       "insiders": 4,
       "insider_nets": 1,
       "captured": "2026-07-24 13:10"
-    },
-    {
-      "symbol": "Tail",
-      "addr": "5HUHdRf2",
-      "outcome": "rug",
-      "max_cluster": 2,
-      "genesis": true,
-      "n_buyers": 20,
-      "n_funded": 13,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-24 21:09"
-    },
-    {
-      "symbol": "Trump2028",
-      "addr": "DrDVDq1n",
-      "outcome": "rug",
-      "max_cluster": 2,
-      "genesis": true,
-      "n_buyers": 20,
-      "n_funded": 14,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-25 05:15"
     }
   ]
 }
