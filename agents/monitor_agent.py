@@ -90,46 +90,6 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1"
         ),
     },
-    "dex_paper": {
-        "name":         "DEX Paper-Moonshot",
-        "session":      "dex_paper",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1"
-        ),
-    },
-    "dex_paper_v11": {
-        "name":         "DEX Paper v11 (Vel+Fade)",
-        "session":      "dex_paper_v11",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v11 > /tmp/dex_paper_v11.log 2>&1"
-        ),
-    },
-    "dex_paper_v9": {
-        "name":         "DEX Paper v9 (Fade-Cut)",
-        "session":      "dex_paper_v9",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v9 > /tmp/dex_paper_v9.log 2>&1"
-        ),
-    },
-    "dex_paper_v10": {
-        "name":         "DEX Paper v10 (Velocity-Filter)",
-        "session":      "dex_paper_v10",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v10 > /tmp/dex_paper_v10.log 2>&1"
-        ),
-    },
     "dex_paper_v12": {
         "name":         "DEX Paper v12 (Jupiter-Fill)",
         "session":      "dex_paper_v12",

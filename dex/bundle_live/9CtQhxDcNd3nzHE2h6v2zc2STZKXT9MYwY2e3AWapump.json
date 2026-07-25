@@ -1,0 +1,47 @@
+{
+  "addr": "9CtQhxDcNd3nzHE2h6v2zc2STZKXT9MYwY2e3AWapump",
+  "symbol": "Limbothy",
+  "first_seen": "2026-07-25 08:28",
+  "age_h_at_capture": 0.8,
+  "captured": "2026-07-25 08:34",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 4,
+  "max_cluster": 3,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "7SuVLBv3iijvZ8kF3tgYAvNzfPTGk2ftM44WATb4z6VD",
+      "first_buy_ts": 1784957672,
+      "funder": "AjjuezhbiBznyDm3pKNUCjgvWPR3aFAjCk9YxJjiakjq",
+      "funder_ts": 1781956753,
+      "sol": 0.002,
+      "sec_before_buy": 3000919
+    },
+    {
+      "wallet": "6p8HWJ4mD83tZJLswPLMiGyrRVMMRmHXEXYhVajcs21K",
+      "first_buy_ts": 1784957672,
+      "funder": "Dv34prGm2BT7Ph2n6qKLgzeLgjnii87RJJ7Db6ZQQvKM",
+      "funder_ts": 1784424084,
+      "sol": 4.9001,
+      "sec_before_buy": 533588
+    },
+    {
+      "wallet": "DuqMZVNRGoSRsqULuQbPfLET2U5D7Az3tjXbZb4EL56w",
+      "first_buy_ts": 1784957672,
+      "funder": "Dv34prGm2BT7Ph2n6qKLgzeLgjnii87RJJ7Db6ZQQvKM",
+      "funder_ts": 1784376154,
+      "sol": 4.9001,
+      "sec_before_buy": 581518
+    },
+    {
+      "wallet": "6hBRFod24AnCHCT8YkK6u3Cwb3SysKdjUstheww4ckFU",
+      "first_buy_ts": 1784957672,
+      "funder": "Dv34prGm2BT7Ph2n6qKLgzeLgjnii87RJJ7Db6ZQQvKM",
+      "funder_ts": 1784375192,
+      "sol": 4.9001,
+      "sec_before_buy": 582480
+    }
+  ]
+}

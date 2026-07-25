@@ -1,0 +1,51 @@
+{
+  "addr": "27uZ8eeBL1wZChMUUZc1WrJo8mZ5Q9JnEbxQHzRjpump",
+  "symbol": "Snowflake",
+  "first_seen": "2026-07-25 11:23",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-25 11:25",
+  "reached_genesis": true,
+  "n_buyers": 7,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "J1xCaTLQWbuyrTQ3KmYWChrZ9fnwvN6u48Vzktn844XG",
+      "first_buy_ts": 1784969055
+    },
+    {
+      "wallet": "A5qgMwisyg4VnWixuhYnQCy7VXmUnrEqBxA5au6xKWzB",
+      "first_buy_ts": 1784969055,
+      "funder": "CbcHa7KbnFavED6cXFpi49Dr8kGjrTFbM4NbaBHHU28D",
+      "funder_ts": 1784563874,
+      "sol": 0.6778,
+      "sec_before_buy": 405181
+    },
+    {
+      "wallet": "7cp6zxvhxbfS7QgYTB7ts2RqFf7zDYwtjfuHcEHhKLAz",
+      "first_buy_ts": 1784969055
+    },
+    {
+      "wallet": "5htGpHK2oV9g2BcDqLdRBqjCLdy8mc3fsESfR5DU73eM",
+      "first_buy_ts": 1784969055
+    },
+    {
+      "wallet": "HCUzXYc3F7zrnxWDYb5Pv6iptdaW5pbuGVSdn3kEiZax",
+      "first_buy_ts": 1784969055
+    },
+    {
+      "wallet": "2mqrindMAjJEQPLhroYWyiYPo5h9iAsahfdd4QtsjwdY",
+      "first_buy_ts": 1784969055
+    },
+    {
+      "wallet": "AZc6YUgzgn2dVNbuYgEHhE1swQeSoa4hbETxbDUTFxDT",
+      "first_buy_ts": 1784969055,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1710060389,
+      "sol": 6.992,
+      "sec_before_buy": 74908666
+    }
+  ]
+}

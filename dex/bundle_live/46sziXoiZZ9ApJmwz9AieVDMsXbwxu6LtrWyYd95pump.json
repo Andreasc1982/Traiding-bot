@@ -1,0 +1,47 @@
+{
+  "addr": "46sziXoiZZ9ApJmwz9AieVDMsXbwxu6LtrWyYd95pump",
+  "symbol": "Goblin",
+  "first_seen": "2026-07-25 03:13",
+  "age_h_at_capture": 0.8,
+  "captured": "2026-07-25 03:15",
+  "reached_genesis": false,
+  "n_buyers": 5,
+  "n_funded": 3,
+  "max_cluster": 2,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "G1LfmVXpiZPHhZdutPesqZUkmvk8z8Cf3VsnjYZvAfvc",
+      "first_buy_ts": 1784939819,
+      "funder": "3u89o3gbarVGSZ4SJhY9mreeBuAki3mCMGDTpJrJHZJm",
+      "funder_ts": 1782603922,
+      "sol": 0.5,
+      "sec_before_buy": 2335897
+    },
+    {
+      "wallet": "GUyS2cYnSn9JTYsKS9ESxLvQYUYJtpLREznqXNKiu2hD",
+      "first_buy_ts": 1784939819,
+      "funder": "3u89o3gbarVGSZ4SJhY9mreeBuAki3mCMGDTpJrJHZJm",
+      "funder_ts": 1782598746,
+      "sol": 1.68,
+      "sec_before_buy": 2341073
+    },
+    {
+      "wallet": "ANbnb3K4qq7KD31nSLnsyJYxa3NzBvhE9rEM9zjMobcj",
+      "first_buy_ts": 1784939819
+    },
+    {
+      "wallet": "3X2GcktEzFVjVdScdCCMcH81mRpxuUTTs1aX6uNduNnz",
+      "first_buy_ts": 1784939820
+    },
+    {
+      "wallet": "6EpSbkFtZ17UEsT8Pu6f9Qku41QMVMJm3zTncD8YaQBR",
+      "first_buy_ts": 1784939820,
+      "funder": "DPqsobysNf5iA9w7zrQM8HLzCKZEDMkZsWbiidsAt1xo",
+      "funder_ts": 1783004155,
+      "sol": 0.2498,
+      "sec_before_buy": 1935665
+    }
+  ]
+}

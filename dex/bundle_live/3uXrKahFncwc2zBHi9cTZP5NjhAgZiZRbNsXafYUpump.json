@@ -1,0 +1,131 @@
+{
+  "addr": "3uXrKahFncwc2zBHi9cTZP5NjhAgZiZRbNsXafYUpump",
+  "symbol": "qworm",
+  "first_seen": "2026-07-25 08:27",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-25 08:28",
+  "reached_genesis": false,
+  "n_buyers": 17,
+  "n_funded": 12,
+  "max_cluster": 2,
+  "insiders": 5,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "57Mqgry42Sg6CMKSd2AdpCBVCT8XYrvfnjPfuYQLGEk9",
+      "first_buy_ts": 1784960017,
+      "funder": "EftH7kUFDNs8iKyke4GtRh2wdvhKeiQzEgMVFXe4X7Gi",
+      "funder_ts": 1784824084,
+      "sol": 0.8667,
+      "sec_before_buy": 135933
+    },
+    {
+      "wallet": "kEFiAX3jo5NmemysQov342TZ9mGh6yp92GDRjhA8XDf",
+      "first_buy_ts": 1784960017,
+      "funder": "B2dPU9oHqPwhRz4ayMbMWR8DpupAkBYQSKDdbgYpRjGn",
+      "funder_ts": 1784947507,
+      "sol": 3.1347,
+      "sec_before_buy": 12510
+    },
+    {
+      "wallet": "CjnY2h18i3N9vhXrbs9ckR7zrPXZdQKmzwaxh1tfexbs",
+      "first_buy_ts": 1784960017,
+      "funder": "AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51",
+      "funder_ts": 1784357849,
+      "sol": 0.01,
+      "sec_before_buy": 602168
+    },
+    {
+      "wallet": "823KBszjca54UvYtrw2hSmvsdGC1vLhCavKMaWkoUzv4",
+      "first_buy_ts": 1784960017,
+      "funder": "Fbsx52S1kFNqqhQB3uWKgqca8o86t4GjkfWkwRZRVTN1",
+      "funder_ts": 1779536520,
+      "sol": 0.002,
+      "sec_before_buy": 5423497
+    },
+    {
+      "wallet": "BaRkxQyQUB28CmAe5AH6GP1cbG1gtHGATvFEZzvzLz5i",
+      "first_buy_ts": 1784960017
+    },
+    {
+      "wallet": "3HfUWzQA4AHXPbEcfH3YEaea4iGRdMB9EVNsQnwwKgCF",
+      "first_buy_ts": 1784960017,
+      "funder": "2i2pPVhR2ZG62o3iuCPKKpFvyyCnipS5ovM7tBhc3oHU",
+      "funder_ts": 1784957376,
+      "sol": 1.0,
+      "sec_before_buy": 2641
+    },
+    {
+      "wallet": "DYmsQudNqJyyDvq86XmzAvrU9T7xwfQEwh6gPQw9TPNF",
+      "first_buy_ts": 1784960017,
+      "funder": "EvPSc7L8aqVcNPgJTpEceHB9nT9QkdJp5bf1oRsmhfax",
+      "funder_ts": 1784575911,
+      "sol": 0.5598,
+      "sec_before_buy": 384106
+    },
+    {
+      "wallet": "7sN96Ld9NaAtrQdrihrBGW6zd99YQzPZ88ywdg7CLkWd",
+      "first_buy_ts": 1784960017,
+      "funder": "ATNGzZh2JbdAP7GYwFDq1e3otK4Sh3cGNgBxFAjuL7hH",
+      "funder_ts": 1784111153,
+      "sol": 0.025,
+      "sec_before_buy": 848864
+    },
+    {
+      "wallet": "gWTmSBYYJhDf8kM9CKdej7pL96Jjq7rhTiBd6pyv2Yb",
+      "first_buy_ts": 1784960017
+    },
+    {
+      "wallet": "6ou4YPcDJioR6J8jH6WpSgnDzUNUe9AkTX2wWZoxEXgn",
+      "first_buy_ts": 1784960017
+    },
+    {
+      "wallet": "HEEf4JUguMz5yvsshQZkMJ8VKm5WRUsYhLwNSCMuoaJ",
+      "first_buy_ts": 1784960017
+    },
+    {
+      "wallet": "fk1mySwAWiUEzHqMUTFxbXhYTRk2Z8FpCejwSe4ncJt",
+      "first_buy_ts": 1784960017
+    },
+    {
+      "wallet": "9xUJcgNkq3S1jKr3anTyY1jtx7ZAfvnktEYbbV6MSKX4",
+      "first_buy_ts": 1784960018,
+      "funder": "6LY1JzAFVZsP2a2xKrtU6znQMQ5h4i7tocWdgrkZzkzF",
+      "funder_ts": 1779807184,
+      "sol": 0.3777,
+      "sec_before_buy": 5152834
+    },
+    {
+      "wallet": "4hgV1Tgz8zdQZ3y3kj88pkena9yZxXxdsVQJrXsrgLw6",
+      "first_buy_ts": 1784960018,
+      "funder": "HNLQQ6bfkLx18xnqaSm4hFF2W6nnWrRSJdcSuPVEghJf",
+      "funder_ts": 1784448199,
+      "sol": 0.4758,
+      "sec_before_buy": 511819
+    },
+    {
+      "wallet": "96ncE1FsFY6EdB3gaQvbdLGsJfWekPjj81TEPf46uD5W",
+      "first_buy_ts": 1784960019,
+      "funder": "AgmLJBMDCqWynYnQiPCuj9ewsNNsBJXyzoUhD9LJzN51",
+      "funder_ts": 1784723842,
+      "sol": 0.01,
+      "sec_before_buy": 236177
+    },
+    {
+      "wallet": "JBAq4zbH46ApCAxte6hmXGdk3aH5ZXaGCjUqh2LyYKck",
+      "first_buy_ts": 1784960019,
+      "funder": "E6JbQWDwUbK2JiTNJzqEgnrLMnn1Z1CCxbeEZMApWZxV",
+      "funder_ts": 1784846426,
+      "sol": 0.0104,
+      "sec_before_buy": 113593
+    },
+    {
+      "wallet": "nQp44CUPHktLQwDLbgTheCK3tZQRh9fu28GF7LKmMcR",
+      "first_buy_ts": 1784960019,
+      "funder": "HV7keY4U9kzpbVC2pUm99QD39nPuuLsnaGMU6xdhwXFv",
+      "funder_ts": 1782727581,
+      "sol": 0.002,
+      "sec_before_buy": 2232438
+    }
+  ]
+}

@@ -333,6 +333,11 @@ class SuperTradingBot:
             # yfinance for daily ETF bars — Alpaca paper account returns null bars
             df = yf.download(symbol, period="6mo", interval="1d",
                              auto_adjust=True, progress=False)
+            if df is not None:
+                # yfinance haengt seit ~30.06. eine NaN-Zeile an (unfertige/leere Kerze).
+                # NaN vergiftet ALLE Indikatoren: avg_loss>0 wird False -> RSI=100,
+                # MA/MACD/ST/ICHI kippen auf bear -> Bot war 4 Wochen blind (0 Trades).
+                df = df.dropna()
             if df is None or len(df) < 78:
                 return None
             # yfinance returns multi-level columns when auto_adjust=True
@@ -1624,7 +1629,10 @@ class SuperTradingBot:
                 "score_pct":    round(float(score_pct), 4),
             }
             ml_prob = self._ml_predict(ml_features)
-            if ml_prob < self.ML_THRESHOLD:
+            # ML-Gate DEAKTIVIERT (25.07.): auf 35 verrauschten Trades (20% WR) lernt der
+            # RandomForest nur "alles verliert" und blockt jeden Kauf. Reaktiviert sich
+            # automatisch ab 100 gelabelten Trades, wenn genug echtes Signal da ist.
+            if self._ml_trained_count >= 100 and ml_prob < self.ML_THRESHOLD:
                 print("[SKIP] " + symbol + " ML=" +
                       str(round(ml_prob * 100)) + "%<" +
                       str(int(self.ML_THRESHOLD * 100)) + "% (model trained on " +

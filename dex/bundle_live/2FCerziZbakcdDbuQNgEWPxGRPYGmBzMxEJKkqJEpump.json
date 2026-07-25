@@ -1,0 +1,55 @@
+{
+  "addr": "2FCerziZbakcdDbuQNgEWPxGRPYGmBzMxEJKkqJEpump",
+  "symbol": "RUSS",
+  "first_seen": "2026-07-25 10:31",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-25 10:33",
+  "reached_genesis": false,
+  "n_buyers": 7,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "KRr9G56oFyjbDmsMV1Thynjh49thFn5Br9oCNJAnMZV",
+      "first_buy_ts": 1784968002
+    },
+    {
+      "wallet": "CN9Wuw2kG9A6Jqp78FuUiSamWikCrLMTtiVqWYkdYeAR",
+      "first_buy_ts": 1784968002,
+      "funder": "5Ctoia1Jf4MA4XA28XxmZnWtzQUVjjYaEN834UAd6bXV",
+      "funder_ts": 1784267418,
+      "sol": 0.002,
+      "sec_before_buy": 700584
+    },
+    {
+      "wallet": "HHAEWt5pNUtW2KUJbnqtTD2VEoPvXALB5hwhbJTgHkCB",
+      "first_buy_ts": 1784968002,
+      "funder": "CiXUohvzZBJAmSEuGkT23K2wQi9GyYH8LyK5YutLkv6m",
+      "funder_ts": 1770494959,
+      "sol": 0.1887,
+      "sec_before_buy": 14473043
+    },
+    {
+      "wallet": "2tgUbS9UMoQD6GkDZBiqKYCURnGrSb6ocYwRABrSJUvY",
+      "first_buy_ts": 1784968003
+    },
+    {
+      "wallet": "CqXPQf6Qe2D2KJ5UYvTLi3prAwQiSntJUXZmE3knyzFb",
+      "first_buy_ts": 1784968005,
+      "funder": "Fo9kEPXuhww7YvdDFm4JCVo6qyAnCNDL79hukq6DnUKB",
+      "funder_ts": 1784012719,
+      "sol": 0.002,
+      "sec_before_buy": 955286
+    },
+    {
+      "wallet": "8SbBvV92Awo88qdgcdMJrCBRJWhsVGvsrUzPtwXCvtfa",
+      "first_buy_ts": 1784968005
+    },
+    {
+      "wallet": "ErmtXEBHWVVxDdGxBg5qFxgRXfsWYZHfatuwbh9GEdXA",
+      "first_buy_ts": 1784968005
+    }
+  ]
+}

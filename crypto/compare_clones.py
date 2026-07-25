@@ -36,9 +36,13 @@ LABELS = {
 
 
 def discover_variants():
+    """Nur AKTIVE Clones (Dashboard <24h frisch) — gestoppte (F/H/G_big 24.07.) sollen
+    weder Report noch Telegram-Feed fuellen; ihre Dateien bleiben als Archiv liegen."""
+    import time
     out = []
     for p in sorted(glob.glob(os.path.join(CLONE_DIR, "*_dashboard.json"))):
-        out.append(os.path.basename(p)[:-len("_dashboard.json")])
+        if time.time() - os.path.getmtime(p) < 24 * 3600:
+            out.append(os.path.basename(p)[:-len("_dashboard.json")])
     return out
 
 

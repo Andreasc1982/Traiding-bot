@@ -104,31 +104,13 @@ screen -dmS dex bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1'
-# DEX Paper-Moonshot (simuliert, kein Geld)
-screen -dmS dex_paper bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dex_paper.py > /tmp/dex_paper.log 2>&1'
-# DEX Paper v11 (Vel+Fade, Retro-Sim-Sieger) — 2x2 gegen v7/v9/v10
-screen -dmS dex_paper_v11 bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v11 > /tmp/dex_paper_v11.log 2>&1'
-# DEX Paper v12 (Jupiter-Fill) — v11-Regeln mit echten ausfuehrbaren Quotes
+# DEX Paper v12 (Jupiter-Fill) — EINZIGE aktive Variante.
+# v7/v9/v10/v11 SUNSET 20.07. (eingefroren $10-19) — Prozesse beendet 25.07.,
+# NICHT mehr starten (Monitor hatte sie am 22.07. faelschlich wiederbelebt -> TG-Spam).
 screen -dmS dex_paper_v12 bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1'
-# DEX Paper v9 (Fade-Cut) — A/B gegen Baseline v7
-screen -dmS dex_paper_v9 bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v9 > /tmp/dex_paper_v9.log 2>&1'
-# DEX Paper v10 (Velocity-Filter) — A/B gegen Baseline v7
-screen -dmS dex_paper_v10 bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v10 > /tmp/dex_paper_v10.log 2>&1'
 # DEX Bundle-Collector (vorwaerts, Launch-Funding-Graphen frischer Tokens)
 screen -dmS dex_bundle bash -c '
   cd /home/trading2025/trading_bot &&

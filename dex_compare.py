@@ -62,10 +62,12 @@ def analyze(trades_f, hb_f):
 
 
 def build_msg():
-    rows = [(name, analyze(tf, hf)) for name, tf, hf in VARIANTS]
-    L = ["\U0001F9EA <b>DEX — v12 Jupiter-Fill (aktiv) · v7/v9/v10/v11 sunset 20.07.</b>", ""]
+    # 25.07.: SUNSET-Zeilen raus aus dem Report — eingefrorene Zahlen jeden Tag neu
+    # zu melden ist Feed-Rauschen. Die Historie liegt in den *_sunset_*-Dateien.
+    rows = [(name, analyze(tf, hf)) for name, tf, hf in VARIANTS if name not in SUNSET]
+    L = ["\U0001F9EA <b>DEX Paper — v12 Jupiter-Fill</b> (v7-v11 sunset 20.07., eingefroren)", ""]
     for name, s in rows:
-        tag = " 🪦 SUNSET (eingefroren)" if name in SUNSET else " ✅ AKTIV"
+        tag = " ✅ AKTIV"
         L.append("<b>%s</b>%s  (Start $500)" % (name, tag))
         L.append("  Equity <b>$%.0f</b> | %d Trades | WR %.0f%%" % (s["eq"], s["n"], s["wr"]))
         L.append("  NET $%+.0f (avg $%+.2f) | Rugs %d" % (s["net"], s["avg"], s["rugs"]))
