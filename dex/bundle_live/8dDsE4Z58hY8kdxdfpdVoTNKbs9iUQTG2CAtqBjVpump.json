@@ -1,0 +1,35 @@
+{
+  "addr": "8dDsE4Z58hY8kdxdfpdVoTNKbs9iUQTG2CAtqBjVpump",
+  "symbol": "MemeBank",
+  "first_seen": "2026-07-25 15:38",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-25 15:39",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 6,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "Anubis512ho5t7S6LNSwoxUWdeQmX2kf3RvZ8ApHHF5w",
+      "first_buy_ts": 1784983018
+    },
+    {
+      "wallet": "9qWqcdCpaXw6pokMheikEodqVjXJVsQFDi1csECBjXHm",
+      "first_buy_ts": 1784983018,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1784661443,
+      "sol": 0.329,
+      "sec_before_buy": 321575
+    },
+    {
+      "wallet": "5brv79eFZ2rGprXNvqgVJBkBptkkw8GJX1XydJyZLyAr",
+      "first_buy_ts": 1784983018
+    },
+    {
+      "wallet": "9RG3YAuiQBDdG1esnzSXQ55o265to8nVriQhpwcbK6S2",
+      "first_buy_ts": 1784983018
+    }
+  ]
+}

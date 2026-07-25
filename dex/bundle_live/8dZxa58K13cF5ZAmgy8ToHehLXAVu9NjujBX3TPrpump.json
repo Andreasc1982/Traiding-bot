@@ -1,0 +1,47 @@
+{
+  "addr": "8dZxa58K13cF5ZAmgy8ToHehLXAVu9NjujBX3TPrpump",
+  "symbol": "MECHASTALIN",
+  "first_seen": "2026-07-25 18:07",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-25 18:12",
+  "reached_genesis": false,
+  "n_buyers": 5,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "3Cof3AwP3D3efWfuQpswJRCyCkDZSxfvxE9UczznNDyR",
+      "first_buy_ts": 1784995440
+    },
+    {
+      "wallet": "5PAFnxuMGFutz4YRpfsVQKvVF6kuMjhhWAQUvBhDdkiw",
+      "first_buy_ts": 1784995440,
+      "funder": "7rBd3Fai7S5MJAE4EbfLUd3smMVG48i35w8A6VtdmhL7",
+      "funder_ts": 1772151881,
+      "sol": 0.002,
+      "sec_before_buy": 12843559
+    },
+    {
+      "wallet": "GQF2GsnYLSZDF2hwT4wTJzR4qiE2UdY14GhJCh1LVPxC",
+      "first_buy_ts": 1784995442
+    },
+    {
+      "wallet": "4ovxuvkuKGtCZPzziC7N2v2vQMdsLy5MrERzCQs4VTbL",
+      "first_buy_ts": 1784995443,
+      "funder": "Dv34prGm2BT7Ph2n6qKLgzeLgjnii87RJJ7Db6ZQQvKM",
+      "funder_ts": 1783950289,
+      "sol": 65.5955,
+      "sec_before_buy": 1045154
+    },
+    {
+      "wallet": "9sJX8SY2YxsNqtKT7ytHff9zC6CymVXP9rNWMhuVkVMj",
+      "first_buy_ts": 1784995443,
+      "funder": "H5ft7mjHYafZJCP9UPRu7yP66enrL9t8Hc9ohwyoC9bL",
+      "funder_ts": 1752345018,
+      "sol": 0.0,
+      "sec_before_buy": 32650425
+    }
+  ]
+}

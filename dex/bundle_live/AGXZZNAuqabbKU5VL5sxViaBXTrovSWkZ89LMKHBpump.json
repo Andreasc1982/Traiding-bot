@@ -1,0 +1,14 @@
+{
+  "addr": "AGXZZNAuqabbKU5VL5sxViaBXTrovSWkZ89LMKHBpump",
+  "symbol": "Koala",
+  "first_seen": "2026-07-25 15:55",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-25 16:01",
+  "reached_genesis": false,
+  "n_buyers": 0,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 8,
+  "insider_nets": 1,
+  "buyers": []
+}

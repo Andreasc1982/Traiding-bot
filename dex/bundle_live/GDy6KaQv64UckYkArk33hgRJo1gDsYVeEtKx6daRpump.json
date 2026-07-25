@@ -1,0 +1,19 @@
+{
+  "addr": "GDy6KaQv64UckYkArk33hgRJo1gDsYVeEtKx6daRpump",
+  "symbol": "Ansemwif",
+  "first_seen": "2026-07-25 19:42",
+  "age_h_at_capture": 1.4,
+  "captured": "2026-07-25 19:45",
+  "reached_genesis": false,
+  "n_buyers": 1,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "H88u2cxqN8mKbuzH1ybd8JwpABGnAV3wXu8qSa12G1xX",
+      "first_buy_ts": 1784996568
+    }
+  ]
+}

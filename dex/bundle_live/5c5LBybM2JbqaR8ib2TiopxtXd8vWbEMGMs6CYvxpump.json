@@ -1,0 +1,47 @@
+{
+  "addr": "5c5LBybM2JbqaR8ib2TiopxtXd8vWbEMGMs6CYvxpump",
+  "symbol": "Dinofauro",
+  "first_seen": "2026-07-25 16:46",
+  "age_h_at_capture": 0.4,
+  "captured": "2026-07-25 16:47",
+  "reached_genesis": true,
+  "n_buyers": 6,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "8DS2pqspcQkTBmnkSqbXHsUH3fvwwJfM1mG9brPpzMDD",
+      "first_buy_ts": 1784813471
+    },
+    {
+      "wallet": "8G93ToDmQssdFt4a2CDPsNGjXt16yNHPrULpMTMUzjLX",
+      "first_buy_ts": 1784813471
+    },
+    {
+      "wallet": "Hv3fPDH9bd1VNK1BjRQyjCYUK9HrXwLGfJ37mEeUJdrJ",
+      "first_buy_ts": 1784813471
+    },
+    {
+      "wallet": "8wwNSd1zSedvXzNmrmbLS9tUbVXxEyvXnSDDG2z6StHU",
+      "first_buy_ts": 1784813471,
+      "funder": "9TduHvETZMwZt1EirDC9DbmbsdJdiv7ZgynvNG5XkDvB",
+      "funder_ts": 1778784398,
+      "sol": 0.0762,
+      "sec_before_buy": 6029073
+    },
+    {
+      "wallet": "4yFAz7dp5WwuZs3vbWKedbRiUmSFxTVGCdsLAxfEQrG3",
+      "first_buy_ts": 1784813471
+    },
+    {
+      "wallet": "H677vK6nvHm1GJXp7iWAwDzVvoKFTESTJivdQV3SMqDZ",
+      "first_buy_ts": 1784813473,
+      "funder": "8DS2pqspcQkTBmnkSqbXHsUH3fvwwJfM1mG9brPpzMDD",
+      "funder_ts": 1784813471,
+      "sol": 0.1778,
+      "sec_before_buy": 2
+    }
+  ]
+}

@@ -1,32 +1,32 @@
 {
-  "generated": "2026-07-25 15:11",
+  "generated": "2026-07-25 19:29",
   "survivor_age_h": 24,
-  "n_captured": 353,
-  "n_rug": 315,
-  "n_survivor": 15,
-  "n_pending": 23,
-  "n_genesis": 250,
+  "n_captured": 376,
+  "n_rug": 329,
+  "n_survivor": 17,
+  "n_pending": 30,
+  "n_genesis": 264,
   "methods": [
     {
       "name": "max_cluster \u2265 2",
-      "tp": 74,
-      "fp": 4,
+      "tp": 77,
+      "fp": 6,
       "rug_rate": 23,
-      "surv_rate": 27,
-      "sep": -3
+      "surv_rate": 35,
+      "sep": -12
     },
     {
       "name": "max_cluster \u2265 3",
-      "tp": 21,
+      "tp": 22,
       "fp": 3,
       "rug_rate": 7,
-      "surv_rate": 20,
-      "sep": -13
+      "surv_rate": 18,
+      "sep": -11
     },
     {
       "name": "insider_nets \u2265 1",
-      "tp": 96,
-      "fp": 8,
+      "tp": 100,
+      "fp": 9,
       "rug_rate": 30,
       "surv_rate": 53,
       "sep": -23
@@ -36,31 +36,31 @@
       "tp": 16,
       "fp": 1,
       "rug_rate": 5,
-      "surv_rate": 7,
-      "sep": -2
+      "surv_rate": 6,
+      "sep": -1
     }
   ],
-  "bundle_sep": -3,
-  "baseline_sep": -2,
+  "bundle_sep": -11,
+  "baseline_sep": -1,
   "enough": true,
   "sensitivity": [
     {
       "h": 24,
-      "n_rug": 315,
-      "n_survivor": 15,
-      "bundle_sep": -3,
-      "baseline_sep": -2
+      "n_rug": 329,
+      "n_survivor": 17,
+      "bundle_sep": -11,
+      "baseline_sep": -1
     },
     {
       "h": 12,
-      "n_rug": 315,
-      "n_survivor": 21,
-      "bundle_sep": -8,
+      "n_rug": 329,
+      "n_survivor": 22,
+      "bundle_sep": -7,
       "baseline_sep": -4
     },
     {
       "h": 6,
-      "n_rug": 315,
+      "n_rug": 329,
       "n_survivor": 23,
       "bundle_sep": -6,
       "baseline_sep": -4
@@ -114,6 +114,30 @@
       "insiders": 4,
       "insider_nets": 1,
       "captured": "2026-07-23 12:11"
+    },
+    {
+      "symbol": "props",
+      "addr": "HqDzBCPH",
+      "outcome": "survivor",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 17,
+      "n_funded": 12,
+      "insiders": 8,
+      "insider_nets": 1,
+      "captured": "2026-07-24 17:02"
+    },
+    {
+      "symbol": "Anijak",
+      "addr": "5J556Rgq",
+      "outcome": "survivor",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 17,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-24 19:11"
     },
     {
       "symbol": "Yuki",
@@ -416,6 +440,18 @@
       "captured": "2026-07-22 04:10"
     },
     {
+      "symbol": "Fine",
+      "addr": "5UW9gb3J",
+      "outcome": "rug",
+      "max_cluster": 3,
+      "genesis": false,
+      "n_buyers": 7,
+      "n_funded": 6,
+      "insiders": 18,
+      "insider_nets": 3,
+      "captured": "2026-07-25 15:56"
+    },
+    {
       "symbol": "neuron",
       "addr": "FEKb8xwB",
       "outcome": "rug",
@@ -704,6 +740,18 @@
       "captured": "2026-07-25 13:14"
     },
     {
+      "symbol": "KISSME",
+      "addr": "rUoZgUz7",
+      "outcome": "rug",
+      "max_cluster": 2,
+      "genesis": true,
+      "n_buyers": 20,
+      "n_funded": 18,
+      "insiders": 0,
+      "insider_nets": 0,
+      "captured": "2026-07-25 17:20"
+    },
+    {
       "symbol": "BullHouse",
       "addr": "D8dYdeqp",
       "outcome": "rug",
@@ -738,54 +786,6 @@
       "insiders": 0,
       "insider_nets": 0,
       "captured": "2026-07-23 18:56"
-    },
-    {
-      "symbol": "BBL",
-      "addr": "AxDogUwQ",
-      "outcome": "rug",
-      "max_cluster": 2,
-      "genesis": false,
-      "n_buyers": 20,
-      "n_funded": 14,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-23 09:54"
-    },
-    {
-      "symbol": "Jimothy",
-      "addr": "Evx1KJ17",
-      "outcome": "rug",
-      "max_cluster": 2,
-      "genesis": true,
-      "n_buyers": 17,
-      "n_funded": 7,
-      "insiders": 0,
-      "insider_nets": 0,
-      "captured": "2026-07-23 09:13"
-    },
-    {
-      "symbol": "DOP",
-      "addr": "AfiGGDZ4",
-      "outcome": "rug",
-      "max_cluster": 2,
-      "genesis": true,
-      "n_buyers": 7,
-      "n_funded": 4,
-      "insiders": 13,
-      "insider_nets": 3,
-      "captured": "2026-07-22 23:39"
-    },
-    {
-      "symbol": "Sansan",
-      "addr": "632skL8U",
-      "outcome": "rug",
-      "max_cluster": 2,
-      "genesis": true,
-      "n_buyers": 9,
-      "n_funded": 6,
-      "insiders": 4,
-      "insider_nets": 1,
-      "captured": "2026-07-24 13:10"
     }
   ]
 }
