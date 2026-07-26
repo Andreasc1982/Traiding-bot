@@ -116,6 +116,11 @@ screen -dmS dex_bundle bash -c '
   cd /home/trading2025/trading_bot &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u dex_bundle_collector.py > /tmp/dex_bundle_collector.log 2>&1'
+# dYdX Orderbuch-Imbalance-Sammler (read-only, kein Konto)
+screen -dmS dydx bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1'
 screen -dmS dex_dashboard bash -c '
   fuser -k 8091/tcp 2>/dev/null; sleep 1;
   cd /home/trading2025/trading_bot/dex &&

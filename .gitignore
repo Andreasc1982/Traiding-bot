@@ -43,3 +43,14 @@ agents/optimize_log.txt
 agents/risk_log.json
 crypto/clones/equity_log.csv
 dex/screening_log.csv
+
+# Forschungs-Rohdaten und Caches (gross, jederzeit neu erzeugbar)
+sec/*.zip
+sec/insider_daily.csv
+agents/panel_*.pkl
+dydx/imbalance_log.csv
+tg/scan_all.csv
+tg/*.session
+tg/*.session-journal
+tg/login_pending.json
+agents/panel_ins_*.pkl

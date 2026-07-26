@@ -100,6 +100,16 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1"
         ),
     },
+    "dydx": {
+        "name":         "dYdX Imbalance-Sammler",
+        "session":      "dydx",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1"
+        ),
+    },
     "dex_bundle": {
         "name":         "DEX Bundle-Collector",
         "session":      "dex_bundle",
