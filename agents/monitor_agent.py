@@ -80,26 +80,6 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u crypto_bot.py > /tmp/crypto_bot.log 2>&1"
         ),
     },
-    "dex": {
-        "name":         "DEX-Monitor (Solana)",
-        "session":      "dex",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1"
-        ),
-    },
-    "dex_paper_v12": {
-        "name":         "DEX Paper v12 (Jupiter-Fill)",
-        "session":      "dex_paper_v12",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1"
-        ),
-    },
     "dydx": {
         "name":         "dYdX Imbalance-Sammler",
         "session":      "dydx",
@@ -110,87 +90,28 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1"
         ),
     },
-    "dex_bundle": {
-        "name":         "DEX Bundle-Collector",
-        "session":      "dex_bundle",
+    "fundament_dash": {
+        "name":         "Fundament Dashboard",
+        "session":      "fundament_dash",
         "trading_only": False,
         "cmd": (
-            "cd /home/trading2025/trading_bot && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u dex_bundle_collector.py > /tmp/dex_bundle_collector.log 2>&1"
+            "fuser -k 8098/tcp 2>/dev/null; sleep 1; "
+            "cd /home/trading2025/trading_bot/fundament && "
+            "python3 /home/trading2025/trading_bot/dash_server.py 8098 "
+            "dashboard.html dashboard.json equity.csv "
+            "> /tmp/fundament_dash.log 2>&1"
         ),
     },
-    "dex_dashboard": {
-        "name":         "DEX Dashboard HTTP :8091",
-        "session":      "dex_dashboard",
+    "insider_dash": {
+        "name":         "Insider-Depot Dashboard",
+        "session":      "insider_dash",
         "trading_only": False,
         "cmd": (
-            "fuser -k 8091/tcp 2>/dev/null; sleep 1; "
-            "cd /home/trading2025/trading_bot/dex && "
-            "python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json paper_heartbeat_v11.json paper_state_v11.json paper_trades_v11.json paper_heartbeat_v12.json paper_state_v12.json paper_trades_v12.json bundle_live.html bundle_probe/live_report.json bundle_probe.html bundle_probe/report.json > /tmp/dex_dashboard.log 2>&1"
-        ),
-    },
-    "gateway": {
-        "name":         "Market-Data Gateway",
-        "session":      "gateway",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1"
-        ),
-    },
-    "clone_A_baseline": {
-        "name":         "Clone A (baseline)",
-        "session":      "clone_A_baseline",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py A_baseline > /tmp/clone_A_baseline.log 2>&1"
-        ),
-    },
-    "clone_G_core": {
-        "name":         "Clone G (mid-cap core)",
-        "session":      "clone_G_core",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py G_core > /tmp/clone_G_core.log 2>&1"
-        ),
-    },
-    "clone_G_mexc": {
-        "name":         "Clone G_mexc (Core auf MEXC ask/bid)",
-        "session":      "clone_G_mexc",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py G_mexc > /tmp/clone_G_mexc.log 2>&1"
-        ),
-    },
-    "clone_I_wide": {
-        "name":         "Clone I (MEXC + weites Universum)",
-        "session":      "clone_I_wide",
-        "trading_only": False,
-        "cmd": (
-            "cd /home/trading2025/trading_bot/crypto && "
-            "source /home/trading2025/trading_bot_env/bin/activate && "
-            "PYTHONUNBUFFERED=1 python3 -u clone.py I_wide > /tmp/clone_I_wide.log 2>&1"
-        ),
-    },
-    "clones_dashboard": {
-        "name":         "Clones Dashboard HTTP :8090",
-        "session":      "clones_dashboard",
-        "trading_only": False,
-        "cmd": (
-            "fuser -k 8090/tcp 2>/dev/null; sleep 1; "
-            "cd /home/trading2025/trading_bot/crypto/clones && "
-            "python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html "
-            "A_baseline_dashboard.json G_core_dashboard.json "
-            "G_mexc_dashboard.json I_wide_dashboard.json "
-            "> /tmp/clones_dashboard.log 2>&1"
+            "fuser -k 8097/tcp 2>/dev/null; sleep 1; "
+            "cd /home/trading2025/trading_bot/sec && "
+            "python3 /home/trading2025/trading_bot/dash_server.py 8097 "
+            "insider_dashboard.html insider_dashboard.json paper_equity.csv "
+            "> /tmp/insider_dash.log 2>&1"
         ),
     },
     "dashboard": {

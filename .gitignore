@@ -54,3 +54,5 @@ tg/*.session
 tg/*.session-journal
 tg/login_pending.json
 agents/panel_ins_*.pkl
+dex_archiv_*/
+crypto/clones_archiv_*/

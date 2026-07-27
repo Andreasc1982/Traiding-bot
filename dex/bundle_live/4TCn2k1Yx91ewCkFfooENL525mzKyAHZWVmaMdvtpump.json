@@ -1,0 +1,35 @@
+{
+  "addr": "4TCn2k1Yx91ewCkFfooENL525mzKyAHZWVmaMdvtpump",
+  "symbol": "TEPE",
+  "first_seen": "2026-07-26 18:13",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-26 18:14",
+  "reached_genesis": false,
+  "n_buyers": 3,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "91G6f43f6eedfieZdG2riaBxU6kNw9pWvR6pTQvjbUzK",
+      "first_buy_ts": 1785081791
+    },
+    {
+      "wallet": "7TLF6eMqbwjQeJeQVW13TFdURgaNc6896M7wtL1a7YbB",
+      "first_buy_ts": 1785081792,
+      "funder": "Bfxgk1Ug6upjQcAor7N9huF9nmPHzLYRDznTMHAfBLDK",
+      "funder_ts": 1784293697,
+      "sol": 0.002,
+      "sec_before_buy": 788095
+    },
+    {
+      "wallet": "DU4D99x8BBKxSUY3QoiNrBGY79bM4oLDBSZKNauh5Yy2",
+      "first_buy_ts": 1785081793,
+      "funder": "94S1baH24VimbbYNJZrosvKQdoqtbRAHGWexZwpbXfa9",
+      "funder_ts": 1784796516,
+      "sol": 0.45,
+      "sec_before_buy": 285277
+    }
+  ]
+}

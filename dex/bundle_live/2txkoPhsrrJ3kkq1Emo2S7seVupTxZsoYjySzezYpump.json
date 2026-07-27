@@ -1,0 +1,39 @@
+{
+  "addr": "2txkoPhsrrJ3kkq1Emo2S7seVupTxZsoYjySzezYpump",
+  "symbol": "Boss",
+  "first_seen": "2026-07-26 08:41",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-26 08:43",
+  "reached_genesis": false,
+  "n_buyers": 3,
+  "n_funded": 3,
+  "max_cluster": 2,
+  "insiders": 6,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "HDpkMi3qYSmVBAHZA7TyW5PDPm36dJzgwVNLFcoczF2p",
+      "first_buy_ts": 1785045921,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1784215739,
+      "sol": 0.0,
+      "sec_before_buy": 830182
+    },
+    {
+      "wallet": "KPEF3xjDBQjdbt32n91KsEQWoL6QQRwN6sWtxdikDJR",
+      "first_buy_ts": 1785045921,
+      "funder": "3UV212kX1Ud1BAJmd6EcZEfpDyrWtmhQLKbdwKBXzFSN",
+      "funder_ts": 1784225052,
+      "sol": 0.002,
+      "sec_before_buy": 820869
+    },
+    {
+      "wallet": "HKvXQeVXvWvDmcwe17R89mD29S3xk4ezZCdV2CNj1hnU",
+      "first_buy_ts": 1785045921,
+      "funder": "GF7YB1jGktkRQNnXU5YCuVRCQdoHcctkUw1q5bgbLLXc",
+      "funder_ts": 1784215737,
+      "sol": 0.0,
+      "sec_before_buy": 830184
+    }
+  ]
+}

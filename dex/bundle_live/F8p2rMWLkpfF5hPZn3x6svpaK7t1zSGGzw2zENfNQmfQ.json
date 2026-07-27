@@ -1,0 +1,31 @@
+{
+  "addr": "F8p2rMWLkpfF5hPZn3x6svpaK7t1zSGGzw2zENfNQmfQ",
+  "symbol": "Kimchi",
+  "first_seen": "2026-07-26 16:21",
+  "age_h_at_capture": 1.2,
+  "captured": "2026-07-26 16:21",
+  "reached_genesis": false,
+  "n_buyers": 3,
+  "n_funded": 1,
+  "max_cluster": 1,
+  "insiders": 6,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "niggerd597QYedtvjQDVHZTCCGyJrwHNm2i49dkm5zS",
+      "first_buy_ts": 1785071502
+    },
+    {
+      "wallet": "7CU8L7aNLdUZgdU9BVMU7Giaj5A1ydDPuiZwdYEEquS9",
+      "first_buy_ts": 1785071502
+    },
+    {
+      "wallet": "D9XWSKpaGnJAFMzZxBfWMSUy5qSFRyYWV6ZKepoJxyTd",
+      "first_buy_ts": 1785071502,
+      "funder": "9g2gAUg2jUqUfbQkK8ziaXfFiVzgihn8r3HqG2Los3mS",
+      "funder_ts": 1784638922,
+      "sol": 4.8087,
+      "sec_before_buy": 432580
+    }
+  ]
+}

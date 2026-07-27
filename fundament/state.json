@@ -1,0 +1,34 @@
+{
+ "cash": 0.0,
+ "anteile": {
+  "SPY": {
+   "stueck": 6.771722411332705,
+   "kurs": 738.1799926757812
+  },
+  "SHY": {
+   "stueck": 24.452734280129697,
+   "kurs": 81.7699966430664
+  },
+  "GLD": {
+   "stueck": 4.036458452696643,
+   "kurs": 371.5199890136719
+  },
+  "DBC": {
+   "stueck": 49.476246335307366,
+   "kurs": 30.309999465942383
+  }
+ },
+ "trades": [
+  {
+   "datum": "2026-07-26",
+   "umschlag": 5000.0,
+   "kosten": 2.5,
+   "wert": 9997.5,
+   "abweichung_pp": 50.0
+  }
+ ],
+ "start": "2026-07-26",
+ "letzte_rueckfuehrung": "2026-07-26",
+ "rueckfuehrungen": 1,
+ "kosten_gesamt": 2.5
+}

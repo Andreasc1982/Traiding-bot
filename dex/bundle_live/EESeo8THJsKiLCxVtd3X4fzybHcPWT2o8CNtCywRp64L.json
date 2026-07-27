@@ -1,0 +1,19 @@
+{
+  "addr": "EESeo8THJsKiLCxVtd3X4fzybHcPWT2o8CNtCywRp64L",
+  "symbol": "CROW",
+  "first_seen": "2026-07-26 02:13",
+  "age_h_at_capture": 0.5,
+  "captured": "2026-07-26 02:17",
+  "reached_genesis": true,
+  "n_buyers": 1,
+  "n_funded": 0,
+  "max_cluster": 0,
+  "insiders": 4,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "bwamJzztZsepfkteWRChggmXuiiCQvpLqPietdNfSXa",
+      "first_buy_ts": 1785022955
+    }
+  ]
+}

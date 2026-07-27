@@ -1,0 +1,51 @@
+{
+  "addr": "Eg6GnjsmJDXe1x9pqamzH5bckrBCR2NdDZQ2EG7ppump",
+  "symbol": "Macca",
+  "first_seen": "2026-07-26 15:28",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-26 15:32",
+  "reached_genesis": false,
+  "n_buyers": 6,
+  "n_funded": 3,
+  "max_cluster": 1,
+  "insiders": 0,
+  "insider_nets": 0,
+  "buyers": [
+    {
+      "wallet": "2CQgjcdNEo7WtbQLpJTAVcC3Ga61pNvRDTgP5grzctFG",
+      "first_buy_ts": 1785059390
+    },
+    {
+      "wallet": "4Q2nH3NL9riejAuSrQ1LbBQii1VRsMgLTrjjMQ7Ph3zJ",
+      "first_buy_ts": 1785059390
+    },
+    {
+      "wallet": "FGMJAT3Yrouh1eTWpAzNUfToupBggySqTUe8VfnJquVg",
+      "first_buy_ts": 1785059390
+    },
+    {
+      "wallet": "HdG6WK1qtb1NCUFUXpstsQQzdRhcfSP5dyYhEZrFqyef",
+      "first_buy_ts": 1785059390,
+      "funder": "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+      "funder_ts": 1782719010,
+      "sol": 8.999,
+      "sec_before_buy": 2340380
+    },
+    {
+      "wallet": "G3g1CKqKWSVEVURZDNMazDBv7YAhMNTjhJBVRTiKZygk",
+      "first_buy_ts": 1785059390,
+      "funder": "BmrLoL9jzYo4yiPUsFhYFU8hgE3CD3Npt8tgbqvneMyB",
+      "funder_ts": 1779704010,
+      "sol": 3.353,
+      "sec_before_buy": 5355380
+    },
+    {
+      "wallet": "CFSJADrAa9Mk6MGXipays6eyJiw53xTa5FZNd6JGkUtF",
+      "first_buy_ts": 1785059390,
+      "funder": "2Hgx1GjKRuH9H21Fzz7uGiqh1Fcz3wMP5PmgpDbyDDYp",
+      "funder_ts": 1768639118,
+      "sol": 0.132,
+      "sec_before_buy": 16420272
+    }
+  ]
+}

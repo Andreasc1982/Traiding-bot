@@ -1,0 +1,39 @@
+{
+  "addr": "DX39f7cpSRNTd7u4cNqaQPjRyHS3kXCfUL3TbKjbpump",
+  "symbol": "OS",
+  "first_seen": "2026-07-26 08:01",
+  "age_h_at_capture": 0.3,
+  "captured": "2026-07-26 08:01",
+  "reached_genesis": true,
+  "n_buyers": 4,
+  "n_funded": 2,
+  "max_cluster": 1,
+  "insiders": 5,
+  "insider_nets": 1,
+  "buyers": [
+    {
+      "wallet": "CU4L8gvTNGVu6FGGaLQKbSKbia5adhhA6ERVTF1DNr4Y",
+      "first_buy_ts": 1785043861,
+      "funder": "po27vzv7pSZYsroDopmGVVBVAqxg4GcyZXxmCkoejFB",
+      "funder_ts": 1771067861,
+      "sol": 0.0,
+      "sec_before_buy": 13976000
+    },
+    {
+      "wallet": "HJvW1wAN21voX8GAiA1BcABmZAYhoMc2ixLTsCenP4HP",
+      "first_buy_ts": 1785043861,
+      "funder": "FyRUpzgRKW9eLUTqDxHFG6e4xGN73okGPufC9LAiJ5Bv",
+      "funder_ts": 1774447099,
+      "sol": 0.002,
+      "sec_before_buy": 10596762
+    },
+    {
+      "wallet": "ADkquSiH1zS6LmGoJxzwE6x44gpE6S3KWLALqNc3sTDs",
+      "first_buy_ts": 1785043862
+    },
+    {
+      "wallet": "WYixrDLtQg3r6zHvFHT7Aupyc38tzfjc9eWjDuxkrC5",
+      "first_buy_ts": 1785043862
+    }
+  ]
+}

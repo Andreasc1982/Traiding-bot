@@ -81,50 +81,62 @@ screen -dmS backup bash -c '
   cd /home/trading2025/trading_bot/agents &&
   source /home/trading2025/trading_bot_env/bin/activate &&
   PYTHONUNBUFFERED=1 python3 -u github_backup.py > /tmp/backup.log 2>&1'
-
+#[clones beendet 2026-07-26] 
 # ── Clone-Experiment: Gateway + Clones (A–H) + Dashboard ──────────────────────
-screen -dmS gateway bash -c '
-  cd /home/trading2025/trading_bot/crypto &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1'
-sleep 3
-for V in A_baseline G_core G_mexc I_wide; do
-  screen -dmS clone_$V bash -c "
-    cd /home/trading2025/trading_bot/crypto &&
-    source /home/trading2025/trading_bot_env/bin/activate &&
-    PYTHONUNBUFFERED=1 python3 -u clone.py $V > /tmp/clone_$V.log 2>&1"
-done
-screen -dmS clones_dashboard bash -c '
-  fuser -k 8090/tcp 2>/dev/null; sleep 1;
-  cd /home/trading2025/trading_bot/crypto/clones &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json G_core_dashboard.json G_mexc_dashboard.json I_wide_dashboard.json > /tmp/clones_dashboard.log 2>&1'
-
+#[clones beendet 2026-07-26] screen -dmS gateway bash -c '
+#[clones beendet 2026-07-26]   cd /home/trading2025/trading_bot/crypto &&
+#[clones beendet 2026-07-26]   source /home/trading2025/trading_bot_env/bin/activate &&
+#[clones beendet 2026-07-26]   PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1'
+#[clones beendet 2026-07-26] sleep 3
+#[clones beendet 2026-07-26] for V in A_baseline G_core G_mexc I_wide; do
+#[clones beendet 2026-07-26]   screen -dmS clone_$V bash -c "
+#[clones beendet 2026-07-26]     cd /home/trading2025/trading_bot/crypto &&
+#[clones beendet 2026-07-26]     source /home/trading2025/trading_bot_env/bin/activate &&
+#[clones beendet 2026-07-26]     PYTHONUNBUFFERED=1 python3 -u clone.py $V > /tmp/clone_$V.log 2>&1"
+#[clones beendet 2026-07-26] done
+#[clones beendet 2026-07-26] screen -dmS clones_dashboard bash -c '
+#[clones beendet 2026-07-26]   fuser -k 8090/tcp 2>/dev/null; sleep 1;
+#[clones beendet 2026-07-26]   cd /home/trading2025/trading_bot/crypto/clones &&
+#[clones beendet 2026-07-26]   python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json G_core_dashboard.json G_mexc_dashboard.json I_wide_dashboard.json > /tmp/clones_dashboard.log 2>&1'
+#[clones beendet 2026-07-26] 
 # DEX-Monitor (Solana, read-only)
-screen -dmS dex bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1'
+#[dex beendet 20260726] screen -dmS dex bash -c '
+#[dex beendet 20260726]   cd /home/trading2025/trading_bot &&
+#[dex beendet 20260726]   source /home/trading2025/trading_bot_env/bin/activate &&
+#[dex beendet 20260726]   PYTHONUNBUFFERED=1 python3 -u dex_monitor.py > /tmp/dex_monitor.log 2>&1'
 # DEX Paper v12 (Jupiter-Fill) — EINZIGE aktive Variante.
 # v7/v9/v10/v11 SUNSET 20.07. (eingefroren $10-19) — Prozesse beendet 25.07.,
 # NICHT mehr starten (Monitor hatte sie am 22.07. faelschlich wiederbelebt -> TG-Spam).
-screen -dmS dex_paper_v12 bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1'
+#[dex beendet 20260726] screen -dmS dex_paper_v12 bash -c '
+#[dex beendet 20260726]   cd /home/trading2025/trading_bot &&
+#[dex beendet 20260726]   source /home/trading2025/trading_bot_env/bin/activate &&
+#[dex beendet 20260726]   PYTHONUNBUFFERED=1 python3 -u dex_paper.py v12 > /tmp/dex_paper_v12.log 2>&1'
 # DEX Bundle-Collector (vorwaerts, Launch-Funding-Graphen frischer Tokens)
-screen -dmS dex_bundle bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dex_bundle_collector.py > /tmp/dex_bundle_collector.log 2>&1'
+#[dex beendet 20260726] screen -dmS dex_bundle bash -c '
+#[dex beendet 20260726]   cd /home/trading2025/trading_bot &&
+#[dex beendet 20260726]   source /home/trading2025/trading_bot_env/bin/activate &&
+#[dex beendet 20260726]   PYTHONUNBUFFERED=1 python3 -u dex_bundle_collector.py > /tmp/dex_bundle_collector.log 2>&1'
 # dYdX Orderbuch-Imbalance-Sammler (read-only, kein Konto)
-screen -dmS dydx bash -c '
-  cd /home/trading2025/trading_bot &&
-  source /home/trading2025/trading_bot_env/bin/activate &&
-  PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1'
-screen -dmS dex_dashboard bash -c '
-  fuser -k 8091/tcp 2>/dev/null; sleep 1;
-  cd /home/trading2025/trading_bot/dex &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json paper_heartbeat_v11.json paper_state_v11.json paper_trades_v11.json paper_heartbeat_v12.json paper_state_v12.json paper_trades_v12.json bundle_live.html bundle_probe/live_report.json bundle_probe.html bundle_probe/report.json > /tmp/dex_dashboard.log 2>&1'
+#[dex beendet 20260726] screen -dmS dydx bash -c '
+#[dex beendet 20260726]   cd /home/trading2025/trading_bot &&
+#[dex beendet 20260726]   source /home/trading2025/trading_bot_env/bin/activate &&
+#[dex beendet 20260726]   PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1'
+#[dex beendet 20260726] screen -dmS dex_dashboard bash -c '
+#[dex beendet 20260726]   fuser -k 8091/tcp 2>/dev/null; sleep 1;
+#[dex beendet 20260726]   cd /home/trading2025/trading_bot/dex &&
+#[dex beendet 20260726]   python3 /home/trading2025/trading_bot/dash_server.py 8091 dex_dashboard.html watchlist.json heartbeat.json paper_heartbeat.json paper_state.json paper_trades.json paper_heartbeat_v9.json paper_state_v9.json paper_trades_v9.json paper_heartbeat_v10.json paper_state_v10.json paper_trades_v10.json paper_heartbeat_v11.json paper_state_v11.json paper_trades_v11.json paper_heartbeat_v12.json paper_state_v12.json paper_trades_v12.json bundle_live.html bundle_probe/live_report.json bundle_probe.html bundle_probe/report.json > /tmp/dex_dashboard.log 2>&1'
+
+# Insider-Papierdepot Dashboard (Port 8097)
+screen -dmS insider_dash bash -c '
+  fuser -k 8097/tcp 2>/dev/null; sleep 1;
+  cd /home/trading2025/trading_bot/sec &&
+  python3 /home/trading2025/trading_bot/dash_server.py 8097 insider_dashboard.html insider_dashboard.json paper_equity.csv > /tmp/insider_dash.log 2>&1'
+
+# Fundament-Dashboard (Port 8098)
+screen -dmS fundament_dash bash -c '
+  fuser -k 8098/tcp 2>/dev/null; sleep 1;
+  cd /home/trading2025/trading_bot/fundament &&
+  python3 /home/trading2025/trading_bot/dash_server.py 8098 dashboard.html dashboard.json equity.csv > /tmp/fundament_dash.log 2>&1'
 
 echo "[start_all] All screen sessions launched."
 screen -list
