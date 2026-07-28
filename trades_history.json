@@ -1,1 +1,1 @@
-[]
+[{"symbol": "XLE", "profit": -2.0, "pnl_pct": -2.0, "reason": "WS-STOP-LOSS", "time": "2026-07-27 15:30", "sector": "energy", "features": {"rsi": 68.8, "adx": 22.3, "cmf": 0.012, "macd_hist": 0.5611, "stoch_k": 1.0, "ma_dist_pct": 6.63, "vwap_dist_pct": 0.0, "fg_value": 27.0, "pc_ratio": 0.99, "score_pct": 0.9412}, "ml_prob": 1.0}]
