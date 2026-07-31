@@ -14,7 +14,7 @@ damit nur die AUSWAHL gemessen wird und nicht der Marktverlauf.
 
     python3 sec_portfolio_test.py [panel.pkl] [anzahl_positionen] [rebal_tage]
 """
-import os, sys, csv, math, pickle, collections
+import sys, csv, math, pickle, collections
 import statistics as st
 
 BASE = "/home/trading2025/trading_bot"
@@ -25,7 +25,7 @@ for a in sys.argv[1:]:
 _n = [int(a) for a in sys.argv[1:] if a.isdigit()]
 NPOS = _n[0] if _n else 20
 REBAL = _n[1] if len(_n) > 1 else 20
-INS = os.environ.get("SEC_INS") or BASE + "/sec/insider_daily.csv"
+INS = BASE + "/sec/insider_daily.csv"
 W = 90
 COSTS_BPS = [4, 20, 50, 100, 200]      # Roundtrip in Basispunkten
 LIQ_TIERS = [("alle", 0), ("ab $1M/Tag", 1e6), ("ab $5M/Tag", 5e6)]

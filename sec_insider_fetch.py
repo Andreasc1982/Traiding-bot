@@ -17,12 +17,16 @@ Optionsausuebungen, Schenkungen, Vesting (M/A/G/F...) sind kein Signal.
 """
 import os, sys, csv, io, time, zipfile, collections, urllib.request
 from datetime import datetime
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sec_clean
 
 BASE = "/home/trading2025/trading_bot/sec"
 URL = ("https://www.sec.gov/files/structureddata/data/"
        "insider-transactions-data-sets/%dq%d_form345.zip")
 UA = "TradingResearch contact@example.com"
-OUT = os.path.join(BASE, "insider_daily.csv")
+# Zieldatei ueberschreibbar, damit ein bereinigter Lauf den bestehenden
+# Datensatz nicht ueberschreibt (Vergleich alt/neu).
+OUT = os.environ.get("SEC_OUT") or os.path.join(BASE, "insider_daily.csv")
 Y0 = int(sys.argv[1]) if len(sys.argv) > 1 else 2018
 Y1 = int(sys.argv[2]) if len(sys.argv) > 2 else 2026
 
@@ -43,18 +47,18 @@ def quarter(year, q, agg):
             with urllib.request.urlopen(req, timeout=120) as r:
                 data = r.read()
             if len(data) < 10000:
-                return 0
+                return 0, 0
             with open(path, "wb") as f:
                 f.write(data)
             time.sleep(0.5)
         except Exception as e:
             print("  %dq%d: %s" % (year, q, str(e)[:50]), flush=True)
-            return 0
+            return 0, 0
     try:
         zf = zipfile.ZipFile(path)
     except Exception:
         os.remove(path)
-        return 0
+        return 0, 0
 
     # 1) Einreichung -> (Ticker, Filing-Datum)
     sub = {}
@@ -64,16 +68,16 @@ def quarter(year, q, agg):
         for r in rd:
             if r.get("DOCUMENT_TYPE") != "4":
                 continue
-            tic = (r.get("ISSUERTRADINGSYMBOL") or "").strip().upper()
+            tic = sec_clean.ticker_gueltig(r.get("ISSUERTRADINGSYMBOL"))
             fd = parse_date(r.get("FILING_DATE") or "")
-            if not tic or not fd or not tic.isalpha() or len(tic) > 5:
+            if not tic or not fd:
                 continue
             sub[r["ACCESSION_NUMBER"]] = (tic, fd)
 
     # 2) Transaktionen zuordnen und je (Ticker, Filing-Tag) verdichten
-    n = 0
-    seen_buyer = collections.defaultdict(set)
-    seen_seller = collections.defaultdict(set)
+    # Erst je Filing sammeln — der Ausreisser-Test braucht die uebrigen
+    # Transaktionen derselben Meldung als Vergleichsmassstab.
+    pro_acc = collections.defaultdict(list)
     with zf.open("NONDERIV_TRANS.tsv") as f:
         rd = csv.DictReader(io.TextIOWrapper(f, "utf-8", errors="replace"),
                             delimiter="\t")
@@ -91,8 +95,17 @@ def quarter(year, q, agg):
                 continue
             if sh <= 0 or px <= 0:
                 continue
-            tic, fd = sub[acc]
-            key = (tic, fd)
+            pro_acc[acc].append((code, sh, px))
+
+    n, verworfen = 0, 0
+    seen_buyer = collections.defaultdict(set)
+    seen_seller = collections.defaultdict(set)
+    for acc, trans in pro_acc.items():
+        trans, weg = sec_clean.filter_ausreisser(trans)
+        verworfen += weg
+        tic, fd = sub[acc]
+        key = (tic, fd)
+        for code, sh, px in trans:
             usd = sh * px
             if code == "P":
                 agg[key][1] += usd
@@ -106,20 +119,23 @@ def quarter(year, q, agg):
     for k, v in seen_seller.items():
         agg[k][2] += len(v)
     zf.close()
-    return n
+    return n, verworfen
 
 
 def main():
     os.makedirs(BASE, exist_ok=True)
     agg = collections.defaultdict(lambda: [0, 0.0, 0, 0.0])  # nB, kaufUSD, nS, verkUSD
-    total = 0
+    total, total_weg = 0, 0
     for y in range(Y0, Y1 + 1):
         for q in (1, 2, 3, 4):
-            n = quarter(y, q, agg)
+            n, weg = quarter(y, q, agg)
             if n:
                 total += n
-                print("  %dq%d: %d Transaktionen (P/S), Panel %d Zeilen"
-                      % (y, q, n, len(agg)), flush=True)
+                total_weg += weg
+                print("  %dq%d: %d Transaktionen (P/S), Panel %d Zeilen%s"
+                      % (y, q, n, len(agg),
+                         ", %d Ausreisser verworfen" % weg if weg else ""),
+                      flush=True)
     if not agg:
         print("Keine Daten geladen.")
         return
