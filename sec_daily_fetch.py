@@ -50,6 +50,32 @@ def get(url, timeout=30, versuche=4):
     raise letzte
 
 
+_quartal_cache = {}
+
+
+def quartals_dateien(jahr, q):
+    """Dateiliste eines Quartalsverzeichnisses (einmal je Quartal geholt).
+
+    EDGAR beantwortet Tagesindizes fuer Boersenfeiertage mit **403**, nicht
+    mit 404 — geprueft am 2026-07-03 (verschobener Independence Day) und
+    2025-12-25. Ein 403 kann aber genauso Drosselung bedeuten. Statt am
+    Statuscode zu raten, fragen wir das Verzeichnis: fehlt die Datei dort,
+    war es kein Handelstag; ist sie gelistet und liefert trotzdem 403, sind
+    wir gedrosselt und der Tag muss wiederholt werden.
+    """
+    key = (jahr, q)
+    if key not in _quartal_cache:
+        url = ("https://www.sec.gov/Archives/edgar/daily-index/%d/QTR%d/"
+               "index.json" % (jahr, q))
+        try:
+            js = json.loads(get(url, versuche=2))
+            _quartal_cache[key] = set(i["name"] for i in
+                                      js["directory"]["item"])
+        except Exception:
+            _quartal_cache[key] = None    # nicht lesbar -> keine Aussage
+    return _quartal_cache[key]
+
+
 def parse_filing(txt):
     """-> (ticker, [(code, shares, price), ...]) oder None."""
     m = re.search(r"<ownershipDocument>.*?</ownershipDocument>", txt, re.S)
@@ -90,11 +116,16 @@ def day(dstr):
     q = (d.month - 1) // 3 + 1
     url = ("https://www.sec.gov/Archives/edgar/daily-index/%d/QTR%d/form.%s.idx"
            % (d.year, q, d.strftime("%Y%m%d")))
+    # Erst nachsehen, ob es den Tagesindex ueberhaupt gibt — spart an jedem
+    # Feiertag den Fehlversuch samt Drossel-Backoff (4 Versuche a 30-120s).
+    dateien = quartals_dateien(d.year, q)
+    if dateien is not None and url.rsplit("/", 1)[1] not in dateien:
+        return 0, {}, True                        # kein Handelstag
     try:
         idx = get(url)
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return 0, {}, True                    # Feiertag: kein Index
+            return 0, {}, True                    # kein Index -> Feiertag
         print("  %s: Index-Abruf fehlgeschlagen (%s)" % (dstr, e), flush=True)
         return 0, {}, False
     except Exception as e:
