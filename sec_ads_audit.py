@@ -49,6 +49,14 @@ RE_SHARES_ZU_ADS = re.compile(
     r"(?:ADS|ADR|American\s+Depositary)",
     re.I)
 
+# Implizit ueber zwei Zahlen, haeufigste ungefasste Form (1.394 Fussnoten):
+# "The 70,584 ordinary shares reported in Column 5 are represented by
+#  11,764 ADSs."  -> 70.584 / 11.764 = 6
+RE_IMPLIZIT = re.compile(
+    r"([\d,]+)\s+(?:[\w\-]+\s+){0,4}?(?:ordinary|common|class\s+[ab])\s*"
+    r"(?:share|stock)s?\b[^.]{0,80}?represented\s+by\s+([\d,]+)\s+ADSs?",
+    re.I)
+
 
 def zahl(s):
     s = s.strip().lower().rstrip(".")
@@ -67,12 +75,26 @@ def ratio_aus_text(t):
             n = zahl(m.group(1))
             if n and n > 1:            # 1:1 ist kein Fehler
                 return n
+    m = RE_IMPLIZIT.search(t)
+    if m:
+        a, b = zahl(m.group(1)), zahl(m.group(2))
+        if a and b and b > 0:
+            v = a / b
+            # nur runde, plausible Hinterlegungsverhaeltnisse akzeptieren
+            if v > 1.5 and abs(v - round(v)) < 0.01:
+                return round(v)
     return None
 
 
 def sammle():
-    """-> ratios {accession: n}, treffer_txt, ads_erwaehnungen, unparsed[]"""
-    ratios, ads_gesamt, unparsed = {}, 0, []
+    """-> ratios {accession: n}, ads_erwaehnungen, unparsed[], alle_acc
+
+    `alle_acc` sind ALLE Filings mit irgendeiner ADS/ADR-Erwaehnung — auch
+    ohne auslesbares Verhaeltnis. Nur so ist die Kandidatenliste unabhaengig
+    davon, was der Parser fasst; fuer die wenigen Treffer im $5M-Band laesst
+    sich das Verhaeltnis dann gezielt nachschlagen.
+    """
+    ratios, ads_gesamt, unparsed, alle_acc = {}, 0, [], set()
     for y in range(Y0, Y1 + 1):
         for q in (1, 2, 3, 4):
             p = os.path.join(BASE, "%dq%d.zip" % (y, q))
@@ -97,6 +119,7 @@ def sammle():
                     ads_gesamt += 1
                     n = ratio_aus_text(t)
                     acc = r.get("ACCESSION_NUMBER")
+                    alle_acc.add(acc)
                     if n:
                         # groesstes gefundenes Verhaeltnis je Filing gewinnt
                         ratios[acc] = max(ratios.get(acc, 0), n)
@@ -104,7 +127,7 @@ def sammle():
                           ("ordinary" in t.lower() or "common" in t.lower())):
                         unparsed.append(t[:120])
             z.close()
-    return ratios, ads_gesamt, unparsed
+    return ratios, ads_gesamt, unparsed, alle_acc
 
 
 def filings_index():
@@ -135,7 +158,7 @@ def filings_index():
 
 def main():
     print("Lese Fussnoten aus den Quartals-ZIPs ...", flush=True)
-    ratios, ads_gesamt, unparsed = sammle()
+    ratios, ads_gesamt, unparsed, alle_acc = sammle()
     print("  %d Fussnoten erwaehnen ADS/ADR" % ads_gesamt)
     print("  %d Filings mit auslesbarem Verhaeltnis (>1:1)" % len(ratios))
     print("  %d Fussnoten nennen ein Verhaeltnis, das der Parser NICHT fasst"
@@ -173,6 +196,17 @@ def main():
         print("\n  im Panel, aber unter $5M ADV (fallen im Band ohnehin raus):")
         print("    " + " ".join("%s(%.0fx)" % (t, max(je_ticker[t]))
                                 for t in im_panel if t not in im_band))
+
+    # Gegenprobe ohne Parser: ALLE Ticker mit ADS-Erwaehnung
+    alle_tic = set(sub.get(a) for a in alle_acc) - set([None])
+    kand = sorted(t for t in alle_tic if t in adv and adv[t] >= 5e6)
+    print("\nGegenprobe (unabhaengig vom Parser):")
+    print("  %d Ticker erwaehnen ADS/ADR irgendwo, %d davon im $5M-Band:"
+          % (len(alle_tic), len(kand)))
+    print("    " + " ".join("%s%s" % (t, "*" if t in im_band else "")
+                            for t in kand))
+    print("    (* = Verhaeltnis ausgelesen; ohne * = ADS erwaehnt, "
+          "Verhaeltnis unklar -> pruefen)")
 
     json.dump({t: max(je_ticker[t]) for t in je_ticker},
               open(os.path.join(BASE, "ads_ratios.json"), "w"))
