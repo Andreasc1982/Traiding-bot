@@ -775,10 +775,21 @@ DISPATCH = {
 
 # ── Polling loop ─────────────────────────────────────────────────────────────
 
+HEARTBEAT_EVERY = 1800   # alle 30 Min eine Lebenszeichen-Zeile
+
+
 def poll_loop():
     offset = 0
     log("Long-polling gestartet (einziger getUpdates-Aufrufer)")
+    # Ohne Heartbeat ist "laeuft ruhig" im Log nicht von "haengt seit Tagen" zu
+    # unterscheiden — der ReadTimeout-Normalfall schreibt naemlich nichts.
+    last_beat = time.time()
+    cycles = cmds = err_streak = 0
+    last_err = ""
     while True:
+        if time.time() - last_beat >= HEARTBEAT_EVERY:
+            log(f"alive — {cycles} Zyklen, {cmds} Befehle seit Start")
+            last_beat = time.time()
         try:
             r = requests.get(
                 API + "/getUpdates",
@@ -818,6 +829,7 @@ def poll_loop():
                         log(f"CMD BLOCKED (no auth): {word}")
                         continue
                     log(f"CMD: {word}")
+                    cmds += 1
                     try:
                         handler()
                     except Exception as e:
@@ -825,10 +837,24 @@ def poll_loop():
                         send(f"❌ Fehler bei {word}: {e}")
                 # Unknown commands silently ignored
 
+            cycles += 1
+            if err_streak:
+                log(f"wieder erreichbar nach {err_streak} Fehlversuchen")
+                err_streak, last_err = 0, ""
+
         except requests.exceptions.ReadTimeout:
-            pass   # normal — long-poll expired, no updates; loop immediately
+            cycles += 1
+            if err_streak:
+                log(f"wieder erreichbar nach {err_streak} Fehlversuchen")
+                err_streak, last_err = 0, ""
         except Exception as e:
-            log(f"poll error: {e}")
+            # Identische Fehler nicht 243x wiederholen (DNS-Ausfall 09.08) —
+            # erster Fehler, dann nur noch alle 20 Versuche.
+            err_streak += 1
+            txt = str(e)[:120]
+            if txt != last_err or err_streak % 20 == 0:
+                log(f"poll error (#{err_streak}): {txt}")
+                last_err = txt
             time.sleep(5)
 
 

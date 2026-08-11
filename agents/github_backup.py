@@ -122,12 +122,18 @@ def backup():
     else:
         run("git remote add origin " + repo_url)
 
-    # Try 'main' first, fall back to 'master'
-    rc, out = run("git push origin main")
+    # Push den tatsaechlich ausgecheckten Branch. Der fruehere master-Fallback
+    # ueberschrieb im Fehlerfall die echte Ursache mit "src refspec master does
+    # not match any" — dadurch blieb ein 100-MB-Limit-Abbruch 9 Naechte unentdeckt.
+    rc, branch = run("git rev-parse --abbrev-ref HEAD")
+    if rc != 0 or not branch:
+        branch = "main"
+    rc, out = run("git push origin " + branch)
     if rc != 0:
-        rc, out = run("git push origin master")
-    if rc != 0:
-        msg = "❌ GitHub Backup FEHLER (push): " + out[:300]
+        big = run("find . -path ./.git -prune -o -type f -size +95M -print")[1]
+        msg = "❌ GitHub Backup FEHLER (push auf %s): %s" % (branch, out[:300])
+        if big:
+            msg += "\n⚠️ Dateien über 95 MB (GitHub-Limit 100 MB):\n" + big[:300]
         print(msg); send(msg)
         return
 

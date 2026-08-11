@@ -131,6 +131,7 @@ class SuperTradingBot:
         self.alpaca_headers = {}
         self.running     = True
         self.last_skips  = []
+        self.skip_reasons = {}   # Grund -> Anzahl, je Scan zurueckgesetzt
         self.last_congress = {}
         self.last_fg     = {"value": 50, "label": "N/A"}
         self.last_pc     = {"value": 1.0, "label": "N/A"}   # Put/Call ratio
@@ -1480,7 +1481,13 @@ class SuperTradingBot:
                 self._dd_danger_sent = True
             return 0.0, "DANGER"
 
+    def _skip(self, symbol, grund, detail=""):
+        """Absage protokollieren und zaehlen — die Zaehlung landet im Statusblock."""
+        self.skip_reasons[grund] = self.skip_reasons.get(grund, 0) + 1
+        print("[SKIP] " + symbol + " " + (detail or grund))
+
     def trade(self, scores):
+        self.skip_reasons = {}
         if self.tg_paused:
             print("[TRADE] Pausiert (via Telegram /stop)")
             return
@@ -1497,45 +1504,63 @@ class SuperTradingBot:
 
         ranked = sorted(scores.items(), key=lambda x: abs(x[1]), reverse=True)
         for sector, score in ranked:
-            if abs(score) < 1.0:
-                continue
             symbol = ETFS[sector]
+            if abs(score) < 1.0:
+                self.skip_reasons["Stimmung zu schwach"] = \
+                    self.skip_reasons.get("Stimmung zu schwach", 0) + 1
+                continue
             if symbol in self.excluded_symbols:
+                self.skip_reasons["dauerhaft gesperrt (Optimizer)"] = \
+                    self.skip_reasons.get("dauerhaft gesperrt (Optimizer)", 0) + 1
                 continue
             if score <= 0:
+                self.skip_reasons["Stimmung negativ"] = \
+                    self.skip_reasons.get("Stimmung negativ", 0) + 1
                 continue
 
             with self.positions_lock:
-                if symbol in self.positions or len(self.positions) >= self.max_pos:
+                if symbol in self.positions:
+                    self.skip_reasons["schon im Depot"] = \
+                        self.skip_reasons.get("schon im Depot", 0) + 1
+                    continue
+                if len(self.positions) >= self.max_pos:
+                    self.skip_reasons["Depot voll"] = \
+                        self.skip_reasons.get("Depot voll", 0) + 1
                     continue
 
             # 1.5h SL-Cooling -- kein Wiederkauf direkt nach Hard-Stop
             sl_age = time.time() - self._sl_cooldown.get(symbol, 0)
             if sl_age < 5400:
-                print("[SKIP] " + symbol + " SL-COOLING " + str(int((5400 - sl_age) / 60)) + "min")
+                self._skip(symbol, "Sperrfrist nach Stop-Loss",
+                           "Sperrfrist nach Stop-Loss — noch " +
+                           str(int((5400 - sl_age) / 60)) + " Min")
                 continue
 
             # Earnings window guard — no new buys within 2 days before / 1 day after
             blocked, earn_stock, earn_date = self._get_earnings_window(symbol)
             if blocked:
-                print("[SKIP] " + symbol + " Earnings " + earn_stock + " " + earn_date)
+                self._skip(symbol, "Quartalszahlen stehen an",
+                           "Quartalszahlen " + earn_stock + " am " + earn_date)
                 continue
 
             ind = self.get_indicators(symbol)
             if ind is None:
-                print("[SKIP] " + symbol + " keine Indikatoren")
+                self._skip(symbol, "keine Kursdaten",
+                           "keine Kursdaten — Indikatoren nicht berechenbar")
                 continue
 
             # Higher-Timeframe filter — weekly trend must be bullish
             if not self._get_htf_trend(symbol):
-                print("[SKIP] " + symbol + " HTF=bear (Preis unter 10-Wochen-MA)")
+                self._skip(symbol, "Wochentrend faellt",
+                           "Wochentrend faellt (Kurs unter 10-Wochen-Schnitt)")
                 continue
 
             # Correlation guard — block if too similar to an open position
             corr, corr_sym = self._check_correlation(symbol)
             if corr > 0.85:
-                print("[SKIP] " + symbol + " Korrelation=" + str(corr) +
-                      " zu " + str(corr_sym) + " (Grenze 0.85)")
+                self._skip(symbol, "zu aehnlich zu offener Position",
+                           "zu aehnlich zu " + str(corr_sym) + " im Depot " +
+                           "(Gleichlauf " + str(corr) + ", Grenze 0.85)")
                 continue
 
             # ── VWAP fair-value filter ─────────────────────────────────────────
@@ -1566,7 +1591,8 @@ class SuperTradingBot:
             # ── VIX Volatility Regime — multiplied on top of ADX size_mult ────
             vix_regime, vix_mult = self._get_vix_regime()
             if vix_mult == 0.0:
-                print("[SKIP] " + symbol + " VIX=EXTREME — keine neuen Trades (Crash-Schutz)")
+                self._skip(symbol, "VIX extrem (Crash-Schutz)",
+                           "VIX extrem — Crash-Schutz blockt neue Kaeufe")
                 continue
             size_mult = round(size_mult * vix_mult * dd_mult, 2)
 
@@ -1595,21 +1621,22 @@ class SuperTradingBot:
                         "ichi_ok": ichi_ok, "psar_ok": psar_ok,
                     })
                     self.last_skips = self.last_skips[-20:]
-                vwap_str = ("ok($" + str(vwap) + ")" if vwap_ok
-                            else "no($" + str(vwap) + ")")
-                print("[SKIP] " + symbol +
-                      " [" + regime + " ADX=" + str(adx) +
-                      " score=" + str(round(score_pct * 100)) + "%<" +
-                      str(int(threshold * 100)) + "%]" +
-                      " RSI=" + str(ind["rsi"]) +
-                      " MA=" + ("above" if ma_ok else "below") +
-                      " MACD=" + ("bull" if macd_ok else "bear") +
-                      " ST=" + ("bull" if st_ok else "bear") +
-                      " CMF=" + str(ind.get("cmf", 0.0)) +
-                      " StRSI=" + ("ok" if stoch_ok else "no") +
-                      " VWAP=" + vwap_str +
-                      " ICHI=" + ("above" if ichi_ok else "below") +
-                      " PSAR=" + ("bull" if psar_ok else "bear"))
+                # Erst das Urteil (Score gegen Schwelle), dann welche Indikatoren
+                # dafuer und welche dagegen standen — sonst muss man 10 Kuerzel lesen.
+                dafuer = [n for n, ok in (("RSI", rsi_ok), ("Trend", ma_ok),
+                          ("MACD", macd_ok), ("SuperTrend", st_ok),
+                          ("Geldfluss", cmf_ok), ("StochRSI", stoch_ok),
+                          ("VWAP", vwap_ok), ("Ichimoku", ichi_ok)) if ok]
+                dagegen = [n for n, ok in (("RSI", rsi_ok), ("Trend", ma_ok),
+                           ("MACD", macd_ok), ("SuperTrend", st_ok),
+                           ("Geldfluss", cmf_ok), ("StochRSI", stoch_ok),
+                           ("VWAP", vwap_ok), ("Ichimoku", ichi_ok)) if not ok]
+                self._skip(symbol, "Signal zu schwach",
+                           "Signal " + str(round(score_pct * 100)) + "% "
+                           "(noetig " + str(int(threshold * 100)) + "%, Lage " +
+                           regime + " ADX " + str(adx) + ")"
+                           " | dafuer: " + (", ".join(dafuer) or "nichts") +
+                           " | dagegen: " + (", ".join(dagegen) or "nichts"))
                 continue
 
             # ── ML Meta-Filter — Random Forest win-probability gate ───────────
@@ -1633,14 +1660,16 @@ class SuperTradingBot:
             # RandomForest nur "alles verliert" und blockt jeden Kauf. Reaktiviert sich
             # automatisch ab 100 gelabelten Trades, wenn genug echtes Signal da ist.
             if self._ml_trained_count >= 100 and ml_prob < self.ML_THRESHOLD:
-                print("[SKIP] " + symbol + " ML=" +
-                      str(round(ml_prob * 100)) + "%<" +
-                      str(int(self.ML_THRESHOLD * 100)) + "% (model trained on " +
-                      str(self._ml_trained_count) + " trades)")
+                self._skip(symbol, "ML-Filter blockt",
+                           "ML-Gewinnchance " + str(round(ml_prob * 100)) +
+                           "% (noetig " + str(int(self.ML_THRESHOLD * 100)) +
+                           "%, gelernt aus " + str(self._ml_trained_count) +
+                           " Trades)")
                 continue
 
             price = self.get_price(symbol)
             if price is None or price <= 0:
+                self._skip(symbol, "kein Kurs abrufbar")
                 continue
 
             # ── ATR-based position sizing ──────────────────────────────────────
@@ -1656,6 +1685,12 @@ class SuperTradingBot:
             else:
                 shares = int(self.balance * self.pos_size * size_mult / price)
             if shares < 1:
+                # Bisher stiller Abbruch — dadurch blieb unsichtbar, dass teure
+                # ETFs (GLD ~$400 gegen ~$244 Budget) NIE gekauft werden koennen.
+                budget = self.balance * self.pos_size * size_mult
+                self._skip(symbol, "Position zu teuer fuer Budget",
+                           "Kurs $" + str(round(price, 2)) + " > Budget $" +
+                           str(round(budget, 2)) + " — nicht mal 1 Stueck kaufbar")
                 continue
 
             fill = price * (1 + getattr(self, "sim_slip", 0.0002)) if self.demo else price
@@ -1775,30 +1810,48 @@ class SuperTradingBot:
         now  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         mode = "DEMO" if self.demo else "LIVE"
         ws   = "WS✓" if self.ws_connected else "WS✗"
-        print("=" * 50)
+        print("=" * 62)
         print("  SUPER BOT v3.0 | " + mode + " | " + ws + " | " + now)
-        print("=" * 50)
-        print("  Balance: $" + str(round(bal, 2)))
-        print("  Pos: " + str(len(pos_snap)) + "/" + str(self.max_pos))
+        print("=" * 62)
+
+        seit_start = ((bal / self.start_balance - 1) * 100
+                      if self.start_balance else 0.0)
+        print("  Kontostand: $" + str(round(bal, 2)) +
+              "   (Start $" + str(round(self.start_balance, 2)) + ", " +
+              ("%+.1f" % seit_start) + "%)")
+
+        print("  Positionen: " + str(len(pos_snap)) + " von " +
+              str(self.max_pos) + " belegt")
         for sym, pos in pos_snap.items():
             price = self.get_price(sym) or pos["entry"]
             pnl_pct = ((price - pos["entry"]) / pos["entry"]) * 100
             pnl_usd = pos["shares"] * (price - pos["entry"])
-            print("  " + sym + " $" + str(round(price, 2)) + " " +
-                  str(round(pnl_pct, 1)) + "% $" + str(round(pnl_usd, 0)))
-        print("  SENTIMENT:")
+            print("    %-5s Kurs $%-8s Einstieg $%-8s %+.1f%% = %+.0f$   seit %s"
+                  % (sym, round(price, 2), round(pos["entry"], 2),
+                     pnl_pct, pnl_usd, pos.get("time", "?")))
+
+        # Die Frage, die der Log bisher nicht beantwortet hat: warum kein Kauf?
+        if self.skip_reasons:
+            print("  Warum kein Kauf (dieser Durchlauf):")
+            for grund, n in sorted(self.skip_reasons.items(),
+                                   key=lambda x: -x[1])[:6]:
+                print("    %2dx %s" % (n, grund))
+
+        print("  Nachrichten-Stimmung je Sektor  (+ = Rueckenwind, ab +1.0 wird gekauft):")
         for sec, sc in sorted(scores.items(), key=lambda x: x[1], reverse=True):
             if abs(sc) < 0.1:
                 continue
-            bar  = "#" * min(int(abs(sc) * 3), 20)
-            sign = "+" if sc >= 0 else "-"
-            print("  " + ETFS[sec] + " " + sign + str(round(abs(sc), 2)) + " " + bar)
+            # Vorzeichen im Balken, sonst sehen +15 und -15 gleich aus
+            bar = ("+" if sc >= 0 else "-") * min(int(abs(sc) * 3), 20)
+            print("    %-5s %+7.2f  %s" % (ETFS[sec], sc, bar))
+
         if trades:
             total = sum(t["profit"] for t in trades)
             wins  = sum(1 for t in trades if t["profit"] > 0)
-            print("  TRADES: " + str(len(trades)) + " | Wins: " + str(wins) +
-                  " | P&L: $" + str(round(total, 0)))
-        print("=" * 50)
+            quote = wins / len(trades) * 100
+            print("  Bilanz: %d Trades, %d Gewinner (%.0f%%), Ergebnis %+.2f$"
+                  % (len(trades), wins, quote, total))
+        print("=" * 62)
 
     # ── Safety & control ───────────────────────────────────────────────────
 
