@@ -66,9 +66,9 @@ ETF_SYMBOLS = list(ETFS.values())   # ["XLE", "XOP", ...] — subscribed in WS
 # Trusts (GLD, IBIT) have no constituent earnings — empty list
 ETF_CONSTITUENTS = {
     "XLE":  ["XOM", "CVX", "COP", "EOG", "SLB"],
-    "XOP":  ["DVN", "MRO", "APA", "OXY", "FANG"],
+    "XOP":  ["DVN", "APA", "OXY", "FANG"],       # MRO uebernommen -> 404
     "XLI":  ["GE", "RTX", "UNP", "HON", "ETN"],
-    "SLX":  ["NUE", "STLD", "RS", "CMC", "X"],
+    "SLX":  ["NUE", "STLD", "RS", "CMC"],        # X uebernommen -> 404
     "ITA":  ["LMT", "RTX", "NOC", "GD", "BA"],
     "XLF":  ["JPM", "BAC", "WFC", "GS", "MS"],
     "XLK":  ["MSFT", "AAPL", "NVDA", "AVGO", "META"],
@@ -1185,7 +1185,9 @@ class SuperTradingBot:
                 result = ("EXTREME", 0.0)
 
             self._vix_cache = (result, time.time())
-            print("[VIX] {:.1f} → {} (size×{})".format(vix, result[0], result[1]))
+            print("[VIX]   {:.1f} — Lage {}, Positionsgroesse ×{}".format(
+                vix, {"NORMAL":"ruhig","ELEVATED":"nervoes","HIGH":"hoch",
+                      "EXTREME":"extrem"}.get(result[0], result[0]), result[1]))
             return result
         except Exception as e:
             print("[VIX] Fehler: " + str(e) + " → NORMAL")
@@ -1336,7 +1338,6 @@ class SuperTradingBot:
                 d = r.json()["data"][0]
                 value = int(d["value"])
                 label = d["value_classification"]
-                print("[F&G] " + str(value) + " - " + label)
                 return value, label
         except Exception as e:
             print("[F&G] " + str(e))
@@ -1369,8 +1370,8 @@ class SuperTradingBot:
                     else:           label, mult = "Extreme Greed (contrarian Sell)", 0.7
                     self._pc_cache = (mult, time.time())
                     self.last_pc   = {"value": round(pc, 2), "label": label}
-                    print("[P/C] Put/Call " + str(round(pc, 2)) +
-                          " → " + str(mult) + "× (" + label + ")")
+                    print("[P/C]   Put/Call %s (%s) — Positionsgroesse ×%s"
+                          % (round(pc, 2), label, mult))
                     return mult
         except Exception as e:
             print("[P/C] " + str(e))
@@ -1475,7 +1476,8 @@ class SuperTradingBot:
             scores[sec] *= multiplier
 
         self.last_fg = {"value": fg_value, "label": fg_label}
-        print("[F&G] Multiplier " + str(multiplier) + "x (" + fg_label + ")")
+        print("[F&G]   Angst-Index %s (%s) — Positionsgroesse ×%s"
+              % (self.last_fg.get("value", "?"), fg_label, multiplier))
 
         # ── Put/Call Ratio — contrarian sentiment multiplier ───────────────────
         # Fetched from CBOE, cached 1h. Compounds with F&G multiplier.
@@ -1520,9 +1522,9 @@ class SuperTradingBot:
     def _skip(self, symbol, grund, detail=""):
         """Absage protokollieren und zaehlen — die Zaehlung landet im Statusblock."""
         self.skip_reasons[grund] = self.skip_reasons.get(grund, 0) + 1
-        print("[SKIP] " + symbol + " " + (detail or grund))
+        print("[SKIP] %-5s %s" % (symbol, detail or grund))
 
-    def trade(self, scores):
+    def trade(self, scores, quelle="Gesamtbild"):
         self.skip_reasons = {}
         if self.tg_paused:
             print("[TRADE] Pausiert (via Telegram /stop)")
@@ -1539,29 +1541,35 @@ class SuperTradingBot:
             self._dd_danger_sent  = False
 
         ranked = sorted(scores.items(), key=lambda x: abs(x[1]), reverse=True)
+        print("[PRUEFUNG] %s — %d Sektoren" % (quelle, len(ranked)))
+        # Eine Zeile je ETF — wie der Crypto-Bot sie je Muenze schreibt. Vorher
+        # wurden diese Absagen nur gezaehlt, im Feed stand dann gar nichts mehr.
         for sector, score in ranked:
             symbol = ETFS[sector]
+            lage = "Stimmung %+.2f" % score
             if abs(score) < 1.0:
-                self.skip_reasons["Stimmung zu schwach"] = \
-                    self.skip_reasons.get("Stimmung zu schwach", 0) + 1
+                self._skip(symbol, "Stimmung zu schwach",
+                           lage + " — zu schwach (noetig ueber +1.00)")
                 continue
             if symbol in self.excluded_symbols:
-                self.skip_reasons["dauerhaft gesperrt (Optimizer)"] = \
-                    self.skip_reasons.get("dauerhaft gesperrt (Optimizer)", 0) + 1
+                self._skip(symbol, "dauerhaft gesperrt (Optimizer)",
+                           lage + " — dauerhaft gesperrt, Optimizer-Flag "
+                           "(zu viele Stop-Loss-Ausstiege)")
                 continue
             if score <= 0:
-                self.skip_reasons["Stimmung negativ"] = \
-                    self.skip_reasons.get("Stimmung negativ", 0) + 1
+                self._skip(symbol, "Stimmung negativ",
+                           lage + " — negativ, der Bot kauft nur bei Rueckenwind")
                 continue
 
             with self.positions_lock:
                 if symbol in self.positions:
-                    self.skip_reasons["schon im Depot"] = \
-                        self.skip_reasons.get("schon im Depot", 0) + 1
+                    self._skip(symbol, "schon im Depot",
+                               lage + " — steht schon im Depot")
                     continue
                 if len(self.positions) >= self.max_pos:
-                    self.skip_reasons["Depot voll"] = \
-                        self.skip_reasons.get("Depot voll", 0) + 1
+                    self._skip(symbol, "Depot voll",
+                               lage + " — Depot voll (%d/%d)"
+                               % (len(self.positions), self.max_pos))
                     continue
 
             # 1.5h SL-Cooling -- kein Wiederkauf direkt nach Hard-Stop
@@ -2001,10 +2009,15 @@ class SuperTradingBot:
 
                 # SPY macro check — log but don't block (informational for now)
                 spy_pct = self._get_spy_trend()
-                spy_tag = " | SPY{:+.1f}%".format(spy_pct) if spy_pct != 0.0 else ""
+                spy_tag = " | Markt SPY {:+.1f}%".format(spy_pct) if spy_pct != 0.0 else ""
 
-                print("[" + str(cycle) + "] " + datetime.now().strftime("%H:%M:%S") +
-                      " | " + ws_status + spy_tag)
+                with self.positions_lock:
+                    n_pos, bar = len(self.positions), self.balance
+                print("\n[%s] Durchlauf %d | %d/%d Positionen | Bargeld $%s | Kurse %s%s"
+                      % (datetime.now().strftime("%H:%M"), cycle, n_pos, self.max_pos,
+                         round(bar, 2),
+                         "live" if self.ws_connected else "verzoegert",
+                         spy_tag))
                 self.check_day_loss()
                 self.check_stuck_positions()
                 self._fetch_earnings()        # no-op after first call of the day
@@ -2027,7 +2040,8 @@ class SuperTradingBot:
                                 for sec in sectors:
                                     if sec in tw_scores:
                                         tw_scores[sec] += sentiment * 1.5
-                    self.trade(tw_scores)
+                    if any(abs(v) >= 1.0 for v in tw_scores.values()):
+                        self.trade(tw_scores, "Twitter/X-Eilmeldungen")
 
                 # Polling stop-check — only when WebSocket is down
                 if not self.ws_connected:
@@ -2037,7 +2051,7 @@ class SuperTradingBot:
                     time.sleep(60)
 
                 scores = self.analyze()
-                self.trade(scores)
+                self.trade(scores, "Nachrichten + Indikatoren")
                 self._update_psar_stops()
                 self.dashboard(scores)
                 self.save_dashboard(scores)
@@ -2072,7 +2086,8 @@ class SuperTradingBot:
                                     if etf == sym:
                                         pscore[sec] = -1.5
                                         print("[PRICE] " + sym + " " + str(round(chg, 2)) + "%")
-                    self.trade(pscore)
+                    if any(abs(v) >= 1.0 for v in pscore.values()):
+                        self.trade(pscore, "Kurssprung > 2%")
                     if not self.ws_connected:
                         self.check_stops()
                     self.save_dashboard(scores)
