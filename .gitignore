@@ -56,3 +56,7 @@ tg/login_pending.json
 agents/panel_ins_*.pkl
 dex_archiv_*/
 crypto/clones_archiv_*/
+
+# Podcast-Audio (gross, nach Transkription entbehrlich; Nachweis via ng/texte + Log)
+tg/audio/
+*.mp3

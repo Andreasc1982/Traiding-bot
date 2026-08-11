@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-02T00:14:38.326619",
+  "generated_at": "2026-08-09T00:54:49.942899",
   "trade_analysis": {
     "super": {
       "bot": "Super Bot",
@@ -40,19 +40,19 @@
     },
     "crypto": {
       "bot": "Crypto Bot",
-      "total": 169,
-      "wins": 68,
-      "losses": 101,
-      "win_rate": 40.2,
-      "total_profit": -157.18,
-      "avg_profit": -0.93,
-      "false_signal_rate": 30.8,
+      "total": 200,
+      "wins": 86,
+      "losses": 114,
+      "win_rate": 43.0,
+      "total_profit": -125.8,
+      "avg_profit": -0.63,
+      "false_signal_rate": 29.5,
       "exit_reasons": {
-        "stop_loss": 52,
-        "trail_stop": 15,
-        "psar_stop": 38,
+        "stop_loss": 59,
+        "trail_stop": 19,
+        "psar_stop": 47,
         "spike": 42,
-        "other": 64
+        "other": 75
       },
       "by_symbol": {
         "AVAX/USD": {
@@ -61,10 +61,16 @@
           "wins": 8,
           "stop_losses": 2
         },
+        "ADA/USD": {
+          "trades": 19,
+          "profit": 9.359999999999998,
+          "wins": 6,
+          "stop_losses": 8
+        },
         "POL/USD": {
-          "trades": 2,
-          "profit": 3.6900000000000004,
-          "wins": 1,
+          "trades": 3,
+          "profit": 7.540000000000001,
+          "wins": 2,
           "stop_losses": 0
         },
         "SHIB/USD": {
@@ -85,28 +91,22 @@
           "wins": 1,
           "stop_losses": 0
         },
-        "DOT/USD": {
-          "trades": 9,
-          "profit": -0.06000000000000005,
-          "wins": 7,
+        "LTC/USD": {
+          "trades": 10,
+          "profit": -0.4799999999999991,
+          "wins": 6,
           "stop_losses": 2
         },
-        "LTC/USD": {
-          "trades": 8,
-          "profit": -1.1199999999999992,
-          "wins": 5,
-          "stop_losses": 2
+        "DOT/USD": {
+          "trades": 11,
+          "profit": -1.8000000000000007,
+          "wins": 8,
+          "stop_losses": 3
         },
         "DOGE/USD": {
           "trades": 2,
           "profit": -2.92,
           "wins": 1,
-          "stop_losses": 1
-        },
-        "LINK/USD": {
-          "trades": 9,
-          "profit": -7.52,
-          "wins": 2,
           "stop_losses": 1
         },
         "ETH/USD": {
@@ -115,59 +115,59 @@
           "wins": 4,
           "stop_losses": 4
         },
+        "SOL/USD": {
+          "trades": 12,
+          "profit": -8.33,
+          "wins": 6,
+          "stop_losses": 4
+        },
+        "LINK/USD": {
+          "trades": 10,
+          "profit": -9.44,
+          "wins": 2,
+          "stop_losses": 1
+        },
         "WIF/USD": {
           "trades": 6,
           "profit": -9.909999999999998,
           "wins": 2,
           "stop_losses": 2
         },
-        "SOL/USD": {
-          "trades": 11,
-          "profit": -9.91,
-          "wins": 5,
-          "stop_losses": 4
+        "ARB/USD": {
+          "trades": 22,
+          "profit": -10.659999999999997,
+          "wins": 10,
+          "stop_losses": 8
         },
         "RENDER/USD": {
-          "trades": 5,
-          "profit": -11.67,
+          "trades": 6,
+          "profit": -14.35,
           "wins": 2,
           "stop_losses": 2
         },
-        "ARB/USD": {
-          "trades": 20,
-          "profit": -15.739999999999997,
-          "wins": 8,
-          "stop_losses": 8
+        "BTC/USD": {
+          "trades": 17,
+          "profit": -18.85,
+          "wins": 7,
+          "stop_losses": 3
         },
         "XRP/USD": {
-          "trades": 13,
-          "profit": -15.78,
+          "trades": 14,
+          "profit": -21.07,
           "wins": 4,
           "stop_losses": 3
         },
         "UNI/USD": {
-          "trades": 16,
-          "profit": -18.84,
-          "wins": 5,
-          "stop_losses": 7
-        },
-        "BTC/USD": {
-          "trades": 15,
-          "profit": -23.1,
-          "wins": 5,
-          "stop_losses": 3
-        },
-        "ADA/USD": {
-          "trades": 11,
-          "profit": -26.240000000000006,
-          "wins": 2,
-          "stop_losses": 6
+          "trades": 25,
+          "profit": -21.869999999999994,
+          "wins": 11,
+          "stop_losses": 10
         },
         "AAVE/USD": {
-          "trades": 10,
-          "profit": -27.25,
+          "trades": 11,
+          "profit": -32.21,
           "wins": 4,
-          "stop_losses": 5
+          "stop_losses": 6
         }
       }
     }
@@ -187,24 +187,24 @@
       },
       "top_blocker": "ma_ok",
       "top_block_rate": 100.0,
-      "avg_rsi_at_skip": 46.3,
+      "avg_rsi_at_skip": 47.4,
       "rsi_near_threshold_pct": 0.0
     },
     "crypto": {
       "bot": "Crypto Bot",
       "skips_analyzed": 10,
       "block_rates": {
-        "ma_ok": 90.0,
-        "macd_ok": 90.0,
-        "psar_ok": 90.0,
-        "st_ok": 80.0,
-        "ichi_ok": 80.0,
-        "obv_ok": 70.0,
+        "obv_ok": 80.0,
+        "ichi_ok": 70.0,
+        "psar_ok": 70.0,
+        "ma_ok": 50.0,
+        "macd_ok": 50.0,
+        "st_ok": 40.0,
         "rsi_ok": 0.0
       },
-      "top_blocker": "ma_ok",
-      "top_block_rate": 90.0,
-      "avg_rsi_at_skip": 41.5,
+      "top_blocker": "obv_ok",
+      "top_block_rate": 80.0,
+      "avg_rsi_at_skip": 48.7,
       "rsi_near_threshold_pct": 0.0
     }
   },
@@ -734,15 +734,15 @@
         }
       ],
       "symbols_tested": [
-        "LINK/USD",
+        "ETH/USD",
         "LTC/USD",
-        "SHIB/USD",
-        "SOL/USD",
         "AVAX/USD",
         "BTC/USD",
-        "DOGE/USD",
-        "ETH/USD",
-        "XRP/USD"
+        "LINK/USD",
+        "SHIB/USD",
+        "SOL/USD",
+        "XRP/USD",
+        "DOGE/USD"
       ]
     }
   },
@@ -751,6 +751,6 @@
     "<b>Super Bot</b>: Stop-Loss-Rate 40% (>35% Schwelle) \u2014 Einstiegssignal zu schwach; strengere RSI/MA-Bedingung erw\u00e4gen",
     "<b>Super Bot</b>: MA20 blockiert 100% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen",
     "<b>Crypto Bot</b>: Grid-Pick (RSI-Threshold: 65 \u2192 75, Stop-Loss: 2.5% \u2192 5.0%) brachte KEINE belastbare OOS-Verbesserung (Sortino +0.00) \u2014 Baseline behalten, Overfitting vermieden",
-    "<b>Crypto Bot</b>: MA20 blockiert 90% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen"
+    "<b>Crypto Bot</b>: OBV blockiert 80% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen"
   ]
 }
