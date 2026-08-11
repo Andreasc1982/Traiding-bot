@@ -173,6 +173,18 @@ def main():
                   % (len(newpos), len(bought), len(sold), equity))
 
     # Bewertung
+    # Riegel gegen stille Datenausfaelle: fehlen die Kurse (Netzausfall, yfinance
+    # kippt), faellt jede Position auf ihren Einstieg zurueck und die Equity
+    # landet exakt beim Startkapital — am 11.08.2026 als "-7,4%" in die Historie
+    # geschrieben, obwohl es ein Ausfall war. Lieber gar nichts schreiben.
+    gehalten = list(state["positions"].keys())
+    mit_kurs = [t for t in gehalten if t in px]
+    if gehalten and len(mit_kurs) < 0.8 * len(gehalten):
+        msg = ("[ABBRUCH] nur %d von %d Kursen abrufbar — Bewertung uebersprungen, "
+               "Historie unveraendert" % (len(mit_kurs), len(gehalten)))
+        print(msg)
+        return
+
     pos_val = 0.0
     rows = []
     for t, p in state["positions"].items():
