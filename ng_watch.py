@@ -33,30 +33,67 @@ NUMMER = re.compile(r"Nacktes Geld\s*#\s?(\d{1,3})", re.I)
 
 INIT = "--init" in sys.argv
 DRY = "--dry" in sys.argv
+TEXTE_MODUS = "--texte" in sys.argv   # vorhandene ng/texte/*.txt auswerten
 
 # Nur was sich als verwertbar erwiesen hat — bewusst eng, sonst meldet es
 # jede Woche denselben Makro-Kommentar. Erweitern, wenn ein neues Thema
 # tatsaechlich zu einer pruefbaren Idee gefuehrt hat.
+#
+# Zweistufig wie in tg_watch.py: ein EINDEUTIGER Begriff genuegt fuer eine
+# Meldung, ALLGEMEINE zaehlen erst ab zwei verschiedenen. Grund: "future" oder
+# "leitzins" faellt in jeder zweiten Folge, "crack spread" nie ohne Anlass.
+# Loeschen waere falsch — die Comex-Margin-Anhebung in #049 haengt an "future".
 THEMEN = {
-    "Rebalancing/Index": [
-        "rebalanc", "bloomberg commodity", "bcom", "russell", "msci",
-        "indexgewicht", "zielgewicht", "neugewichtung", "rekonstitution",
-        "aus dem index", "in den index", "stichtag", "quartalsende",
-    ],
-    "Geldmarkt/Repo": [
-        "sofr", "sofa", "repo", "reverse repo", "liquiditaetsspritze",
-        "liquiditätsspritze", "injiziert", "standing repo", "diskontfenster",
-        "eurodollar", "bilanzsumme", "leitzins",
-    ],
-    "Spread/Termin": [
-        "crack spread", "backwardation", "contango", "rollverlust",
-        "terminkurve", "basis", "future", "verfall",
-    ],
-    "Ausfuehrung/Boerse": [
-        "margin-parameter", "liquidation", "orderbuch", "market maker",
-        "xstock", "tokenisiert", "dydx", "jupiter", "gegenpartei",
-    ],
+    "Rebalancing/Index": {
+        "eindeutig": ["rebalanc", "bloomberg commodity", "bcom", "indexgewicht",
+                      "zielgewicht", "neugewichtung", "rekonstitution",
+                      "aus dem index", "in den index"],
+        "allgemein": ["russell", "msci", "stichtag", "quartalsende", "benchmark"],
+    },
+    "Geldmarkt/Repo": {
+        "eindeutig": ["sofr", "sofa", "repo", "reverse repo", "standing repo",
+                      "liquiditaetsspritze", "liquiditätsspritze", "injiziert",
+                      "diskontfenster", "eurodollar"],
+        "allgemein": ["bilanzsumme", "leitzins"],
+    },
+    "Spread/Termin": {
+        "eindeutig": ["crack spread", "backwardation", "contango", "rollverlust",
+                      "terminkurve"],
+        "allgemein": ["future", "basis", "verfall", "sicherheitsleistung",
+                      "termingeschaeft", "termingeschäft"],
+    },
+    "Ausfuehrung/Boerse": {
+        "eindeutig": ["margin-parameter", "orderbuch", "market maker", "xstock",
+                      "dydx", "jupiter", "tokenisiert"],
+        "allgemein": ["liquidation", "gegenpartei"],
+    },
 }
+
+# Wortgrenzen statt Substring — "russell" traf sonst "Karussell" (Folge #053),
+# genau wie "Mallorca"->orca in tg_watch.py. Praefixe wie "rebalanc" sollen
+# weiter greifen (rebalancing/Rebalancierung), deshalb nur die linke Grenze.
+def _rx(worte):
+    return re.compile(r"(?<!\w)(?:%s)" % "|".join(re.escape(w) for w in worte),
+                      re.I)
+
+RX = {t: {"eindeutig": _rx(d["eindeutig"]), "allgemein": _rx(d["allgemein"])}
+      for t, d in THEMEN.items()}
+MIN_ALLGEMEIN = 2
+
+# Treffer, die trotz Wortgrenze das Falsche meinen. "Basispunkte" faellt in
+# fast jeder Folge und hat mit der Termin-Basis nichts zu tun.
+NICHT = {"basis": re.compile(r"basispunkt", re.I)}
+
+
+def _erster_echter(rx, satz):
+    """Erster Treffer, der nicht durch NICHT disqualifiziert ist."""
+    for m in rx.finditer(satz):
+        w = m.group(0).lower()
+        aus = NICHT.get(w)
+        if aus and aus.match(satz, m.start()):
+            continue
+        return m
+    return None
 
 
 def tg_send(text):
@@ -136,23 +173,88 @@ def untertitel(uuid):
 
 
 def pruefe(zeilen):
-    """-> {thema: [(mm:ss, begriff, satz), ...]}"""
-    treffer = {}
+    """-> {thema: [(mm:ss, begriff, satz), ...]}
+
+    zeilen: [(sekunde_oder_None, satz)]. Ein Thema wird nur gemeldet, wenn ein
+    eindeutiger Begriff faellt ODER mindestens MIN_ALLGEMEIN verschiedene
+    allgemeine. Das haelt "in jeder Folge einmal Leitzins" draussen, ohne den
+    Begriff zu verlieren, wenn er zusammen mit anderen auftritt.
+    """
+    roh = {}
     for i, (sek, satz) in enumerate(zeilen):
-        sl = satz.lower()
-        for thema, begriffe in THEMEN.items():
-            for b in begriffe:
-                if b in sl:
-                    ctx = " ".join(s for _, s in zeilen[max(0, i - 1):i + 3])
-                    treffer.setdefault(thema, []).append(
-                        ("%d:%02d" % (int(sek // 60), int(sek % 60)), b,
-                         ctx[:400]))
-                    break
+        for thema, rx in RX.items():
+            for art in ("eindeutig", "allgemein"):
+                m = _erster_echter(rx[art], satz)
+                if not m:
+                    continue
+                ctx = " ".join(s for _, s in zeilen[max(0, i - 1):i + 3])
+                zeit = ("%d:%02d" % (int(sek // 60), int(sek % 60))
+                        if sek is not None else "—")
+                roh.setdefault(thema, []).append(
+                    (art, zeit, m.group(0).lower(), ctx[:400]))
+                break
+
+    treffer = {}
+    for thema, funde in roh.items():
+        stark = [f for f in funde if f[0] == "eindeutig"]
+        schwach_begriffe = {f[2] for f in funde if f[0] == "allgemein"}
+        if stark or len(schwach_begriffe) >= MIN_ALLGEMEIN:
+            # Eindeutige zuerst, damit das Wesentliche oben in der Meldung steht
+            treffer[thema] = [(z, b, c) for _, z, b, c in
+                              sorted(funde, key=lambda f: f[0] != "eindeutig")]
     return treffer
+
+
+def text_zu_zeilen(text):
+    """Transkript ohne Zeitmarken in Saetze zerlegen — fuer ng/texte/*.txt."""
+    saetze = re.split(r"(?<=[.!?])\s+", text.replace("\n", " "))
+    return [(None, s.strip()) for s in saetze if s.strip()]
+
+
+def texte_auswerten():
+    """Wertet die lokal liegenden Transkripte aus (Whisper-Ergebnisse).
+
+    Noetig, weil der Online-Zweig nur Folgen anfasst, die noch nicht in
+    'gesehen' stehen — durch ein frueheres --init stehen dort ALLE, also wurden
+    die per Whisper erzeugten Texte nie geprueft. Ruehrt den Zeiger nicht an.
+    """
+    dateien = sorted(f for f in os.listdir(TEXTE) if f.endswith(".txt"))
+    if not dateien:
+        print("Keine Transkripte in %s." % TEXTE)
+        return
+    print("%d Transkripte werden geprueft." % len(dateien))
+    meldungen = []
+    for f in dateien:
+        text = open(os.path.join(TEXTE, f), encoding="utf-8",
+                    errors="ignore").read()
+        tr = pruefe(text_zu_zeilen(text))
+        print("  %s — %d Woerter, %d Themen" % (f, len(text.split()), len(tr)))
+        if not tr:
+            continue
+        teile = ["📻 Folge %s (Transkript)" % f[:-4]]
+        for thema, stellen in tr.items():
+            gesehen_b = set()
+            teile.append("\n▸ %s" % thema)
+            for zeit, b, ctx in stellen:
+                if b in gesehen_b:
+                    continue
+                gesehen_b.add(b)
+                teile.append("  %s\n  %s" % (b, ctx[:260]))
+        meldungen.append("\n".join(teile))
+    if not meldungen:
+        print("nichts Meldenswertes.")
+        return
+    txt = "\n\n".join(meldungen)
+    print(txt)
+    if not DRY:
+        tg_send(txt)
 
 
 def main():
     os.makedirs(TEXTE, exist_ok=True)
+    if TEXTE_MODUS:
+        texte_auswerten()
+        return
     try:
         state = json.load(open(STATE))
     except Exception:
