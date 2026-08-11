@@ -125,6 +125,12 @@ class SuperTradingBot:
         self._sl_cooldown = {}   # symbol -> ts letzter Hard-Stop; sperrt Wiederkauf 1.5h
         self.max_pos     = 15
         self.pos_size    = 0.05
+        # Bruchstuecke: Alpaca erlaubt sie nur als Market-Order mit TIF "day"
+        # (beides gegeben) und mindestens $1 Gegenwert. $10 als Untergrenze,
+        # damit Spread und Rundung eine Position nicht auffressen.
+        self.MIN_NOTIONAL   = 10.0
+        self.SHARE_DECIMALS = 4
+        self._fractionable  = {}   # symbol -> bool, einmal je Lauf abgefragt
         self.excluded_symbols = {"XLF"}   # Optimizer-Flag 2026-06-14: >=50% SL-Exits (revidierbar)
         self.tg_ok       = False
         self.alpaca_ok   = False
@@ -740,17 +746,47 @@ class SuperTradingBot:
 
     # ── Order placement ────────────────────────────────────────────────────
 
+    def _is_fractionable(self, symbol):
+        """Erlaubt Alpaca Bruchstuecke fuer dieses Papier? Antwort wird gemerkt."""
+        if symbol in self._fractionable:
+            return self._fractionable[symbol]
+        if not self.alpaca_ok:
+            return False
+        try:
+            r = requests.get(ALPACA_BASE_URL + "/v2/assets/" + symbol,
+                             headers=self.alpaca_headers, timeout=5)
+            if r.status_code == 200:
+                ok = bool(r.json().get("fractionable", False))
+                self._fractionable[symbol] = ok   # nur klare Antworten merken
+                return ok
+            print("[FRAKTION] " + symbol + " Abfrage HTTP " + str(r.status_code) +
+                  " — diesen Zyklus ganze Stuecke")
+        except Exception as e:
+            print("[FRAKTION] " + symbol + " Abfrage fehlgeschlagen: " +
+                  str(e)[:60] + " — diesen Zyklus ganze Stuecke")
+        return False   # bewusst NICHT merken, sonst bleibt ein Aussetzer haengen
+
+    def _round_shares(self, symbol, shares):
+        """Bruchstuecke wenn erlaubt, sonst ganze Stuecke (bisheriges Verhalten)."""
+        if self._is_fractionable(symbol):
+            return round(shares, self.SHARE_DECIMALS)
+        return float(int(shares))
+
     def alpaca_order(self, symbol, qty, side):
         if not self.alpaca_ok:
             return
+        # Ganze Stueckzahlen ohne ".0" senden — Bruchstuecke akzeptiert Alpaca
+        # nur als Market-Order mit TIF "day", beides steht unten fest.
+        qty_str = str(int(qty)) if float(qty) == int(float(qty)) else \
+                  ("%.*f" % (self.SHARE_DECIMALS, float(qty))).rstrip("0")
         try:
             r = requests.post(ALPACA_BASE_URL + "/v2/orders",
                 headers=self.alpaca_headers,
-                json={"symbol": symbol, "qty": str(qty), "side": side,
+                json={"symbol": symbol, "qty": qty_str, "side": side,
                       "type": "market", "time_in_force": "day"},
                 timeout=10)
             if r.status_code in (200, 201):
-                print("[ALPACA] OK: " + side + " " + str(qty) + " " + symbol)
+                print("[ALPACA] OK: " + side + " " + qty_str + " " + symbol)
             else:
                 print("[ALPACA] Fehler: " + str(r.status_code) + " " + r.text[:100])
         except Exception as e:
@@ -1675,22 +1711,22 @@ class SuperTradingBot:
             # ── ATR-based position sizing ──────────────────────────────────────
             # Risk 1% of balance per trade, sized by ATR distance (2× ATR stop)
             # Capped at pos_size × size_mult × balance so single position stays bounded
+            # Bruchstuecke: ganze Stuecke machten teure ETFs unkaufbar (GLD $400
+            # gegen $146 Budget = 0 Stueck) und rundeten $185-ETFs grob ab.
             atr = ind.get("atr", 0)
+            budget = self.balance * self.pos_size * size_mult
             if atr and atr > 0:
                 risk_per_share = atr * 2.0          # 2×ATR = expected stop distance in $
                 risk_budget    = self.balance * 0.01 # 1% of balance at risk per trade
-                atr_shares     = int(risk_budget / risk_per_share)
-                max_shares     = int(self.balance * self.pos_size * size_mult / price)
-                shares = min(atr_shares, max_shares)
+                shares = min(risk_budget / risk_per_share, budget / price)
             else:
-                shares = int(self.balance * self.pos_size * size_mult / price)
-            if shares < 1:
-                # Bisher stiller Abbruch — dadurch blieb unsichtbar, dass teure
-                # ETFs (GLD ~$400 gegen ~$244 Budget) NIE gekauft werden koennen.
-                budget = self.balance * self.pos_size * size_mult
-                self._skip(symbol, "Position zu teuer fuer Budget",
-                           "Kurs $" + str(round(price, 2)) + " > Budget $" +
-                           str(round(budget, 2)) + " — nicht mal 1 Stueck kaufbar")
+                shares = budget / price
+            shares = self._round_shares(symbol, shares)
+            if shares * price < self.MIN_NOTIONAL:
+                self._skip(symbol, "Positionsbudget zu klein",
+                           "Budget $" + str(round(budget, 2)) + " ergibt nur $" +
+                           str(round(shares * price, 2)) + " — unter Mindestgroesse $" +
+                           str(self.MIN_NOTIONAL))
                 continue
 
             fill = price * (1 + getattr(self, "sim_slip", 0.0002)) if self.demo else price
@@ -1719,7 +1755,8 @@ class SuperTradingBot:
             ml_str = ("ML=" + str(round(ml_prob * 100)) + "% "
                       if self._ml_model is not None else "")
             msg = ("BUY " + symbol + " (" + sector + ") " +
-                   str(shares) + " @ $" + str(round(price, 2)) +
+                   str(shares) + " Stk = $" + str(round(shares * price, 2)) +
+                   " @ $" + str(round(price, 2)) +
                    " [" + regime + " ADX=" + str(adx) +
                    " VIX=" + vix_regime + " DD=" + dd_zone +
                    " score=" + str(round(score_pct * 100)) + "%" +
@@ -1814,21 +1851,30 @@ class SuperTradingBot:
         print("  SUPER BOT v3.0 | " + mode + " | " + ws + " | " + now)
         print("=" * 62)
 
-        seit_start = ((bal / self.start_balance - 1) * 100
+        # Depotwert = Bargeld + Positionen. Nur das Bargeld gegen den Start zu
+        # halten sah nach Verlust aus, sobald Geld in Positionen umgeschichtet war.
+        kurse = {s: (self.get_price(s) or p["entry"]) for s, p in pos_snap.items()}
+        in_pos = sum(p["shares"] * kurse[s] for s, p in pos_snap.items())
+        depot  = bal + in_pos
+        seit_start = ((depot / self.start_balance - 1) * 100
                       if self.start_balance else 0.0)
-        print("  Kontostand: $" + str(round(bal, 2)) +
+        print("  Depotwert:  $" + str(round(depot, 2)) +
               "   (Start $" + str(round(self.start_balance, 2)) + ", " +
               ("%+.1f" % seit_start) + "%)")
+        print("  davon:      $" + str(round(bal, 2)) + " Bargeld, $" +
+              str(round(in_pos, 2)) + " in Positionen")
 
         print("  Positionen: " + str(len(pos_snap)) + " von " +
               str(self.max_pos) + " belegt")
         for sym, pos in pos_snap.items():
-            price = self.get_price(sym) or pos["entry"]
+            price = kurse[sym]
             pnl_pct = ((price - pos["entry"]) / pos["entry"]) * 100
             pnl_usd = pos["shares"] * (price - pos["entry"])
-            print("    %-5s Kurs $%-8s Einstieg $%-8s %+.1f%% = %+.0f$   seit %s"
-                  % (sym, round(price, 2), round(pos["entry"], 2),
-                     pnl_pct, pnl_usd, pos.get("time", "?")))
+            print("    %-5s %s Stk = $%-8s Kurs $%-8s Einstieg $%-8s %+.1f%% = %+.2f$   seit %s"
+                  % (sym, round(pos["shares"], 4),
+                     round(pos["shares"] * price, 2), round(price, 2),
+                     round(pos["entry"], 2), pnl_pct, pnl_usd,
+                     pos.get("time", "?")))
 
         # Die Frage, die der Log bisher nicht beantwortet hat: warum kein Kauf?
         if self.skip_reasons:

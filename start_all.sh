@@ -15,6 +15,7 @@ screen -S risk           -X quit 2>/dev/null || true
 screen -S optimize       -X quit 2>/dev/null || true
 screen -S tgrouter       -X quit 2>/dev/null || true
 screen -S backup         -X quit 2>/dev/null || true
+screen -S dydx           -X quit 2>/dev/null || true
 sleep 2
 
 # ── Clear orphaned port processes ─────────────────────────────────────────────
@@ -117,10 +118,10 @@ screen -dmS backup bash -c '
 #[dex beendet 20260726]   source /home/trading2025/trading_bot_env/bin/activate &&
 #[dex beendet 20260726]   PYTHONUNBUFFERED=1 python3 -u dex_bundle_collector.py > /tmp/dex_bundle_collector.log 2>&1'
 # dYdX Orderbuch-Imbalance-Sammler (read-only, kein Konto)
-#[dex beendet 20260726] screen -dmS dydx bash -c '
-#[dex beendet 20260726]   cd /home/trading2025/trading_bot &&
-#[dex beendet 20260726]   source /home/trading2025/trading_bot_env/bin/activate &&
-#[dex beendet 20260726]   PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1'
+screen -dmS dydx bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1'
 #[dex beendet 20260726] screen -dmS dex_dashboard bash -c '
 #[dex beendet 20260726]   fuser -k 8091/tcp 2>/dev/null; sleep 1;
 #[dex beendet 20260726]   cd /home/trading2025/trading_bot/dex &&
