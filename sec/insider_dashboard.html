@@ -44,6 +44,20 @@
 <div id="status"></div>
 <div class="grid" id="kpi"></div>
 
+<div class="card" id="vgl-box" style="margin-bottom:16px;display:none">
+  <div class="lbl">Depot gegen Vergleichsmassstab</div>
+  <div class="t" style="margin:4px 0 10px">
+    Das Verfahren kauft im Band $5–10 Mio. Tagesumsatz, also Nebenwerte.
+    <b>IWM ist deshalb der ehrliche Massstab</b> — gegen SPY gemessen sieht der
+    Vorsprung grösser aus, als er ist.
+  </div>
+  <div id="vgl-chart"></div>
+  <div class="wrap" style="margin:10px 0 0"><table id="vgl"><thead><tr>
+    <th>Massstab</th><th>Rendite</th><th>aus $10.000 wurden</th><th>Vorsprung Depot</th>
+  </tr></thead><tbody></tbody></table></div>
+  <div class="t" id="vgl-hinweis" style="margin-top:10px"></div>
+</div>
+
 <div class="note">
   <b>Was hier läuft:</b> Kein echtes Geld. Gehalten werden die Titel mit dem höchsten
   <i>Netto-Insiderkauf der letzten 90 Tage</i>, skaliert am Tagesumsatz — die einzige
@@ -69,6 +83,93 @@ const cls = v => v > 0 ? "up" : (v < 0 ? "down" : "");
 
 function kpi(l, v, c){ return `<div class="card"><div class="lbl">${l}</div>
   <div class="val ${c||""}">${v}</div></div>`; }
+
+// Zeichnet Depot- und IWM-Kurve uebereinander. Beide starten bei 10.000, damit
+// der Abstand direkt ablesbar ist statt aus zwei Prozentzahlen im Kopf gebildet.
+function linie(punkte, farbe, breite){
+  return `<polyline fill="none" stroke="${farbe}" stroke-width="${breite}"
+    stroke-linejoin="round" stroke-linecap="round" points="${punkte}"/>`;
+}
+
+async function vergleichZeichnen(d){
+  const box = document.getElementById("vgl-box");
+  if (!d.vergleich) { box.style.display = "none"; return; }
+  box.style.display = "";
+
+  document.querySelector("#vgl tbody").innerHTML =
+    Object.entries(d.vergleich).map(([sym, v]) => `<tr>
+      <td class="sym">${sym} <span class="t">${v.name}</span></td>
+      <td class="${cls(v.rendite_pct)}">${v.rendite_pct>0?"+":""}${v.rendite_pct.toFixed(2)}%</td>
+      <td>${eur(v.wert)}</td>
+      <td class="${cls(v.vorsprung_pp)}">${v.vorsprung_pp>0?"+":""}${v.vorsprung_pp.toFixed(2)} Pp</td>
+    </tr>`).join("");
+
+  // Depotkurve aus der Historie holen; der Vergleich liegt schon im JSON
+  let depot = [];
+  try{
+    const txt = await (await fetch("paper_equity.csv?t=" + Date.now())).text();
+    const zeilen = txt.trim().split("\n").slice(1);
+    const proTag = new Map();
+    zeilen.forEach(z => { const s = z.split(",");
+      if (s.length >= 2) proTag.set(s[0].slice(0,10), parseFloat(s[1])); });
+    depot = [...proTag.entries()].map(([datum, wert]) => ({datum, wert}));
+  }catch(e){ depot = []; }
+
+  const bm = d.vergleich_verlauf || [];
+  const chart = document.getElementById("vgl-chart");
+  if (depot.length < 2 || bm.length < 2) {
+    chart.innerHTML = `<div class="t">Kurve ab dem zweiten Handelstag.</div>`;
+    return;
+  }
+
+  const W = 720, H = 200, L = 52, R = 8, T = 10, B = 22;
+  const alle = depot.map(p=>p.wert).concat(bm.map(p=>p.IWM));
+  let lo = Math.min(...alle), hi = Math.max(...alle);
+  const luft = (hi - lo) * 0.12 || 100; lo -= luft; hi += luft;
+  const daten = [...new Set(depot.map(p=>p.datum).concat(bm.map(p=>p.datum)))].sort();
+  const x = dat => L + (daten.indexOf(dat) / Math.max(1, daten.length-1)) * (W-L-R);
+  const y = w => T + (1 - (w - lo) / (hi - lo)) * (H-T-B);
+  const pkt = arr => arr.map(p => `${x(p.datum).toFixed(1)},${y(p.wert ?? p.IWM).toFixed(1)}`).join(" ");
+
+  const gitter = [0, 0.5, 1].map(f => { const w = lo + f*(hi-lo);
+    return `<line x1="${L}" y1="${y(w)}" x2="${W-R}" y2="${y(w)}" stroke="#252c35"/>
+            <text x="${L-6}" y="${y(w)+4}" fill="#8b97a5" font-size="10"
+              text-anchor="end">${Math.round(w/1000*10)/10}k</text>`; }).join("");
+
+  chart.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block"
+         role="img" aria-label="Depotwert gegen IWM seit Start">
+      ${gitter}
+      ${linie(pkt(bm), "#8b97a5", 1.6)}
+      ${linie(pkt(depot), "#58a6ff", 2.4)}
+      <text x="${L}" y="${H-6}" fill="#8b97a5" font-size="10">${daten[0]}</text>
+      <text x="${W-R}" y="${H-6}" fill="#8b97a5" font-size="10"
+        text-anchor="end">${daten[daten.length-1]}</text>
+    </svg>
+    <div class="t" style="margin-top:6px">
+      <span style="color:#58a6ff">▬</span> Insider-Depot &nbsp;
+      <span style="color:#8b97a5">▬</span> IWM (Nebenwerte)
+    </div>`;
+
+  // Einordnung: der Backtest versprach rund 11 Prozentpunkte Vorsprung pro Jahr.
+  // Ist der gemessene Abstand ein Vielfaches davon, dominiert noch die Streuung.
+  const leit = d.vergleich[d.vergleich_leitindex || "IWM"];
+  const tage = daten.length;
+  const erwartet = 11.0 * tage / 252;
+  const faktor = erwartet > 0 ? Math.abs(leit.vorsprung_pp) / erwartet : 0;
+  const h = document.getElementById("vgl-hinweis");
+  if (tage < 60) {
+    h.innerHTML = `<b>Noch nicht aussagekräftig.</b> ${tage} Handelstage. Der Backtest
+      erwartet rund 11 Pp Vorsprung pro Jahr, also etwa ${erwartet.toFixed(2)} Pp bis
+      hierher — gemessen sind ${leit.vorsprung_pp.toFixed(2)} Pp, das
+      ${faktor>=2 ? `<b>${faktor.toFixed(0)}-fache</b>` : "Vergleichbare"} davon.
+      Ein Abstand weit über der erwarteten Rate ist ein Zeichen von Streuung, nicht
+      von Bestätigung. Belastbar ab etwa 60 Handelstagen.`;
+  } else {
+    h.innerHTML = `${tage} Handelstage gelaufen. Erwartet bis hierher rund
+      ${erwartet.toFixed(2)} Pp, gemessen ${leit.vorsprung_pp.toFixed(2)} Pp.`;
+  }
+}
 
 async function load(){
   try{
@@ -97,13 +198,19 @@ async function load(){
         " · nächste Umschichtung in ca. " + d.naechste_in_tagen + " Handelstagen.";
     }
 
+    const leit = d.vergleich && d.vergleich[d.vergleich_leitindex || "IWM"];
     document.getElementById("kpi").innerHTML =
       kpi("Depotwert", eur(d.equity)) +
       kpi("Rendite", (d.rendite_pct>0?"+":"") + d.rendite_pct.toFixed(2) + "%",
           cls(d.rendite_pct)) +
+      (leit ? kpi("Vorsprung vs. IWM",
+                  (leit.vorsprung_pp>0?"+":"") + leit.vorsprung_pp.toFixed(2) + " Pp",
+                  cls(leit.vorsprung_pp)) : "") +
       kpi("Positionen", d.n_pos) +
       kpi("Cash", eur(d.cash)) +
       kpi("Startkapital", eur(d.start_kapital));
+
+    await vergleichZeichnen(d);
 
     const tb = document.querySelector("#pos tbody");
     tb.innerHTML = (d.positionen||[]).map(p => `<tr>
