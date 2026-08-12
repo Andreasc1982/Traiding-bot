@@ -15,7 +15,7 @@ Kein echtes Geld, keine Orders. Taeglich per Cron:
 """
 import os, sys, csv, json, math, collections
 import statistics as st
-from datetime import datetime
+from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -111,6 +111,52 @@ def signal_candidates(ins, topn=200):
     return sorted(raw.items(), key=lambda x: -x[1])[:topn]
 
 
+# ── Vergleichsmassstab ────────────────────────────────────────────────────────
+# Das Verfahren kauft im Band $5-10 Mio. Tagesumsatz, also strukturell
+# Nebenwerte. Gegen SPY gemessen sieht der Vorsprung deshalb groesser aus als er
+# ist — IWM/IJR sind der ehrliche Massstab. Faellt die Abfrage aus, wird der
+# Vergleich weggelassen statt geraten.
+VERGLEICH = {"IWM": "Nebenwerte", "IJR": "Small Caps", "SPY": "Gesamtmarkt"}
+
+
+def vergleich_rechnen(start_datum, verlauf_zeiten, start_kapital):
+    """-> (kennzahlen, verlauf) oder (None, None) wenn keine Kurse kommen."""
+    try:
+        import yfinance as yf
+        beg = (datetime.strptime(start_datum, "%Y-%m-%d")
+               - timedelta(days=5)).strftime("%Y-%m-%d")
+        df = yf.download(list(VERGLEICH), start=beg, interval="1d",
+                         progress=False, auto_adjust=True)["Close"].dropna()
+        if len(df) < 2:
+            return None, None
+        # Basis = erster Handelstag ab Depotstart, damit beide gleich starten
+        ab = df[df.index >= start_datum]
+        if len(ab) < 1:
+            return None, None
+        basis = ab.iloc[0]
+
+        kennzahlen = {}
+        for sym, name in VERGLEICH.items():
+            r = float(ab[sym].iloc[-1] / basis[sym] - 1) * 100
+            kennzahlen[sym] = {"name": name, "rendite_pct": round(r, 2),
+                               "wert": round(start_kapital * (1 + r / 100), 2)}
+
+        # Kurve je Stichtag des Depots, damit beide Linien vergleichbar sind
+        verlauf = []
+        for z in verlauf_zeiten:
+            tag = z[:10]
+            bis = ab[ab.index <= tag]
+            if len(bis) < 1:
+                continue
+            verlauf.append({"datum": tag,
+                            "IWM": round(float(start_kapital
+                                               * bis["IWM"].iloc[-1] / basis["IWM"]), 2)})
+        return kennzahlen, verlauf
+    except Exception as e:
+        print("[VERGLEICH] nicht abrufbar: %s" % str(e)[:80])
+        return None, None
+
+
 def main():
     from datetime import timedelta
     ins = load_insider()
@@ -199,7 +245,25 @@ def main():
     equity = state["cash"] + pos_val
     rows.sort(key=lambda r: -r["pnl_pct"])
 
+    # Vergleich gegen Nebenwerte: die nackte Rendite sagt wenig, der Abstand
+    # zum passenden Index ist die eigentliche Kennzahl.
+    zeiten = []
+    if os.path.exists(HIST):
+        try:
+            with open(HIST, encoding="utf-8") as f:
+                zeiten = [r["zeit"] for r in csv.DictReader(f)]
+        except Exception:
+            zeiten = []
+    zeiten.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    bm, bm_verlauf = vergleich_rechnen(state["start"], zeiten, START_CAPITAL)
+    rendite = (equity / START_CAPITAL - 1) * 100
+    if bm:
+        for sym in bm:
+            bm[sym]["vorsprung_pp"] = round(rendite - bm[sym]["rendite_pct"], 2)
+
     dash = {"zeit": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "vergleich": bm, "vergleich_verlauf": bm_verlauf,
+            "vergleich_leitindex": "IWM",
             "start": state["start"], "start_kapital": START_CAPITAL,
             "equity": round(equity, 2), "cash": round(state["cash"], 2),
             "rendite_pct": round((equity / START_CAPITAL - 1) * 100, 2),
