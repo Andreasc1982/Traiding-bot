@@ -15,7 +15,7 @@ Kein echtes Geld. Taeglich per Cron: bewerten, ggf. zurueckfuehren, Dashboard.
 """
 import os, sys, csv, json
 import statistics as st
-from datetime import datetime
+from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -67,6 +67,61 @@ def save(o, p):
     t = p + ".tmp"
     json.dump(o, open(t, "w"), indent=1)
     os.replace(t, p)
+
+
+# ── Bauart-Treue ──────────────────────────────────────────────────────────────
+# Ein Mischdepot gegen SPY zu messen ist sinnlos: es haelt nur 50 % Aktien und
+# muss im steigenden Markt zurueckbleiben. Die aussagekraeftige Frage lautet,
+# ob es liefert, was die Zielgewichte rechnerisch hergeben — und wohin die
+# Differenz geht (Handelskosten gegen Rueckfuehrungseffekt).
+def bauart_pruefen(start_datum, ist_pct, kosten_gesamt, zeiten):
+    try:
+        import yfinance as yf
+        beg = (datetime.strptime(start_datum, "%Y-%m-%d")
+               - timedelta(days=5)).strftime("%Y-%m-%d")
+        df = yf.download(list(ZIEL), start=beg, interval="1d", progress=False,
+                         auto_adjust=True)["Close"].dropna()
+        ab = df[df.index >= start_datum]
+        if len(ab) < 2:
+            return None
+        basis = ab.iloc[0]
+
+        bausteine, mischung = [], 0.0
+        for k in sorted(ZIEL, key=lambda x: -ZIEL[x]):
+            r = float(ab[k].iloc[-1] / basis[k] - 1) * 100
+            beitrag = ZIEL[k] * r
+            mischung += beitrag
+            bausteine.append({"symbol": k, "ziel_pct": round(ZIEL[k] * 100, 1),
+                              "rendite_pct": round(r, 2),
+                              "beitrag_pp": round(beitrag, 2)})
+
+        kosten_pp = -kosten_gesamt / START_KAPITAL * 100
+        abweichung = ist_pct - mischung
+
+        # Kurve der reinen Mischung je Stichtag, zum Uebereinanderlegen
+        verlauf, gesehen = [], set()
+        for z in zeiten:
+            tag = z[:10]
+            if tag in gesehen:
+                continue
+            bis = ab[ab.index <= tag]
+            if len(bis) < 1:
+                continue
+            gesehen.add(tag)
+            faktor = sum(ZIEL[k] * float(bis[k].iloc[-1] / basis[k]) for k in ZIEL)
+            verlauf.append({"datum": tag,
+                            "mischung": round(START_KAPITAL * faktor, 2)})
+
+        return {"bausteine": bausteine,
+                "mischung_pct": round(mischung, 2),
+                "ist_pct": round(ist_pct, 2),
+                "abweichung_pp": round(abweichung, 2),
+                "kosten_pp": round(kosten_pp, 3),
+                "rueckfuehrung_pp": round(abweichung - kosten_pp, 2),
+                "verlauf": verlauf}
+    except Exception as e:
+        print("[BAUART] nicht berechenbar: %s" % str(e)[:80])
+        return None
 
 
 def main():
@@ -121,7 +176,19 @@ def main():
                        "wert": round(werte[k], 2), "kurs": round(px[k], 2),
                        "stueck": round(s["anteile"].get(k, {}).get("stueck", 0), 4)})
 
+    zeiten = []
+    if os.path.exists(HIST):
+        try:
+            with open(HIST, encoding="utf-8") as f:
+                zeiten = [r["zeit"] for r in csv.DictReader(f)]
+        except Exception:
+            zeiten = []
+    zeiten.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    bauart = bauart_pruefen(s["start"], (gesamt / START_KAPITAL - 1) * 100,
+                            s.get("kosten_gesamt", 0.0), zeiten)
+
     dash = {"zeit": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "bauart": bauart,
             "start": s["start"], "start_kapital": START_KAPITAL,
             "equity": round(gesamt, 2),
             "rendite_pct": round((gesamt / START_KAPITAL - 1) * 100, 2),
