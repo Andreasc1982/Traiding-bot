@@ -1,0 +1,92 @@
+{
+ "zeit": "2026-08-12 13:16:10",
+ "anzahl": 17,
+ "abweichungen": [],
+ "checks": [
+  {
+   "ok": true,
+   "bereich": "Sessions",
+   "text": "alle 11 laufen"
+  },
+  {
+   "ok": true,
+   "bereich": "Dashboard",
+   "text": "Super-Bot :8080 erreichbar"
+  },
+  {
+   "ok": true,
+   "bereich": "Dashboard",
+   "text": "Crypto :8081 erreichbar"
+  },
+  {
+   "ok": true,
+   "bereich": "Dashboard",
+   "text": "Insider-Depot :8097 erreichbar"
+  },
+  {
+   "ok": true,
+   "bereich": "Dashboard",
+   "text": "Fundament :8098 erreichbar"
+  },
+  {
+   "ok": true,
+   "bereich": "Daten",
+   "text": "Super-Bot Dashboard: 0 min alt"
+  },
+  {
+   "ok": true,
+   "bereich": "Daten",
+   "text": "Crypto Dashboard: 0 min alt"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "Insider-Papierdepot: zuletzt 12.08 08:15"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "Fundament-Bot: zuletzt 12.08 09:33"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "SEC-Tagesabruf: zuletzt 11.08 22:30"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "Score-Protokoll: zuletzt 12.08 13:07"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "Telegram-Auswertung: zuletzt 12.08 08:15"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "Nachrichten-Auswertung: zuletzt 12.08 08:20"
+  },
+  {
+   "ok": true,
+   "bereich": "System",
+   "text": "Platte 21% belegt (frei 47 GB)"
+  },
+  {
+   "ok": true,
+   "bereich": "System",
+   "text": "RAM 21% belegt"
+  },
+  {
+   "ok": true,
+   "bereich": "Netz",
+   "text": "eth0 192.168.188.130  wlan0 192.168.188.62  wg0 10.8.0.1"
+  },
+  {
+   "ok": true,
+   "bereich": "Netz",
+   "text": "Internet erreichbar"
+  }
+ ]
+}

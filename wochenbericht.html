@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wochenbericht</title>
+<style>
+  :root {
+    --grund: #f6f6f4; --flaeche: #fff; --linie: #e2e2dd; --text: #1c1c1a;
+    --leise: #6f6f68; --hoch: #1a7f4b; --runter: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --grund:#14151a; --flaeche:#1c1e25; --linie:#2c2f38; --text:#e9e9e6;
+            --leise:#9a9a94; --hoch:#4ac07e; --runter:#ef6b60; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 16px 64px; background:var(--grund); color:var(--text);
+         font:16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .huelle { max-width: 940px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.12rem; margin: 36px 0 10px; }
+  .kopfzeile { color: var(--leise); font-size: .9rem; margin-bottom: 26px; }
+  .karten { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .karte { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 12px; padding: 16px; }
+  .karte h3 { margin: 0 0 8px; font-size: .82rem; text-transform: uppercase;
+              letter-spacing: .06em; color: var(--leise); font-weight: 600; }
+  .wert { font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .delta { font-size: .95rem; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .fuss { color: var(--leise); font-size: .8rem; margin-top: 8px; }
+  .hoch { color: var(--hoch); } .runter { color: var(--runter); }
+  .leer { color: var(--leise); font-style: italic; }
+  .zusammen { color: var(--leise); font-size: .92rem; margin: 6px 0 12px; }
+  .tabellenrahmen { overflow-x: auto; border: 1px solid var(--linie);
+                    border-radius: 12px; background: var(--flaeche); }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--linie);
+           white-space: nowrap; font-variant-numeric: tabular-nums; }
+  th { color: var(--leise); font-weight: 600; font-size: .78rem;
+       text-transform: uppercase; letter-spacing: .05em; }
+  tr:last-child td { border-bottom: none; }
+  .liste { padding-left: 20px; } .liste li { margin: 5px 0; font-size: .92rem; }
+  .hinweis { margin-top: 44px; padding: 14px 16px; border-left: 3px solid var(--linie);
+             color: var(--leise); font-size: .88rem; }
+</style></head>
+<body><div class="huelle">
+  <h1>Wochenbericht</h1>
+  <div class="kopfzeile">05.08.2026 &ndash; 12.08.2026 &middot; erstellt 12.08.2026 13:09</div>
+
+  <div class="karten"><div class="karte">
+      <h3>Super-Bot</h3>
+      <div class="wert">$5 002.70</div>
+      <div class="delta hoch">+5.63 $ &nbsp;(+0.11 %) &nbsp;in 7 Tagen</div>
+      <div class="fuss">seit Start +0.05 % &middot; Stand 12.08. 12:20</div>
+    </div><div class="karte">
+      <h3>Crypto-Bot</h3>
+      <div class="wert">$4 817.69</div>
+      <div class="delta runter">−62.09 $ &nbsp;(−1.27 %) &nbsp;in 7 Tagen</div>
+      <div class="fuss">seit Start −2.10 % &middot; Stand 12.08. 12:20</div>
+    </div><div class="karte">
+      <h3>Insider-Depot</h3>
+      <div class="wert">$10 738.64</div>
+      <div class="delta hoch">+177.99 $ &nbsp;(+1.69 %) &nbsp;in 7 Tagen</div>
+      <div class="fuss">seit Start +7.39 % &middot; Stand 12.08. 08:15</div>
+    </div><div class="karte">
+      <h3>Fundament</h3>
+      <div class="wert">$10 323.16</div>
+      <div class="delta hoch">+190.41 $ &nbsp;(+1.88 %) &nbsp;in 7 Tagen</div>
+      <div class="fuss">seit Start +3.26 % &middot; Stand 12.08. 09:33</div>
+    </div></div>
+
+  <h2>Super-Bot &mdash; Trades</h2>
+    <p class="zusammen">3 Trades &middot; 1 Gewinner (33 %) &middot; Ergebnis <span class="hoch">+2.00 $</span></p>
+    <div class="tabellenrahmen"><table>
+      <thead><tr><th>Zeit</th><th>Titel</th><th>Ergebnis</th><th>%</th><th>Grund</th></tr></thead>
+      <tbody><tr><td>11.08. 16:52</td><td>IBIT</td><td class='hoch'>+0.00 $</td><td class='runter'>−0.6 %</td><td>WS-PSAR-STOP</td></tr><tr><td>11.08. 00:15</td><td>PAVE</td><td class='hoch'>+2.00 $</td><td class='hoch'>+3.4 %</td><td>TIME-EXIT-MAX</td></tr><tr><td>10.08. 18:11</td><td>IBIT</td><td class='hoch'>+0.00 $</td><td class='runter'>−0.5 %</td><td>WS-PSAR-STOP</td></tr></tbody></table></div>
+  <h2>Crypto-Bot &mdash; Trades</h2>
+    <p class="zusammen">30 Trades &middot; 9 Gewinner (30 %) &middot; Ergebnis <span class="runter">−67.12 $</span></p>
+    <div class="tabellenrahmen"><table>
+      <thead><tr><th>Zeit</th><th>Titel</th><th>Ergebnis</th><th>%</th><th>Grund</th></tr></thead>
+      <tbody><tr><td>12.08. 08:53</td><td>UNI/USD</td><td class='runter'>−10.64 $</td><td class='runter'>−2.9 %</td><td>WS-STOP-LOSS</td></tr><tr><td>11.08. 18:13</td><td>POL/USD</td><td class='hoch'>+2.33 $</td><td class='hoch'>+2.6 %</td><td>WS-TRAIL-STOP</td></tr><tr><td>11.08. 17:42</td><td>SOL/USD</td><td class='runter'>−8.59 $</td><td class='runter'>−2.6 %</td><td>WS-STOP-LOSS</td></tr><tr><td>11.08. 17:38</td><td>BTC/USD</td><td class='runter'>−5.12 $</td><td class='runter'>−2.6 %</td><td>WS-STOP-LOSS</td></tr><tr><td>11.08. 02:00</td><td>ETH/USD</td><td class='runter'>−4.23 $</td><td class='runter'>−2.2 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>11.08. 00:04</td><td>XRP/USD</td><td class='runter'>−3.34 $</td><td class='runter'>−2.5 %</td><td>WS-STOP-LOSS</td></tr><tr><td>10.08. 21:24</td><td>ADA/USD</td><td class='runter'>−9.46 $</td><td class='runter'>−2.8 %</td><td>WS-STOP-LOSS</td></tr><tr><td>10.08. 19:08</td><td>AAVE/USD</td><td class='runter'>−3.11 $</td><td class='runter'>−2.5 %</td><td>WS-STOP-LOSS</td></tr><tr><td>10.08. 04:32</td><td>LTC/USD</td><td class='runter'>−4.95 $</td><td class='runter'>−2.5 %</td><td>WS-STOP-LOSS</td></tr><tr><td>10.08. 02:01</td><td>ARB/USD</td><td class='runter'>−2.57 $</td><td class='runter'>−1.7 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>09.08. 22:05</td><td>RENDER/USD</td><td class='runter'>−1.10 $</td><td class='runter'>−0.4 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>09.08. 17:00</td><td>UNI/USD</td><td class='hoch'>+2.89 $</td><td class='hoch'>+1.5 %</td><td>WS-PSAR-STOP</td></tr><tr><td>09.08. 15:42</td><td>DOT/USD</td><td class='runter'>−4.12 $</td><td class='runter'>−1.0 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>09.08. 11:46</td><td>ADA/USD</td><td class='runter'>−8.94 $</td><td class='runter'>−2.6 %</td><td>WS-STOP-LOSS</td></tr><tr><td>08.08. 20:45</td><td>LTC/USD</td><td class='runter'>−0.48 $</td><td class='hoch'>+0.1 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>07.08. 16:54</td><td>ADA/USD</td><td class='runter'>−11.26 $</td><td class='runter'>−3.3 %</td><td>WS-STOP-LOSS</td></tr><tr><td>07.08. 02:02</td><td>LINK/USD</td><td class='runter'>−1.92 $</td><td class='runter'>−0.2 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>06.08. 20:02</td><td>BTC/USD</td><td class='hoch'>+1.47 $</td><td class='hoch'>+1.1 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>06.08. 19:42</td><td>ADA/USD</td><td class='runter'>−2.65 $</td><td class='runter'>−0.4 %</td><td>WS-BREAKEVEN</td></tr><tr><td>06.08. 18:11</td><td>ADA/USD</td><td class='hoch'>+18.22 $</td><td class='hoch'>+8.1 %</td><td>WS-TRAIL-STOP</td></tr><tr><td>06.08. 15:55</td><td>POL/USD</td><td class='hoch'>+3.85 $</td><td class='hoch'>+2.1 %</td><td>WS-PSAR-STOP</td></tr><tr><td>06.08. 14:11</td><td>DOT/USD</td><td class='runter'>−7.91 $</td><td class='runter'>−2.7 %</td><td>WS-STOP-LOSS</td></tr><tr><td>06.08. 05:33</td><td>UNI/USD</td><td class='hoch'>+2.68 $</td><td class='hoch'>+1.7 %</td><td>WS-PSAR-STOP</td></tr><tr><td>06.08. 03:51</td><td>AAVE/USD</td><td class='runter'>−4.96 $</td><td class='runter'>−2.9 %</td><td>WS-STOP-LOSS</td></tr><tr><td>05.08. 23:14</td><td>UNI/USD</td><td class='runter'>−7.57 $</td><td class='runter'>−2.6 %</td><td>WS-STOP-LOSS</td></tr><tr><td>05.08. 20:42</td><td>RENDER/USD</td><td class='runter'>−2.68 $</td><td class='runter'>−1.7 %</td><td>TIME-EXIT-STUCK</td></tr><tr><td>05.08. 19:30</td><td>UNI/USD</td><td class='hoch'>+2.73 $</td><td class='hoch'>+1.7 %</td><td>WS-PSAR-STOP</td></tr><tr><td>05.08. 17:57</td><td>ADA/USD</td><td class='runter'>−2.14 $</td><td class='runter'>−0.4 %</td><td>WS-BREAKEVEN</td></tr><tr><td>05.08. 16:46</td><td>UNI/USD</td><td class='hoch'>+3.53 $</td><td class='hoch'>+2.0 %</td><td>WS-PSAR-STOP</td></tr><tr><td>05.08. 15:09</td><td>UNI/USD</td><td class='hoch'>+2.92 $</td><td class='hoch'>+1.8 %</td><td>WS-PSAR-STOP</td></tr></tbody></table></div>
+
+  <h2>Funktionspruefungen</h2>
+  <p class='zusammen'>2 Pruefungen &middot; 1 mit Abweichung</p><ul class='liste'><li><b>12.08. 12:54</b> — Cron: SEC-Tagesabruf: keine Ausgabe (/tmp/sec_daily.log fehlt) | Cron: Telegram-Auswertung: keine Ausgabe (/tmp/tg_watch.log fehlt)</li></ul>
+
+  <h2>Stoerungen im Betrieb</h2>
+  <div class='tabellenrahmen'><table><thead><tr><th>Zeit</th><th>Quelle</th><th>Ereignis</th><th>Detail</th></tr></thead><tbody><tr><td>12.08. 08:14</td><td>monitor</td><td>NO_TRADES</td><td>seit 14.0h</td></tr><tr><td>12.08. 06:13</td><td>monitor</td><td>NO_TRADES</td><td>seit 12.0h</td></tr><tr><td>12.08. 04:13</td><td>monitor</td><td>NO_TRADES</td><td>seit 10.0h</td></tr><tr><td>12.08. 02:13</td><td>monitor</td><td>NO_TRADES</td><td>seit 8.0h</td></tr><tr><td>12.08. 00:07</td><td>monitor</td><td>RESTART_OK</td><td>Super Bot (trading)</td></tr><tr><td>12.08. 00:07</td><td>super_bot</td><td>DUPLICATE_BLOCKED</td><td>andere Instanz laeuft bereits</td></tr><tr><td>12.08. 00:07</td><td>monitor</td><td>CRASH</td><td>Super Bot (trading)</td></tr><tr><td>12.08. 00:01</td><td>monitor</td><td>RESTART_OK</td><td>dYdX Imbalance-Sammler (dydx)</td></tr><tr><td>12.08. 00:01</td><td>monitor</td><td>CRASH</td><td>dYdX Imbalance-Sammler (dydx)</td></tr><tr><td>11.08. 16:01</td><td>monitor</td><td>NO_TRADES</td><td>seit 14.0h</td></tr><tr><td>11.08. 14:01</td><td>monitor</td><td>NO_TRADES</td><td>seit 12.0h</td></tr><tr><td>11.08. 12:01</td><td>monitor</td><td>NO_TRADES</td><td>seit 10.0h</td></tr><tr><td>11.08. 10:00</td><td>monitor</td><td>NO_TRADES</td><td>seit 8.0h</td></tr><tr><td>10.08. 16:33</td><td>monitor</td><td>NO_TRADES</td><td>seit 12.0h</td></tr><tr><td>10.08. 14:32</td><td>monitor</td><td>NO_TRADES</td><td>seit 10.0h</td></tr><tr><td>10.08. 12:32</td><td>monitor</td><td>NO_TRADES</td><td>seit 8.0h</td></tr><tr><td>09.08. 10:46</td><td>monitor</td><td>NO_TRADES</td><td>seit 14.0h</td></tr><tr><td>09.08. 08:46</td><td>monitor</td><td>NO_TRADES</td><td>seit 12.0h</td></tr><tr><td>09.08. 06:45</td><td>monitor</td><td>NO_TRADES</td><td>seit 10.0h</td></tr><tr><td>09.08. 04:45</td><td>monitor</td><td>NO_TRADES</td><td>seit 8.0h</td></tr><tr><td>08.08. 18:57</td><td>monitor</td><td>NO_TRADES</td><td>seit 26.1h</td></tr><tr><td>08.08. 16:56</td><td>monitor</td><td>NO_TRADES</td><td>seit 24.0h</td></tr><tr><td>08.08. 14:56</td><td>monitor</td><td>NO_TRADES</td><td>seit 22.0h</td></tr><tr><td>08.08. 12:56</td><td>monitor</td><td>NO_TRADES</td><td>seit 20.0h</td></tr><tr><td>08.08. 10:55</td><td>monitor</td><td>NO_TRADES</td><td>seit 18.0h</td></tr><tr><td>08.08. 08:55</td><td>monitor</td><td>NO_TRADES</td><td>seit 16.0h</td></tr><tr><td>08.08. 06:55</td><td>monitor</td><td>NO_TRADES</td><td>seit 14.0h</td></tr><tr><td>08.08. 04:54</td><td>monitor</td><td>NO_TRADES</td><td>seit 12.0h</td></tr><tr><td>08.08. 02:54</td><td>monitor</td><td>NO_TRADES</td><td>seit 10.0h</td></tr><tr><td>08.08. 00:54</td><td>monitor</td><td>NO_TRADES</td><td>seit 8.0h</td></tr><tr><td>07.08. 16:03</td><td>monitor</td><td>NO_TRADES</td><td>seit 14.0h</td></tr><tr><td>07.08. 14:03</td><td>monitor</td><td>NO_TRADES</td><td>seit 12.0h</td></tr><tr><td>07.08. 12:02</td><td>monitor</td><td>NO_TRADES</td><td>seit 10.0h</td></tr><tr><td>07.08. 10:02</td><td>monitor</td><td>NO_TRADES</td><td>seit 8.0h</td></tr><tr><td>06.08. 13:33</td><td>monitor</td><td>NO_TRADES</td><td>seit 8.0h</td></tr></tbody></table></div>
+
+  <div class="hinweis">
+    Sieben Tage sagen ueber die Qualitaet einer Strategie nichts aus &mdash; die Zahlen hier
+    zeigen den Betrieb, nicht den Erfolg. Ein Vorsprung wird erst nach Monaten
+    beurteilbar, und auch dann nur gegen einen Massstab.
+  </div>
+</div></body></html>

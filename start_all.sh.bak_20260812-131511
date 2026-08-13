@@ -46,7 +46,7 @@ fi
 # ── Super Bot Dashboard HTTP server (port 8080, serves trading_bot/ root) ─────
 screen -dmS dashboard bash -c '
   cd /home/trading2025/trading_bot &&
-  python3 /home/trading2025/trading_bot/dash_server.py 8080 dashboard_super.html dashboard.html dashboard.json wochenbericht.html > /tmp/dashboard.log 2>&1'
+  python3 /home/trading2025/trading_bot/dash_server.py 8080 dashboard_super.html dashboard.html dashboard.json > /tmp/dashboard.log 2>&1'
 
 # ── Crypto Bot Dashboard HTTP server (port 8081, serves crypto/ subdirectory) ─
 screen -dmS dashboard_crypto bash -c '

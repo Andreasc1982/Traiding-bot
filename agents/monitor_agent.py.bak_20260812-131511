@@ -122,7 +122,7 @@ BOTS = {
         "cmd": (
             "fuser -k 8080/tcp 2>/dev/null; sleep 1; "
             "cd /home/trading2025/trading_bot && "
-            "python3 /home/trading2025/trading_bot/dash_server.py 8080 dashboard_super.html dashboard.html dashboard.json wochenbericht.html > /tmp/dashboard.log 2>&1"
+            "python3 /home/trading2025/trading_bot/dash_server.py 8080 dashboard_super.html dashboard.html dashboard.json > /tmp/dashboard.log 2>&1"
         ),
     },
     "dashboard_crypto": {
