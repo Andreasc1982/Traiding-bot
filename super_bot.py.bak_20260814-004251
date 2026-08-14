@@ -35,8 +35,6 @@ try:
 except ImportError:
     config = {}
 
-import tg_texte   # gemeinsame Telegram-Textbausteine (auch vom Crypto-Bot genutzt)
-
 NEWSAPI_KEY       = config.get("newsapi_key", "")
 TELEGRAM_TOKEN    = config.get("telegram_bot_token", "")
 TELEGRAM_CHAT_ID  = config.get("telegram_chat_id", "")
@@ -263,19 +261,84 @@ class SuperTradingBot:
     # Die vollstaendigen Kennzahlen stehen weiterhin in der Konsole und im
     # Dashboard — Telegram ist die Zusammenfassung, nicht das Logbuch.
 
-    # Tabellen und Zahlenformate liegen in tg_texte.py — gemeinsam mit dem
-    # Crypto-Bot, damit ein neuer Exit-Grund nicht in einem Bot uebersetzt
-    # wird und im anderen als Kuerzel stehen bleibt.
-    _esc   = staticmethod(tg_texte.esc)
-    _de    = staticmethod(tg_texte.de)
-    _vz    = staticmethod(tg_texte.vz)
-    _dauer = staticmethod(tg_texte.dauer)
+    SEKTOR_DE = {
+        "energy": "Energie", "oil": "Öl", "industry": "Industrie",
+        "steel": "Stahl", "defense": "Rüstung", "finance": "Finanzen",
+        "tech": "Technologie", "gold": "Gold", "infra": "Infrastruktur",
+        "crypto": "Krypto",
+    }
+
+    LAGE_DE = {
+        "TRENDING": "starker Trend", "TRANSITIONAL": "Trend im Aufbau",
+        "RANGING": "seitwärts",
+    }
+
+    # Zonen des Drawdown-Schutzes und der VIX-Schwankungsbreite. Ohne
+    # Uebersetzung landen "CAUTION"/"HIGH" mitten im deutschen Satz.
+    ZONE_DE = {
+        "HEALTHY": "Depot unauffällig", "CAUTION": "Depot im Minus",
+        "WARNING": "Depot deutlich im Minus", "DANGER": "Depot stark im Minus",
+    }
+    VIX_DE = {
+        "LOW": "ruhiger Markt", "NORMAL": "normale Schwankung",
+        "HIGH": "unruhiger Markt", "EXTREME": "sehr unruhiger Markt",
+    }
+
+    # Verkaufsgruende in Klartext — inkl. der Information, ob das gut oder
+    # schlecht ist. "WS-TRAIL-STOP" sagt einem Menschen nichts.
+    GRUND_DE = {
+        "WS-STOP-LOSS":    "Stop-Loss gerissen",
+        "STOP-LOSS":       "Stop-Loss gerissen",
+        "WS-TRAIL-STOP":   "Gewinn gesichert (Rücksetzer vom Hoch)",
+        "TRAIL-STOP":      "Gewinn gesichert (Rücksetzer vom Hoch)",
+        "WS-PROFIT-LOCK":  "Gewinn gesichert (Kursrückgang nach Hoch)",
+        "PROFIT-LOCK":     "Gewinn gesichert (Kursrückgang nach Hoch)",
+        "WS-BREAKEVEN":    "auf Einstand geschlossen (kein Verlust)",
+        "BREAKEVEN":       "auf Einstand geschlossen (kein Verlust)",
+        "WS-PSAR-STOP":    "Trend gedreht (nachgezogener Stop)",
+        "PSAR-STOP":       "Trend gedreht (nachgezogener Stop)",
+        "TAKE-PROFIT":     "Kursziel erreicht",
+        "WS-TAKE-PROFIT":  "Kursziel erreicht",
+        "TIME-EXIT-MAX":   "zu lange gehalten",
+        "TIME-EXIT-STUCK": "lief zu lange nicht an",
+        "RISK-CLOSE-ALL":  "Risikobremse hat alles geschlossen",
+    }
+
+    @staticmethod
+    def _esc(text):
+        """HTML-Sonderzeichen entschaerfen — sonst verschluckt Telegram die Nachricht."""
+        return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+    @staticmethod
+    def _de(zahl, stellen=0):
+        """Deutsche Schreibweise: 4.231,80 statt 4231.8"""
+        s = "{:,.{}f}".format(zahl, stellen)
+        return s.replace(",", "#").replace(".", ",").replace("#", ".")
+
+    @classmethod
+    def _vz(cls, zahl, stellen=0):
+        """Mit echtem Minuszeichen — das kurze - geht auf dem Handy unter."""
+        return ("+" if zahl >= 0 else "−") + cls._de(abs(zahl), stellen)
 
     def _titel(self, symbol):
         """XLK (Technologie) — Sektor auf Deutsch, wenn bekannt."""
-        sektor = tg_texte.SEKTOR_DE.get(
+        sektor = self.SEKTOR_DE.get(
             next((s for s, e in ETFS.items() if e == symbol), ""), "")
-        return tg_texte.esc(symbol) + (" (" + sektor + ")" if sektor else "")
+        return self._esc(symbol) + (" (" + sektor + ")" if sektor else "")
+
+    @staticmethod
+    def _dauer(seit_str):
+        """'3 Tage' / '5 Std.' — wie lange die Position lief."""
+        try:
+            seit = datetime.strptime(seit_str, "%Y-%m-%d %H:%M")
+        except Exception:
+            return None
+        st = (datetime.now() - seit).total_seconds() / 3600.0
+        if st < 1:
+            return "%d Min." % max(1, int(st * 60))
+        if st < 48:
+            return "%d Std." % int(st)
+        return "%d Tage" % int(st / 24)
 
     def _tg_kauf(self, symbol, shares, price, einsatz, risiko, regime, rsi,
                  score_pct, threshold, ml_prob, size_mult, dd_zone, vix_regime):
@@ -284,14 +347,12 @@ class SuperTradingBot:
         zeilen = [
             "🟢 <b>KAUF · " + self._titel(symbol) + "</b>",
             "",
-            # menge() statt fester Rundung: der Bot kauft Bruchstuecke
-            # (0,3652 GLD) — auf 0 Stellen stuende dort "0 Stück".
-            tg_texte.menge(shares) + " Stück zu " + tg_texte.preis(price) + " $"
-            + "  =  " + tg_texte.de(einsatz) + " $",
-            "Risiko: " + tg_texte.de(risiko) + " $ (" + tg_texte.de(risiko_pct, 1)
+            self._de(shares) + " Stück zu " + self._de(price, 2) + " $"
+            + "  =  " + self._de(einsatz) + " $",
+            "Risiko: " + self._de(risiko) + " $ (" + self._de(risiko_pct, 1)
             + " % vom Konto)",
             "",
-            "Lage: " + tg_texte.lage(regime) + ", "
+            "Lage: " + self.LAGE_DE.get(regime, str(regime).lower()) + ", "
             + ("nicht überkauft" if rsi < 65 else "bereits weit gelaufen"),
             "Signal: " + str(round(score_pct * 100)) + " % (nötig wären "
             + str(int(threshold * 100)) + " %)",
@@ -300,15 +361,24 @@ class SuperTradingBot:
             zeilen.append("Trefferchance laut Modell: " + str(round(ml_prob * 100)) + " %")
         if size_mult < 1.0:
             zeilen.append("Kleiner gekauft als üblich — "
-                          + tg_texte.ZONE_DE.get(dd_zone, tg_texte.esc(dd_zone)) + ", "
-                          + tg_texte.VIX_DE.get(vix_regime, tg_texte.esc(vix_regime)))
-        zeilen += ["", "Kontostand: " + tg_texte.de(self.balance) + " $"]
+                          + self.ZONE_DE.get(dd_zone, self._esc(dd_zone)) + ", "
+                          + self.VIX_DE.get(vix_regime, self._esc(vix_regime)))
+        zeilen += ["", "Kontostand: " + self._de(self.balance) + " $"]
         return "\n".join(zeilen)
 
     def _tg_verkauf(self, symbol, profit, pnl_pct, reason, gehalten_seit, bal):
-        """Verkaufs-Nachricht — Aufbau kommt aus tg_texte, identisch zum Crypto-Bot."""
-        return tg_texte.verkauf(self._titel(symbol), profit, pnl_pct,
-                                reason, gehalten_seit, bal)
+        """Verkaufs-Nachricht. Farbe und Vorzeichen sagen sofort, was passiert ist."""
+        zeilen = [
+            ("🟢" if profit >= 0 else "🔴") + " <b>VERKAUF · " + self._titel(symbol) + "</b>",
+            "",
+            "Ergebnis: <b>" + self._vz(profit) + " $</b>  (" + self._vz(pnl_pct, 1) + " %)",
+            "Grund: " + self.GRUND_DE.get(reason, self._esc(reason)),
+        ]
+        dauer = self._dauer(gehalten_seit or "")
+        if dauer:
+            zeilen.append("Gehalten: " + dauer)
+        zeilen += ["", "Kontostand: " + self._de(bal) + " $"]
+        return "\n".join(zeilen)
 
     # ── Price — WS cache → REST fallback ──────────────────────────────────
 

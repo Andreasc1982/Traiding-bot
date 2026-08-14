@@ -1,0 +1,56 @@
+# Sitzungsberichte
+
+Datierte Zusammenfassung jeder Sitzung, in der etwas erarbeitet oder verändert wurde.
+Neueste zuerst. Gepflegt auf dem Pi, nachts per GitHub-Backup gesichert.
+
+---
+
+## 12.08.2026 — Funktionsprüfung nach Umzug, Handlungsrahmen, tägliche/wöchentliche Automatik
+
+### Was gemacht wurde
+
+**1. Funktionsprüfung nach dem Umstecken des Pi.** Alles in Ordnung: beide Adressen unverändert
+(`eth0 192.168.188.130`, `wlan0 192.168.188.62`, `wg0 10.8.0.1`), alle Sessions nach dem Neustart
+um 12:21 wieder oben, alle vier Dashboards über HTTP erreichbar, Daten frisch, kein Risk-Halt aktiv.
+
+**2. Handlungsrahmen schriftlich festgelegt** in `~/.claude/CLAUDE.md` (Mac, wird jede Sitzung geladen).
+Betrieb und Reparatur laufen ohne Rückfrage; Geld, Kapital, Strategie und Löschungen bleiben bei Andreas.
+Dazu die Pi-Pflichtregeln: md5-Abgleich Mac↔Pi vor jedem Edit geteilter Dateien, `bash -n`,
+Sicherung vor Überschreiben, Reihenfolge beim Abschalten von Bots.
+
+**3. Neu: `agents/funktionspruefung.py`** — 17 Prüfungen, täglich 09:00 per Cron.
+Screen-Sessions (Liste kommt aus `monitor_agent.BOTS`, kann also nicht auseinanderlaufen),
+vier Dashboards über HTTP, Frische der Live-Dateien, ob die Nacht-Crons tatsächlich gelaufen sind,
+Platte/RAM/Netz/Internet. Telegram **nur bei Abweichung**, plus einmalig bei Erholung.
+Ergebnis in `agents/funktionspruefung.json` + Verlauf in `agents/funktionspruefung_log.csv`.
+
+**4. Neu: `agents/wochenbericht.py`** — sonntags 18:00. Baut `wochenbericht.html`
+(ausgeliefert auf :8080) mit Depotständen aller vier Depots, Wochenveränderung, Trades,
+Störungen aus `health_log.csv` und der Prüfhistorie; schickt eine Kurzfassung mit Link per Telegram.
+
+**5. Whitelist erweitert:** `wochenbericht.html` in den `dash_server`-Aufruf für :8080 — an **beiden**
+Stellen (`start_all.sh` und `monitor_agent.py` BOTS), sonst hätte der nächste Monitor-Neustart
+die Änderung stillschweigend zurückgesetzt.
+
+### Warum
+
+Der Monitor bewacht Prozesse, aber nicht Ergebnisse: ein Cron kann still ausfallen und niemand merkt es,
+weil die Session ja läuft. Die Funktionsprüfung schließt genau diese Lücke und prüft Wirkung statt Existenz.
+Nachweis eines Cron-Laufs bewusst über **dauerhafte Ausgabedateien** (`sec/live_state.json`,
+`tg/watch_state.json`, `ng/ng_state.json`), nicht über `/tmp`-Logs — die sind nach jedem Neustart weg
+und hätten bei jedem Reboot Fehlalarm ausgelöst (im ersten Testlauf genau so passiert und korrigiert).
+
+### Was jetzt läuft
+
+- Cron `0 9 * * *` → Funktionsprüfung, Cron `0 18 * * 0` → Wochenbericht (Sicherung: `crontab_backup_20260812-131602.txt`)
+- Neue Seite: http://trading2025.fritz.box:8080/wochenbericht.html
+- Sessions `dashboard` und `monitor` mit neuer Whitelist neu gestartet; `config.py` liefert weiterhin 403
+
+### Was offen ist
+
+- Die **Mac-Kopie des Repos driftet** (`super_bot.py`, `crypto_bot.py`, `risk_agent.py` u. a. weichen ab).
+  Deshalb wird vom Mac nicht gepusht; gesichert wird ausschließlich der Pi-Stand um 02:00.
+  Ein sauberer Abgleich Mac↔Pi steht noch aus.
+- Der Wochenbericht ist bewusst eine Seite auf dem Pi, keine Cloud-Seite: ein Cron auf dem Pi kann
+  nichts veröffentlichen, und der Pi ist von außen nur über VPN erreichbar.
+

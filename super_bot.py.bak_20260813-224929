@@ -35,8 +35,6 @@ try:
 except ImportError:
     config = {}
 
-import tg_texte   # gemeinsame Telegram-Textbausteine (auch vom Crypto-Bot genutzt)
-
 NEWSAPI_KEY       = config.get("newsapi_key", "")
 TELEGRAM_TOKEN    = config.get("telegram_bot_token", "")
 TELEGRAM_CHAT_ID  = config.get("telegram_chat_id", "")
@@ -241,74 +239,13 @@ class SuperTradingBot:
 
     # ── Telegram ───────────────────────────────────────────────────────────
 
-    def send(self, msg, roh=False):
-        """Telegram-Nachricht. HTML ist aktiv — dynamische Texte vorher durch _esc().
-
-        roh=True unterdrueckt die Kopfzeile (fuer Nachrichten, die ihre eigene haben).
-        """
+    def send(self, msg):
         if self.tg_ok and TELEGRAM_CHAT_ID:
             try:
-                text = msg if roh else "📈 <b>SUPER</b> · " + msg
                 url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
-                requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": text,
-                                         "parse_mode": "HTML",
-                                         "disable_web_page_preview": True}, timeout=5)
+                requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": "📈 SUPER · " + msg}, timeout=5)
             except Exception as e:
                 print("[TG Error] " + str(e))
-
-    # ── Aufbereitung fuer Telegram ─────────────────────────────────────────
-    #
-    # Der Feed soll auf dem Handy in einer Sekunde lesbar sein. Deshalb:
-    # deutsche Zahlen, Klartext statt Indikator-Kuerzel, Kernaussage zuerst.
-    # Die vollstaendigen Kennzahlen stehen weiterhin in der Konsole und im
-    # Dashboard — Telegram ist die Zusammenfassung, nicht das Logbuch.
-
-    # Tabellen und Zahlenformate liegen in tg_texte.py — gemeinsam mit dem
-    # Crypto-Bot, damit ein neuer Exit-Grund nicht in einem Bot uebersetzt
-    # wird und im anderen als Kuerzel stehen bleibt.
-    _esc   = staticmethod(tg_texte.esc)
-    _de    = staticmethod(tg_texte.de)
-    _vz    = staticmethod(tg_texte.vz)
-    _dauer = staticmethod(tg_texte.dauer)
-
-    def _titel(self, symbol):
-        """XLK (Technologie) — Sektor auf Deutsch, wenn bekannt."""
-        sektor = tg_texte.SEKTOR_DE.get(
-            next((s for s, e in ETFS.items() if e == symbol), ""), "")
-        return tg_texte.esc(symbol) + (" (" + sektor + ")" if sektor else "")
-
-    def _tg_kauf(self, symbol, shares, price, einsatz, risiko, regime, rsi,
-                 score_pct, threshold, ml_prob, size_mult, dd_zone, vix_regime):
-        """Kauf-Nachricht. Eigene Methode, damit sie ohne laufenden Bot pruefbar ist."""
-        risiko_pct = (risiko / self.balance * 100) if self.balance else 0
-        zeilen = [
-            "🟢 <b>KAUF · " + self._titel(symbol) + "</b>",
-            "",
-            # menge() statt fester Rundung: der Bot kauft Bruchstuecke
-            # (0,3652 GLD) — auf 0 Stellen stuende dort "0 Stück".
-            tg_texte.menge(shares) + " Stück zu " + tg_texte.preis(price) + " $"
-            + "  =  " + tg_texte.de(einsatz) + " $",
-            "Risiko: " + tg_texte.de(risiko) + " $ (" + tg_texte.de(risiko_pct, 1)
-            + " % vom Konto)",
-            "",
-            "Lage: " + tg_texte.lage(regime) + ", "
-            + ("nicht überkauft" if rsi < 65 else "bereits weit gelaufen"),
-            "Signal: " + str(round(score_pct * 100)) + " % (nötig wären "
-            + str(int(threshold * 100)) + " %)",
-        ]
-        if ml_prob is not None:
-            zeilen.append("Trefferchance laut Modell: " + str(round(ml_prob * 100)) + " %")
-        if size_mult < 1.0:
-            zeilen.append("Kleiner gekauft als üblich — "
-                          + tg_texte.ZONE_DE.get(dd_zone, tg_texte.esc(dd_zone)) + ", "
-                          + tg_texte.VIX_DE.get(vix_regime, tg_texte.esc(vix_regime)))
-        zeilen += ["", "Kontostand: " + tg_texte.de(self.balance) + " $"]
-        return "\n".join(zeilen)
-
-    def _tg_verkauf(self, symbol, profit, pnl_pct, reason, gehalten_seit, bal):
-        """Verkaufs-Nachricht — Aufbau kommt aus tg_texte, identisch zum Crypto-Bot."""
-        return tg_texte.verkauf(self._titel(symbol), profit, pnl_pct,
-                                reason, gehalten_seit, bal)
 
     # ── Price — WS cache → REST fallback ──────────────────────────────────
 
@@ -1039,11 +976,7 @@ class SuperTradingBot:
                        " Earnings " + ed +
                        " | Position gehalten (kein Autoverkauf)")
                 print("[EARNINGS] " + msg)
-                self.send("📅 <b>Zahlen voraus · " + self._titel(sym) + "</b>"
-                          "\n\n" + self._esc(stock) + " legt am " + self._esc(ed)
-                          + " Quartalszahlen vor — ein großer Wert in diesem Korb."
-                          "\n\nDie Position bleibt bestehen. Der Bot verkauft deswegen"
-                          " nichts von allein; das entscheidest du.", roh=True)
+                self.send(msg)
                 self._earnings_alerted.add(sym)
 
     # ── Stop loss / take profit (polling fallback) ─────────────────────────
@@ -1119,10 +1052,7 @@ class SuperTradingBot:
                str(round(pnl_pct, 1)) + "% | $" + str(round(profit, 0)) +
                " | Bal: $" + str(round(bal, 0)))
         print(msg)
-
-        # Telegram: auf einen Blick erkennbar, ob Gewinn oder Verlust.
-        self.send(self._tg_verkauf(symbol, profit, pnl_pct, reason,
-                                   pos.get("time", ""), bal), roh=True)
+        self.send(msg)
 
     # ── Watchdog ────────────────────────────────────────────────────────────
 
@@ -1191,11 +1121,9 @@ class SuperTradingBot:
                 if reason:
                     print("[TIME-EXIT] {} nach {:.1f}d | P&L: {:.1f}% | {}".format(
                         symbol, age_days, pnl_pct, reason))
-                    # Keine eigene Telegram-Meldung mehr: close_position schickt
-                    # die Verkaufsnachricht inkl. Grund ("zu lange gehalten").
-                    # Vorher kamen zwei Nachrichten fuer denselben Vorgang — und
-                    # die hier enthielt <b>-Tags ohne parse_mode, stand also
-                    # woertlich im Chat.
+                    self.send("⏰ <b>TIME-EXIT</b>: {} nach <b>{:.1f}d</b>\n"
+                              "P&amp;L: {:.1f}% | Best: {:.1f}% | {}".format(
+                              symbol, age_days, pnl_pct, best_pnl, reason))
                     self.close_position(symbol, price, reason, pnl_pct)
 
             except Exception as e:
@@ -1577,23 +1505,17 @@ class SuperTradingBot:
             return 1.0, "HEALTHY"
         elif day_pct > -6.0:
             if not getattr(self, "_dd_caution_sent", False):
-                self.send("⚠️ <b>Vorsicht</b> · " + self._vz(day_pct, 1) + " % heute"
-                          "\n\nNeue Positionen werden ab jetzt um 30 % kleiner gekauft."
-                          "\nGehaltene Positionen bleiben unberührt.", roh=True)
+                self.send("⚠️ Drawdown CAUTION: {:.1f}% heute — Positionsgrösse -30%".format(day_pct))
                 self._dd_caution_sent = True
             return 0.7, "CAUTION"
         elif day_pct > -9.0:
             if not getattr(self, "_dd_warning_sent", False):
-                self.send("🔴 <b>Warnung</b> · " + self._vz(day_pct, 1) + " % heute"
-                          "\n\nNeue Positionen nur noch in 40 % der normalen Größe."
-                          "\nGehaltene Positionen bleiben unberührt.", roh=True)
+                self.send("🔴 Drawdown WARNING: {:.1f}% heute — Positionsgrösse -60%".format(day_pct))
                 self._dd_warning_sent = True
             return 0.4, "WARNING"
         else:
             if not getattr(self, "_dd_danger_sent", False):
-                self.send("🚨 <b>Gefahrenzone</b> · " + self._vz(day_pct, 1) + " % heute"
-                          "\n\n<b>Es wird nichts mehr gekauft.</b>"
-                          "\nGehaltene Positionen laufen mit ihren Stops weiter.", roh=True)
+                self.send("🚨 Drawdown DANGER: {:.1f}% heute — keine neuen Trades!".format(day_pct))
                 self._dd_danger_sent = True
             return 0.0, "DANGER"
 
@@ -1861,14 +1783,7 @@ class SuperTradingBot:
                    " PSAR=" + str(ind.get("psar", "?")) +
                    " | Bal: $" + str(round(self.balance, 0)))
             print(msg)
-
-            # Telegram bekommt die lesbare Kurzfassung — die Kennzahlen oben
-            # bleiben vollstaendig in der Konsole und im Dashboard.
-            self.send(self._tg_kauf(
-                symbol, shares, price, shares * fill, shares * ind["atr"] * 2,
-                regime, ind.get("rsi", 0), score_pct, threshold,
-                ml_prob if self._ml_model is not None else None,
-                size_mult, dd_zone, vix_regime), roh=True)
+            self.send(msg)
 
     # ── Dashboard ──────────────────────────────────────────────────────────
 
@@ -2000,12 +1915,7 @@ class SuperTradingBot:
         loss = (self.start_balance - bal) / self.start_balance
         if loss >= self.max_day_loss:
             print("[STOP] Max Tagesverlust erreicht!")
-            self.send("🛑 <b>Tageslimit erreicht</b>"
-                      "\n\nHeutiger Verlust: <b>" + self._vz(-loss * 100, 1) + " %</b>"
-                      "\nGrenze: " + self._de(self.max_day_loss * 100, 0) + " %"
-                      "\n\n<b>Der Bot kauft heute nichts mehr.</b>"
-                      "\nGehaltene Positionen laufen mit ihren Stops weiter."
-                      "\nMorgen früh startet er von selbst wieder.", roh=True)
+            self.send("WARNUNG: Max Tagesverlust -10% erreicht! Bot stoppt!")
             self.running = False
 
     def check_control(self):
@@ -2025,10 +1935,7 @@ class SuperTradingBot:
                         syms = list(self.positions.keys())
                     print("[CTRL] close_all: Schliesse " + str(len(syms)) + " Positionen vor Halt...")
                     if syms:
-                        self.send("🛑 <b>Risikobremse</b>"
-                                  "\n\n" + str(len(syms)) + " Position(en) werden jetzt"
-                                  " geschlossen, danach hält der Bot an."
-                                  "\nJeder Verkauf kommt einzeln.", roh=True)
+                        self.send("Schliesse " + str(len(syms)) + " Positionen vor Halt (RISK-CLOSE-ALL)...")
                     for sym in syms:
                         price = self.get_price(sym)
                         with self.positions_lock:
@@ -2077,13 +1984,7 @@ class SuperTradingBot:
                         self.positions[symbol]["psar_stop"] = ind["psar"]
 
     def run(self, interval=600):
-        with self.positions_lock:
-            offen = len(self.positions)
-        self.send("▶️ <b>Super-Bot gestartet</b>"
-                  "\n\nKontostand: <b>" + self._de(self.balance) + " $</b>"
-                  "\nOffene Positionen: " + str(offen)
-                  + "\nBetriebsart: " + ("Papierhandel" if self.demo else "ECHTES GELD"),
-                  roh=True)
+        self.send("Bot v3.0 | Bal: $" + str(round(self.balance, 0)))
 
         # Start real-time price stream in background daemon thread
         self.start_websocket()
@@ -2193,9 +2094,7 @@ class SuperTradingBot:
                     self._save_state()
 
             except KeyboardInterrupt:
-                self.send("⏹️ <b>Super-Bot gestoppt</b>"
-                          "\n\nKontostand: " + self._de(self.balance) + " $"
-                          "\nEs wird nicht mehr gehandelt, bis er neu startet.", roh=True)
+                self.send("Bot gestoppt")
                 break
             except Exception as e:
                 print("[ERROR] " + str(e))

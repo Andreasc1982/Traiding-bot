@@ -38,13 +38,6 @@ try:
 except ImportError:
     config = {}
 
-# Gemeinsame Telegram-Textbausteine (liegt wie config.py eine Ebene hoeher).
-# Denselben Aufbau nutzt super_bot.py — eine Tabelle statt zwei Kopien.
-try:
-    import tg_texte
-except ImportError:
-    tg_texte = None
-
 TELEGRAM_TOKEN    = config.get("telegram_bot_token", "")
 TELEGRAM_CHAT_ID  = config.get("telegram_chat_id", "")
 EXCHANGE          = config.get("exchange", "alpaca")   # "alpaca" | "kraken"
@@ -494,12 +487,10 @@ class CryptoBot:
 
     # ── Telegram ───────────────────────────────────────────────────────────
 
-    def send(self, msg, roh=False):
-        """roh=True: Nachricht bringt ihre eigene Kopfzeile mit (neuer Stil)."""
+    def send(self, msg):
         if not (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
             return
-        if not roh:
-            msg = "💰 CRYPTO · " + msg      # Bot-Label vor jeder Nachricht (Buy/Sell/Alert)
+        msg = "💰 CRYPTO · " + msg          # Bot-Label vor jeder Nachricht (Buy/Sell/Alert)
         url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
         try:
             r = requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg,
@@ -513,50 +504,6 @@ class CryptoBot:
     def _de_regime(r):
         return {"TRENDING": "starker Trend", "TRANSITIONAL": "Übergang",
                 "RANGING": "Seitwärts"}.get(r, r)
-
-    def _titel(self, symbol):
-        """BTC/USD -> 'BTC', Meme-Coins bekommen einen Hinweis."""
-        # CRYPTO_MEME ist die Modulkonstante; WILD_MEME existiert nur lokal in trade().
-        kurz = tg_texte.esc(str(symbol).split("/")[0]) if tg_texte else str(symbol)
-        if symbol in CRYPTO_MEME:
-            return kurz + " (Meme-Coin)"
-        return kurz
-
-    def _tg_kauf(self, symbol, shares, price, regime, rsi, score_pct,
-                 risiko, size_mult, dd_zone, vol_regime, spike_ratio=None):
-        """Kauf-Nachricht im gemeinsamen Stil. Eigene Methode = ohne Bot pruefbar."""
-        t = tg_texte
-        einsatz = shares * price
-        risiko_pct = (risiko / self.balance * 100) if self.balance else 0
-        blitz = spike_ratio is not None
-
-        zeilen = [
-            ("⚡ <b>BLITZ-KAUF · " if blitz else "🟢 <b>KAUF · ") + self._titel(symbol) + "</b>",
-            "",
-            t.menge(shares) + " Stück zu " + t.preis(price) + " $"
-            + "  =  " + t.de(einsatz) + " $",
-            "Risiko: " + t.de(risiko) + " $ (" + t.de(risiko_pct, 1) + " % vom Konto)",
-            "",
-        ]
-        if blitz:
-            zeilen += [
-                "Auslöser: Handelsvolumen " + t.de(spike_ratio, 1) + "× so hoch wie normal",
-                "Enger Stop bei −1,5 %, Ziel +3 % — bewusst kurze Leine",
-                "Blitz-Käufe heute: " + str(self._spike_count) + " von "
-                + str(self.spike_max_day),
-            ]
-        else:
-            zeilen += [
-                "Lage: " + t.lage(regime) + ", "
-                + ("nicht überkauft" if rsi < 70 else "bereits weit gelaufen"),
-                "Signal: " + str(round(score_pct * 100)) + " % der Anzeichen sprechen dafür",
-            ]
-            if size_mult < 1.0:
-                zeilen.append("Kleiner gekauft als üblich — "
-                              + t.ZONE_DE.get(dd_zone, t.esc(dd_zone)) + ", "
-                              + t.VIX_DE.get(vol_regime, t.esc(vol_regime)))
-        zeilen += ["", "Kontostand: " + t.de(self.balance) + " $"]
-        return "\n".join(zeilen)
 
     @staticmethod
     def _de_reason(r):
@@ -1054,12 +1001,9 @@ class CryptoBot:
                 print("[BTC-GUARD] BTC -{:.1f}% in 5min — Crash-Stop auf {} Positionen".format(
                       drop_pct, n))
                 if n > 0:
-                    self.send("🚨 <b>Bitcoin stürzt ab</b> · −{:.1f} % in 5 Minuten"
-                              "\n\nBitcoin zieht den ganzen Markt mit. Deshalb:"
-                              "\n• Bei allen {} offenen Positionen wurde der Stop enger"
-                              " gezogen (1,5 % unter dem Hoch)"
-                              "\n• Es wird nichts Neues gekauft, bis sich BTC erholt"
-                              .format(drop_pct, n), roh=True)
+                    self.send("🚨 <b>BTC CRASH: -{:.1f}% in 5min</b>\n"
+                              "Tight-Stop (1.5% Trailing) auf {} offene Positionen angezogen\n"
+                              "Neue Käufe bis zur Erholung blockiert".format(drop_pct, n))
 
             elif drop_pct < 0.5 and self._btc_crash_mode:
                 # BTC recovered — lift crash mode
@@ -1210,16 +1154,11 @@ class CryptoBot:
                                     "esnap":       {"whale_usd_m": usd_m, "fg": self.last_fg.get("value")},
                                 }
                             self._save_state()
-                            self.send("🐋 <b>KAUF nach Großabfluss · " + self._titel(symbol) + "</b>"
-                                      "\n\n" + tg_texte.menge(shares) + " Stück zu "
-                                      + tg_texte.preis(price) + " $"
-                                      "\n\nAuslöser: " + tg_texte.de(usd_m) + " Mio. $ haben die"
-                                      " Börse " + tg_texte.esc(owner) + " verlassen — jemand"
-                                      " Großes sammelt ein, statt zu verkaufen."
-                                      "\nStop bei −" + tg_texte.de(WHALE_SL, 1) + " %, Ziel +"
-                                      + tg_texte.de(WHALE_TP, 1) + " %"
-                                      "\n\nKontostand: " + tg_texte.de(self.balance) + " $",
-                                      roh=True)
+                            self.send("🐋 <b>WHALE BUY {}</b> ${:,}M Abfluss von {}\n"
+                                      "Kauf {} @ ${} | SL {}% TP {}%".format(
+                                symbol, usd_m, owner,
+                                shares, round(price, 4),
+                                WHALE_SL, WHALE_TP))
 
                     # ── ALERT trigger: massive inflow to exchange (distribution) ──
                     elif (to_type == "exchange"
@@ -1233,13 +1172,10 @@ class CryptoBot:
                         with self.positions_lock:
                             has_pos = symbol in self.positions
 
-                        msg = ("🐋 <b>Verkaufsdruck · " + self._titel(symbol) + "</b>"
-                               "\n\n" + tg_texte.de(usd_m) + " Mio. $ sind zur Börse "
-                               + tg_texte.esc(owner) + " geflossen — jemand Großes bringt"
-                               " Coins zum Verkauf.\n\n")
+                        msg = "🐋⚠️ <b>WHALE SELL-SIGNAL {}</b>\n${:,}M Zufluss zu {}\n".format(
+                            symbol, usd_m, owner)
                         if has_pos:
-                            msg += ("Du hältst diese Position: der Stop wurde auf 0,5 %"
-                                    " nachgezogen, damit wenig verloren geht.")
+                            msg += "⚡ Position vorhanden — Stop auf 0.5% gezogen"
                             # Tighten stop on existing position
                             with self.positions_lock:
                                 if symbol in self.positions:
@@ -1248,8 +1184,8 @@ class CryptoBot:
                                     self.positions[symbol]["stop_loss"] = 0.5
                                     self.positions[symbol]["psar_stop"] = current * 0.995
                         else:
-                            msg += "Du hältst diese Position nicht — es wird auch nicht gekauft."
-                        self.send(msg, roh=True)
+                            msg += "Keine offene Position — Kauf blockiert"
+                        self.send(msg)
                         print("[WHALE-FP] SELL-SIGNAL {}: ${:,}M zu {}".format(
                             symbol, usd_m, owner))
 
@@ -1413,10 +1349,13 @@ class CryptoBot:
                " vol=" + str(round(ratio, 1)) + "x avg (Schwelle " + str(int(self.spike_threshold)) + "x, " + str(self._spike_count) + "/" + str(self.spike_max_day) + " heute)" +
                " SL=1.5% TP=3% | Bal: $" + str(round(self.balance, 0)))
         print(msg)
-        self.send(self._tg_kauf(
-            symbol, shares, price, None, 0, 0,
-            shares * price * 0.015,          # Blitz-Kauf: Risiko = enger 1,5-%-Stop
-            1.0, None, None, spike_ratio=ratio), roh=True)
+        tg = ("⚡ <b>BLITZ-KAUF · " + symbol + "</b>\n"
+              "💵 Preis $" + str(round(price, 4)) + "  ·  Kontostand $" + str(int(round(self.balance))) + "\n"
+              "📈 Volumen-Explosion: " + str(round(ratio, 1)) + "× normal (Auslöser ab "
+              + str(int(self.spike_threshold)) + "×)\n"
+              "🎯 Enger Stop 1,5 % / Ziel 3 % · " + str(self._spike_count) + "/"
+              + str(self.spike_max_day) + " Blitz-Käufe heute")
+        self.send(tg)
 
     def _ws_on_error(self, ws, error):
         print("[WS] Error: " + str(error))
@@ -1815,13 +1754,10 @@ class CryptoBot:
                     print("[ONCHAIN-ERC20] {} Abfluss {:,.0f} ({}×) → +{:.1f}".format(
                         ticker, outflow, round(factor, 1), score))
                     if outflow >= min_tokens * 5:
-                        self.send("🐋 <b>Großer Abfluss · " + tg_texte.esc(ticker) + "</b>"
-                                  "\n\n" + tg_texte.de(outflow) + " Token wurden von der Börse"
-                                  " abgezogen — " + tg_texte.de(factor, 1) + "× so viel wie üblich."
-                                  "\n\nWer Coins von der Börse holt, will sie halten, nicht"
-                                  " verkaufen. Der Bot wertet das als Kaufargument."
-                                  "\n<i>Hinweis, keine Order — gekauft wird nur, wenn auch"
-                                  " die übrigen Bedingungen passen.</i>", roh=True)
+                        self.send("🚨 <b>ONCHAIN INSIDER SIGNAL — {}</b>\n"
+                                  "{:,.0f} Token verlassen Exchange ({}×)\n"
+                                  "→ Insider-Akkumulation vor möglichem Pump!".format(
+                            ticker, outflow, round(factor, 1)))
                 if inflow >= min_tokens:
                     score = min((inflow / min_tokens) * 0.5, 2.0)
                     scores[symbol] = scores.get(symbol, 0) - score
@@ -1886,12 +1822,9 @@ class CryptoBot:
                             name, direction, delta))
                         if delta > self._BTC_ALERT_LARGE:
                             scores["BTC/USD"] += 3.0
-                            self.send("🐋 <b>Großer Abfluss · Bitcoin</b>"
-                                      "\n\n" + tg_texte.vz(delta) + " BTC haben "
-                                      + tg_texte.esc(name) + " innerhalb einer Stunde verlassen."
-                                      "\n\nSolche Mengen wandern in die Verwahrung, nicht in den"
-                                      " Verkauf. Der Bot wertet das als Kaufargument."
-                                      "\n<i>Hinweis, keine Order.</i>", roh=True)
+                            self.send("🚨 <b>ONCHAIN INSIDER SIGNAL</b>\n"
+                                      "BTC: {:+.0f} verlassen {} in 1h\n"
+                                      "→ Grosse Akkumulation — möglicher Insider-Kauf!".format(delta, name))
                         elif delta > self._BTC_SIGNAL_SMALL:
                             scores["BTC/USD"] += 1.5
                         elif delta < -self._BTC_SIGNAL_SMALL:
@@ -1926,11 +1859,9 @@ class CryptoBot:
                     )
                     if total_delta > self._ETH_ALERT_LARGE:
                         scores["ETH/USD"] += 3.0
-                        self.send("🐋 <b>Großer Abfluss · Ethereum</b>"
-                                  "\n\n" + tg_texte.vz(total_delta) + " ETH haben die Börsen"
-                                  " innerhalb einer Stunde verlassen."
-                                  "\n\nDer Bot wertet das als Kaufargument."
-                                  "\n<i>Hinweis, keine Order.</i>", roh=True)
+                        self.send("🚨 <b>ONCHAIN INSIDER SIGNAL</b>\n"
+                                  "ETH: {:+.0f} verlassen Exchanges in 1h\n"
+                                  "→ Grosse Akkumulation!".format(total_delta))
                     elif total_delta > self._ETH_SIGNAL_SMALL:
                         scores["ETH/USD"] += 1.5
                     elif total_delta < -self._ETH_SIGNAL_SMALL:
@@ -2139,9 +2070,9 @@ class CryptoBot:
                 if reason:
                     print("[TIME-EXIT] {} nach {:.0f}h | P&L: {:.1f}% | Grund: {}".format(
                         symbol, age_h, pnl_pct, reason))
-                    # Keine eigene Meldung: close_position schickt gleich die
-                    # Verkaufsnachricht inkl. Grund und Haltedauer. Vorher kamen
-                    # zwei Nachrichten fuer denselben Vorgang.
+                    self.send("⏰ <b>TIME-EXIT</b>: {} nach <b>{:.0f}h</b>\n"
+                              "P&amp;L: {:.1f}% | Best: {:.1f}% | {}".format(
+                              symbol, age_h, pnl_pct, best_pnl, reason))
                     self.close_position(symbol, price, reason, pnl_pct)
 
             except Exception as e:
@@ -2257,8 +2188,13 @@ class CryptoBot:
         msg = ("CRYPTO " + reason + ": " + symbol + " " +
                str(round(pnl_pct, 1)) + "% | P&L: $" + str(round(profit, 0)))
         print(msg)
-        self.send(tg_texte.verkauf(self._titel(symbol), profit, pnl_pct, reason,
-                                   pos.get("time", ""), self.balance), roh=True)
+        _win = profit >= 0
+        tg = ((("✅ <b>GEWINN · " if _win else "🔴 <b>VERLUST · ") + symbol + "  "
+               + ("+" if pnl_pct >= 0 else "") + str(round(pnl_pct, 1)) + "%</b>\n")
+              + "💰 " + ("+" if profit >= 0 else "") + "$" + str(int(round(profit)))
+              + "  ·  Kontostand $" + str(int(round(self.balance))) + "\n"
+              + "📊 Grund: " + self._de_reason(reason))
+        self.send(tg)
 
     # ── Trade entry ────────────────────────────────────────────────────────
 
@@ -2278,23 +2214,17 @@ class CryptoBot:
             return 1.0, "HEALTHY", True
         elif day_pct > -6.0:
             if not getattr(self, "_dd_caution_sent", False):
-                self.send("⚠️ <b>Vorsicht</b> · " + tg_texte.vz(day_pct, 1) + " % heute"
-                          "\n\nNeue Käufe ab jetzt 30 % kleiner."
-                          "\nGehaltene Positionen bleiben unberührt.", roh=True)
+                self.send("⚠️ Drawdown CAUTION: {:.1f}% heute — Positionsgrösse -30%".format(day_pct))
                 self._dd_caution_sent = True
             return 0.7, "CAUTION", True
         elif day_pct > -9.0:
             if not getattr(self, "_dd_warning_sent", False):
-                self.send("🔴 <b>Warnung</b> · " + tg_texte.vz(day_pct, 1) + " % heute"
-                          "\n\nNeue Käufe nur noch in 40 % der normalen Größe."
-                          "\n<b>Meme-Coins werden gar nicht mehr gekauft.</b>", roh=True)
+                self.send("🔴 Drawdown WARNING: {:.1f}% heute — -60% Grösse, keine Meme-Coins".format(day_pct))
                 self._dd_warning_sent = True
             return 0.4, "WARNING", False
         else:
             if not getattr(self, "_dd_danger_sent", False):
-                self.send("🚨 <b>Gefahrenzone</b> · " + tg_texte.vz(day_pct, 1) + " % heute"
-                          "\n\n<b>Es wird nichts mehr gekauft.</b>"
-                          "\nGehaltene Positionen laufen mit ihren Stops weiter.", roh=True)
+                self.send("🚨 Drawdown DANGER: {:.1f}% heute — keine neuen Trades!".format(day_pct))
                 self._dd_danger_sent = True
             return 0.0, "DANGER", False
 
@@ -2515,9 +2445,16 @@ class CryptoBot:
                    " PSAR=" + str(ind.get("psar", "?")) +
                    " | Bal: $" + str(round(self.balance, 0)))
             print(msg)
-            self.send(self._tg_kauf(
-                symbol, shares, price, regime, ind.get("rsi", 0), score_pct,
-                shares * ind["atr"] * 2, size_mult, dd_zone, vol_regime), roh=True)
+            tg = ("🟢 <b>KAUF · " + symbol + "</b>\n"
+                  "💵 Preis $" + str(round(price, 4)) + "  ·  Kontostand $" + str(int(round(self.balance))) + "\n"
+                  "📊 Warum: " + self._de_regime(regime) + " (Stärke " + str(adx) + ") · "
+                  + str(round(score_pct * 100)) + "% der Signale bullish · "
+                  + ("volle" if size_mult >= 1 else "reduzierte") + " Größe\n"
+                  "🎯 Risiko ~$" + str(round(shares * ind["atr"] * 2, 2)) + " falls der Stop greift\n"
+                  "🔎 RSI " + str(ind["rsi"]) + " · MACD " + ("↑" if ind.get("macd_hist", 0) > 0 else "↓")
+                  + " · Trend " + ("↑" if ind.get("supertrend") == 1 else "↓")
+                  + " · Geldfluss " + ("+" if ind.get("cmf", 0) >= 0 else "") + str(ind.get("cmf", 0)))
+            self.send(tg)
 
     # ── Dashboard ──────────────────────────────────────────────────────────
 
@@ -2587,10 +2524,7 @@ class CryptoBot:
                         syms = list(self.positions.keys())
                     print("[CTRL] close_all: Schliesse " + str(len(syms)) + " Positionen vor Halt...")
                     if syms:
-                        self.send("🛑 <b>Risikobremse</b>"
-                                  "\n\n" + str(len(syms)) + " Position(en) werden jetzt"
-                                  " geschlossen, danach hält der Bot an."
-                                  "\nJeder Verkauf kommt einzeln.", roh=True)
+                        self.send("Schliesse " + str(len(syms)) + " Positionen vor Halt (RISK-CLOSE-ALL)...")
                     for sym in syms:
                         price = self.get_price(sym)
                         with self.positions_lock:
@@ -2627,12 +2561,7 @@ class CryptoBot:
                    "% erreicht ($" + str(round(balance, 0)) +
                    ") — Zähler zurückgesetzt, Bot läuft weiter (Crypto 24/7).")
             print("[DAY_LOSS] " + msg)
-            self.send("🛑 <b>Tagesverlust erreicht</b>"
-                      "\n\nVerlust: <b>" + tg_texte.vz(-loss * 100, 1) + " %</b>"
-                      "\nKontostand: " + tg_texte.de(balance) + " $"
-                      "\n\n<b>Der Bot handelt weiter</b> — Krypto läuft rund um die Uhr,"
-                      " eine Pause bis Mitternacht würde nur Chancen kosten."
-                      "\nDie Grenze zählt ab jetzt neu ab diesem Stand.", roh=True)
+            self.send(msg)
             # Reset baseline to current balance — next -10% limit applies from here
             with self.positions_lock:
                 self.start_balance = balance
@@ -2652,14 +2581,8 @@ class CryptoBot:
                         self.positions[symbol]["psar_stop"] = ind["psar"]
 
     def run(self):
-        with self.positions_lock:
-            offen = len(self.positions)
-        self.send("▶️ <b>Crypto-Bot gestartet</b>"
-                  "\n\nKontostand: <b>" + tg_texte.de(self.balance) + " $</b>"
-                  "\nOffene Positionen: " + str(offen) + " von " + str(self.max_pos)
-                  + "\nHandelsplatz: " + tg_texte.BOERSE_DE.get(EXCHANGE, EXCHANGE)
-                  + "\nBetriebsart: " + ("Papierhandel" if self.demo else "ECHTES GELD"),
-                  roh=True)
+        self.send("Crypto Bot v2.0 | " + EXCHANGE.upper() +
+                  " | Bal: $" + str(round(self.balance, 0)))
 
         # Start real-time price stream (Alpaca only; Kraken uses REST polling)
         self.start_websocket()
