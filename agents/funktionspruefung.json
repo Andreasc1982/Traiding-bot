@@ -1,5 +1,5 @@
 {
- "zeit": "2026-08-13 09:00:02",
+ "zeit": "2026-08-14 09:00:01",
  "anzahl": 17,
  "abweichungen": [],
  "checks": [
@@ -41,32 +41,32 @@
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Insider-Papierdepot: zuletzt 12.08 23:15"
+   "text": "Insider-Papierdepot: zuletzt 13.08 23:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Fundament-Bot: zuletzt 12.08 22:40"
+   "text": "Fundament-Bot: zuletzt 13.08 22:40"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "SEC-Tagesabruf: zuletzt 12.08 22:36"
+   "text": "SEC-Tagesabruf: zuletzt 13.08 22:33"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Score-Protokoll: zuletzt 13.08 08:07"
+   "text": "Score-Protokoll: zuletzt 14.08 08:07"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Telegram-Auswertung: zuletzt 13.08 08:15"
+   "text": "Telegram-Auswertung: zuletzt 14.08 08:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Nachrichten-Auswertung: zuletzt 13.08 08:20"
+   "text": "Nachrichten-Auswertung: zuletzt 14.08 08:20"
   },
   {
    "ok": true,
