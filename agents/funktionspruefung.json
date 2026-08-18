@@ -1,5 +1,5 @@
 {
- "zeit": "2026-08-16 09:00:01",
+ "zeit": "2026-08-17 09:00:01",
  "anzahl": 17,
  "abweichungen": [],
  "checks": [
@@ -31,7 +31,7 @@
   {
    "ok": true,
    "bereich": "Daten",
-   "text": "Super-Bot Dashboard: 1 min alt"
+   "text": "Super-Bot Dashboard: 0 min alt"
   },
   {
    "ok": true,
@@ -56,17 +56,17 @@
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Score-Protokoll: zuletzt 16.08 08:07"
+   "text": "Score-Protokoll: zuletzt 17.08 08:07"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Telegram-Auswertung: zuletzt 16.08 08:15"
+   "text": "Telegram-Auswertung: zuletzt 17.08 08:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Nachrichten-Auswertung: zuletzt 16.08 08:20"
+   "text": "Nachrichten-Auswertung: zuletzt 17.08 08:20"
   },
   {
    "ok": true,
