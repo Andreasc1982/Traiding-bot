@@ -1,23 +1,23 @@
 {
- "zeit": "2026-08-18 23:15:10",
+ "zeit": "2026-08-19 23:15:08",
  "vergleich": {
   "IWM": {
    "name": "Nebenwerte",
-   "rendite_pct": 2.5,
-   "wert": 10249.91,
-   "vorsprung_pp": 4.49
+   "rendite_pct": 3.01,
+   "wert": 10300.77,
+   "vorsprung_pp": 6.0
   },
   "IJR": {
    "name": "Small Caps",
-   "rendite_pct": 1.5,
-   "wert": 10149.82,
-   "vorsprung_pp": 5.49
+   "rendite_pct": 1.66,
+   "wert": 10165.62,
+   "vorsprung_pp": 7.35
   },
   "SPY": {
    "name": "Gesamtmarkt",
-   "rendite_pct": 3.84,
-   "wert": 10383.71,
-   "vorsprung_pp": 3.15
+   "rendite_pct": 4.05,
+   "wert": 10405.5,
+   "vorsprung_pp": 4.96
   }
  },
  "vergleich_verlauf": [
@@ -43,7 +43,7 @@
   },
   {
    "datum": "2026-07-31",
-   "IWM": 9989.07
+   "IWM": 9941.62
   },
   {
    "datum": "2026-08-03",
@@ -96,42 +96,46 @@
   {
    "datum": "2026-08-18",
    "IWM": 10249.91
+  },
+  {
+   "datum": "2026-08-19",
+   "IWM": 10300.77
   }
  ],
  "vergleich_leitindex": "IWM",
  "start": "2026-07-26",
  "start_kapital": 10000.0,
- "equity": 10699.39,
+ "equity": 10901.48,
  "cash": 0.0,
- "rendite_pct": 6.99,
+ "rendite_pct": 9.01,
  "positionen": [
+  {
+   "symbol": "ODTX",
+   "shares": 18.8644,
+   "entry": 17.67,
+   "price": 24.25,
+   "pnl_pct": 37.24,
+   "wert": 457.46,
+   "seit": "2026-07-27",
+   "adv_mio": 5.7
+  },
   {
    "symbol": "AVLN",
    "shares": 11.212,
    "entry": 29.73,
-   "price": 38.86,
-   "pnl_pct": 30.71,
-   "wert": 435.7,
+   "price": 38.97,
+   "pnl_pct": 31.08,
+   "wert": 436.93,
    "seit": "2026-07-27",
    "adv_mio": 9.0
-  },
-  {
-   "symbol": "PAR",
-   "shares": 21.45,
-   "entry": 15.54,
-   "price": 19.42,
-   "pnl_pct": 24.97,
-   "wert": 416.56,
-   "seit": "2026-07-27",
-   "adv_mio": 18.4
   },
   {
    "symbol": "HLNE",
    "shares": 4.1076,
    "entry": 81.15,
-   "price": 101.1,
-   "pnl_pct": 24.58,
-   "wert": 415.28,
+   "price": 104.86,
+   "pnl_pct": 29.22,
+   "wert": 430.72,
    "seit": "2026-07-27",
    "adv_mio": 74.1
   },
@@ -139,99 +143,69 @@
    "symbol": "VRDN",
    "shares": 17.307,
    "entry": 19.26,
-   "price": 23.93,
-   "pnl_pct": 24.25,
-   "wert": 414.16,
+   "price": 24.8,
+   "pnl_pct": 28.76,
+   "wert": 429.21,
    "seit": "2026-07-27",
    "adv_mio": 31.4
-  },
-  {
-   "symbol": "ODTX",
-   "shares": 18.8644,
-   "entry": 17.67,
-   "price": 21.95,
-   "pnl_pct": 24.22,
-   "wert": 414.07,
-   "seit": "2026-07-27",
-   "adv_mio": 5.7
-  },
-  {
-   "symbol": "ALKT",
-   "shares": 20.475,
-   "entry": 16.28,
-   "price": 20.14,
-   "pnl_pct": 23.71,
-   "wert": 412.37,
-   "seit": "2026-07-27",
-   "adv_mio": 28.3
-  },
-  {
-   "symbol": "WGS",
-   "shares": 5.2593,
-   "entry": 63.38,
-   "price": 76.34,
-   "pnl_pct": 20.45,
-   "wert": 401.49,
-   "seit": "2026-07-27",
-   "adv_mio": 56.8
   },
   {
    "symbol": "PBLS",
    "shares": 10.1595,
    "entry": 32.81,
-   "price": 39.35,
-   "pnl_pct": 19.93,
-   "wert": 399.78,
+   "price": 41.32,
+   "pnl_pct": 25.94,
+   "wert": 419.79,
    "seit": "2026-07-27",
    "adv_mio": 16.8
+  },
+  {
+   "symbol": "WGS",
+   "shares": 5.2593,
+   "entry": 63.38,
+   "price": 79.65,
+   "pnl_pct": 25.67,
+   "wert": 418.9,
+   "seit": "2026-07-27",
+   "adv_mio": 56.8
+  },
+  {
+   "symbol": "PAR",
+   "shares": 21.45,
+   "entry": 15.54,
+   "price": 19.28,
+   "pnl_pct": 24.07,
+   "wert": 413.56,
+   "seit": "2026-07-27",
+   "adv_mio": 18.4
+  },
+  {
+   "symbol": "ALKT",
+   "shares": 20.475,
+   "entry": 16.28,
+   "price": 20.02,
+   "pnl_pct": 22.97,
+   "wert": 409.91,
+   "seit": "2026-07-27",
+   "adv_mio": 28.3
   },
   {
    "symbol": "PS",
    "shares": 9.8795,
    "entry": 33.74,
-   "price": 39.91,
-   "pnl_pct": 18.29,
-   "wert": 394.29,
+   "price": 39.81,
+   "pnl_pct": 17.99,
+   "wert": 393.3,
    "seit": "2026-07-27",
    "adv_mio": 10.1
   },
   {
-   "symbol": "COAG",
-   "shares": 7.2733,
-   "entry": 45.83,
-   "price": 52.44,
-   "pnl_pct": 14.42,
-   "wert": 381.41,
-   "seit": "2026-07-27",
-   "adv_mio": 6.0
-  },
-  {
-   "symbol": "IFF",
-   "shares": 4.5185,
-   "entry": 73.77,
-   "price": 81.0,
-   "pnl_pct": 9.8,
-   "wert": 366.0,
-   "seit": "2026-07-27",
-   "adv_mio": 141.9
-  },
-  {
-   "symbol": "ENR",
-   "shares": 16.1421,
-   "entry": 20.65,
-   "price": 22.33,
-   "pnl_pct": 8.14,
-   "wert": 360.45,
-   "seit": "2026-07-27",
-   "adv_mio": 19.8
-  },
-  {
-   "symbol": "PSUS",
-   "shares": 9.1625,
-   "entry": 36.38,
-   "price": 39.15,
-   "pnl_pct": 7.61,
-   "wert": 358.71,
+   "symbol": "GOLD",
+   "shares": 8.4324,
+   "entry": 39.53,
+   "price": 45.53,
+   "pnl_pct": 15.18,
+   "wert": 383.93,
    "seit": "2026-07-27",
    "adv_mio": 18.1
   },
@@ -239,169 +213,199 @@
    "symbol": "CGON",
    "shares": 4.6869,
    "entry": 71.12,
-   "price": 76.29,
-   "pnl_pct": 7.27,
-   "wert": 357.56,
+   "price": 80.68,
+   "pnl_pct": 13.44,
+   "wert": 378.14,
    "seit": "2026-07-27",
    "adv_mio": 57.1
+  },
+  {
+   "symbol": "IFF",
+   "shares": 4.5185,
+   "entry": 73.77,
+   "price": 83.33,
+   "pnl_pct": 12.96,
+   "wert": 376.53,
+   "seit": "2026-07-27",
+   "adv_mio": 141.9
+  },
+  {
+   "symbol": "COAG",
+   "shares": 7.2733,
+   "entry": 45.83,
+   "price": 51.66,
+   "pnl_pct": 12.72,
+   "wert": 375.74,
+   "seit": "2026-07-27",
+   "adv_mio": 6.0
+  },
+  {
+   "symbol": "PSUS",
+   "shares": 9.1625,
+   "entry": 36.38,
+   "price": 39.67,
+   "pnl_pct": 9.04,
+   "wert": 363.48,
+   "seit": "2026-07-27",
+   "adv_mio": 18.1
   },
   {
    "symbol": "AVO",
    "shares": 27.2777,
    "entry": 12.22,
-   "price": 13.07,
-   "pnl_pct": 6.96,
-   "wert": 356.52,
+   "price": 13.22,
+   "pnl_pct": 8.18,
+   "wert": 360.61,
    "seit": "2026-07-27",
    "adv_mio": 14.7
-  },
-  {
-   "symbol": "GOLD",
-   "shares": 8.4324,
-   "entry": 39.53,
-   "price": 41.84,
-   "pnl_pct": 5.84,
-   "wert": 352.81,
-   "seit": "2026-07-27",
-   "adv_mio": 18.1
-  },
-  {
-   "symbol": "QNT",
-   "shares": 5.9039,
-   "entry": 56.46,
-   "price": 59.5,
-   "pnl_pct": 5.38,
-   "wert": 351.28,
-   "seit": "2026-07-27",
-   "adv_mio": 211.7
-  },
-  {
-   "symbol": "FOUR",
-   "shares": 7.1948,
-   "entry": 46.33,
-   "price": 46.7,
-   "pnl_pct": 0.8,
-   "wert": 336.0,
-   "seit": "2026-07-27",
-   "adv_mio": 63.1
-  },
-  {
-   "symbol": "BXDC",
-   "shares": 16.2127,
-   "entry": 20.56,
-   "price": 20.67,
-   "pnl_pct": 0.54,
-   "wert": 335.12,
-   "seit": "2026-07-27",
-   "adv_mio": 16.7
   },
   {
    "symbol": "AUPH",
    "shares": 21.8723,
    "entry": 15.24,
-   "price": 15.3,
-   "pnl_pct": 0.39,
-   "wert": 334.65,
+   "price": 16.17,
+   "pnl_pct": 6.1,
+   "wert": 353.67,
    "seit": "2026-07-27",
    "adv_mio": 18.9
   },
   {
-   "symbol": "TYG",
-   "shares": 7.4898,
-   "entry": 44.5,
-   "price": 44.5,
-   "pnl_pct": -0.01,
-   "wert": 333.3,
+   "symbol": "ENR",
+   "shares": 16.1421,
+   "entry": 20.65,
+   "price": 21.72,
+   "pnl_pct": 5.18,
+   "wert": 350.61,
    "seit": "2026-07-27",
-   "adv_mio": 7.7
+   "adv_mio": 19.8
   },
   {
    "symbol": "BH",
    "shares": 0.8696,
    "entry": 383.32,
-   "price": 383.3,
-   "pnl_pct": -0.01,
-   "wert": 333.32,
+   "price": 390.2,
+   "pnl_pct": 1.79,
+   "wert": 339.32,
    "seit": "2026-07-27",
    "adv_mio": 18.9
+  },
+  {
+   "symbol": "FOUR",
+   "shares": 7.1948,
+   "entry": 46.33,
+   "price": 47.13,
+   "pnl_pct": 1.73,
+   "wert": 339.09,
+   "seit": "2026-07-27",
+   "adv_mio": 63.1
   },
   {
    "symbol": "RSG",
    "shares": 1.5331,
    "entry": 217.42,
-   "price": 216.97,
-   "pnl_pct": -0.21,
-   "wert": 332.64,
+   "price": 221.04,
+   "pnl_pct": 1.66,
+   "wert": 338.88,
    "seit": "2026-07-27",
    "adv_mio": 335.5
+  },
+  {
+   "symbol": "TYG",
+   "shares": 7.4898,
+   "entry": 44.5,
+   "price": 44.6,
+   "pnl_pct": 0.21,
+   "wert": 334.04,
+   "seit": "2026-07-27",
+   "adv_mio": 7.7
+  },
+  {
+   "symbol": "QNT",
+   "shares": 5.9039,
+   "entry": 56.46,
+   "price": 56.0,
+   "pnl_pct": -0.81,
+   "wert": 330.62,
+   "seit": "2026-07-27",
+   "adv_mio": 211.7
+  },
+  {
+   "symbol": "BXDC",
+   "shares": 16.2127,
+   "entry": 20.56,
+   "price": 20.01,
+   "pnl_pct": -2.68,
+   "wert": 324.42,
+   "seit": "2026-07-27",
+   "adv_mio": 16.7
   },
   {
    "symbol": "JEF",
    "shares": 5.9974,
    "entry": 55.58,
-   "price": 53.84,
-   "pnl_pct": -3.13,
-   "wert": 322.9,
+   "price": 53.55,
+   "pnl_pct": -3.65,
+   "wert": 321.16,
    "seit": "2026-07-27",
    "adv_mio": 104.5
-  },
-  {
-   "symbol": "NCLH",
-   "shares": 17.8158,
-   "entry": 18.71,
-   "price": 17.61,
-   "pnl_pct": -5.88,
-   "wert": 313.74,
-   "seit": "2026-07-27",
-   "adv_mio": 357.2
-  },
-  {
-   "symbol": "FBIN",
-   "shares": 6.6934,
-   "entry": 49.8,
-   "price": 45.3,
-   "pnl_pct": -9.04,
-   "wert": 303.21,
-   "seit": "2026-07-27",
-   "adv_mio": 104.1
   },
   {
    "symbol": "RIVN",
    "shares": 20.2511,
    "entry": 16.46,
-   "price": 14.78,
-   "pnl_pct": -10.21,
-   "wert": 299.31,
+   "price": 15.73,
+   "pnl_pct": -4.43,
+   "wert": 318.55,
    "seit": "2026-07-27",
    "adv_mio": 479.1
   },
   {
-   "symbol": "LFTO",
-   "shares": 14.9745,
-   "entry": 22.26,
-   "price": 19.66,
-   "pnl_pct": -11.68,
-   "wert": 294.4,
+   "symbol": "FBIN",
+   "shares": 6.6934,
+   "entry": 49.8,
+   "price": 46.49,
+   "pnl_pct": -6.65,
+   "wert": 311.18,
    "seit": "2026-07-27",
-   "adv_mio": 17.8
+   "adv_mio": 104.1
+  },
+  {
+   "symbol": "NCLH",
+   "shares": 17.8158,
+   "entry": 18.71,
+   "price": 17.34,
+   "pnl_pct": -7.32,
+   "wert": 308.93,
+   "seit": "2026-07-27",
+   "adv_mio": 357.2
   },
   {
    "symbol": "MNSO",
    "shares": 26.8817,
    "entry": 12.4,
-   "price": 10.68,
-   "pnl_pct": -13.87,
-   "wert": 287.1,
+   "price": 11.12,
+   "pnl_pct": -10.32,
+   "wert": 298.92,
    "seit": "2026-07-27",
    "adv_mio": 7.1
+  },
+  {
+   "symbol": "LFTO",
+   "shares": 14.9745,
+   "entry": 22.26,
+   "price": 19.51,
+   "pnl_pct": -12.35,
+   "wert": 292.15,
+   "seit": "2026-07-27",
+   "adv_mio": 17.8
   },
   {
    "symbol": "SMMT",
    "shares": 22.2519,
    "entry": 14.98,
-   "price": 12.82,
-   "pnl_pct": -14.42,
-   "wert": 285.27,
+   "price": 13.11,
+   "pnl_pct": -12.48,
+   "wert": 291.72,
    "seit": "2026-07-27",
    "adv_mio": 70.5
   }
@@ -409,7 +413,7 @@
  "n_pos": 30,
  "letzte_umschichtung": "2026-07-27",
  "umschichtungen": 1,
- "naechste_in_tagen": 5,
+ "naechste_in_tagen": 4,
  "trades": [
   {
    "date": "2026-07-27",
@@ -449,7 +453,7 @@
    "equity": 10000.0
   }
  ],
- "daten_stand": "2026-08-17",
+ "daten_stand": "2026-08-18",
  "daten_alter_tage": 1,
  "config": {
   "positionen": 30,
