@@ -1,5 +1,5 @@
 {
- "zeit": "2026-08-19 09:00:01",
+ "zeit": "2026-08-20 09:00:02",
  "anzahl": 17,
  "abweichungen": [],
  "checks": [
@@ -41,32 +41,32 @@
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Insider-Papierdepot: zuletzt 18.08 23:15"
+   "text": "Insider-Papierdepot: zuletzt 19.08 23:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Fundament-Bot: zuletzt 18.08 22:40"
+   "text": "Fundament-Bot: zuletzt 19.08 22:40"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "SEC-Tagesabruf: zuletzt 18.08 22:33"
+   "text": "SEC-Tagesabruf: zuletzt 19.08 22:39"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Score-Protokoll: zuletzt 19.08 08:07"
+   "text": "Score-Protokoll: zuletzt 20.08 08:07"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Telegram-Auswertung: zuletzt 19.08 08:15"
+   "text": "Telegram-Auswertung: zuletzt 20.08 08:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Nachrichten-Auswertung: zuletzt 19.08 08:20"
+   "text": "Nachrichten-Auswertung: zuletzt 20.08 08:20"
   },
   {
    "ok": true,
@@ -76,7 +76,7 @@
   {
    "ok": true,
    "bereich": "System",
-   "text": "RAM 26% belegt"
+   "text": "RAM 27% belegt"
   },
   {
    "ok": true,
