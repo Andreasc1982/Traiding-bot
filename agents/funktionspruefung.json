@@ -1,12 +1,12 @@
 {
- "zeit": "2026-08-20 09:00:02",
- "anzahl": 17,
+ "zeit": "2026-08-22 01:00:00",
+ "anzahl": 21,
  "abweichungen": [],
  "checks": [
   {
    "ok": true,
    "bereich": "Sessions",
-   "text": "alle 11 laufen"
+   "text": "alle 13 laufen"
   },
   {
    "ok": true,
@@ -30,8 +30,13 @@
   },
   {
    "ok": true,
+   "bereich": "Dashboard",
+   "text": "Hyperliquid-Kosten :8099 erreichbar"
+  },
+  {
+   "ok": true,
    "bereich": "Daten",
-   "text": "Super-Bot Dashboard: 0 min alt"
+   "text": "Super-Bot Dashboard: 1 min alt"
   },
   {
    "ok": true,
@@ -40,43 +45,58 @@
   },
   {
    "ok": true,
-   "bereich": "Cron",
-   "text": "Insider-Papierdepot: zuletzt 19.08 23:15"
+   "bereich": "Daten",
+   "text": "Hyperliquid-Sammler: 1 min alt"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Fundament-Bot: zuletzt 19.08 22:40"
+   "text": "Insider-Papierdepot: zuletzt 21.08 23:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "SEC-Tagesabruf: zuletzt 19.08 22:39"
+   "text": "Fundament-Bot: zuletzt 21.08 22:40"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Score-Protokoll: zuletzt 20.08 08:07"
+   "text": "SEC-Tagesabruf: zuletzt 21.08 22:31"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Telegram-Auswertung: zuletzt 20.08 08:15"
+   "text": "Score-Protokoll: zuletzt 22.08 00:07"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Nachrichten-Auswertung: zuletzt 20.08 08:20"
+   "text": "Telegram-Auswertung: zuletzt 21.08 08:15"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "Nachrichten-Auswertung: zuletzt 21.08 21:17"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "Blockzocker-Wächter: zuletzt 21.08 21:29"
+  },
+  {
+   "ok": true,
+   "bereich": "Cron",
+   "text": "BTC-Wal-Sammler: zuletzt 21.08 22:33"
   },
   {
    "ok": true,
    "bereich": "System",
-   "text": "Platte 21% belegt (frei 47 GB)"
+   "text": "Platte 18% belegt (frei 48 GB)"
   },
   {
    "ok": true,
    "bereich": "System",
-   "text": "RAM 27% belegt"
+   "text": "RAM 19% belegt"
   },
   {
    "ok": true,

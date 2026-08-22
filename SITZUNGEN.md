@@ -5,6 +5,527 @@ Neueste zuerst. Gepflegt auf dem Pi, nachts per GitHub-Backup gesichert.
 
 ---
 
+## 22.08.2026 (nachts, 3) — Hyperliquid-Kostensammler + Dashboard gebaut
+
+Die Hyperliquid-Zahlen stammten aus **einer** Momentaufnahme. Jetzt wird laufend gemessen.
+
+### Was gebaut wurde
+
+- **`hl_collect.py`** — Session `hl`. Misst alle 5 Minuten für alle 20 Coins: Spread, Slippage bei
+  180/500/1000 $ aus dem echten Orderbuch, Funding-Rate, und rechnet daraus den Roundtrip.
+  Read-only, kein Konto, kein Handel.
+- **`hl/hl_dashboard.html`** auf **Port 8099** — Balkendiagramm aller Coins gegen die
+  Break-even-Linie von 67 bp, Kacheln, vollständige Tabelle. Aktualisiert sich jede Minute.
+
+### Welche Lehren bewusst eingebaut sind
+
+| Lehre aus | Umsetzung |
+|---|---|
+| Risk-Agent-Fehlalarm (halb geschriebene JSON) | jede JSON atomar über `tmp + os.replace` |
+| insider_paper (Import startete alles) | `if __name__ == "__main__"`-Schutz |
+| bz_watch (stiller Ausfall unsichtbar) | Heartbeat bei **jedem** Zyklus, auch ohne Befund |
+| /tmp-Logs als Cron-Nachweis | Funktionsprüfung nutzt `hl/heartbeat.json`, nicht das Log |
+| Mehrfach-Instanzen (WS-406) | `health.acquire_singleton("hl_collect")` — **getestet** |
+| stale Mac-Kopie (22.07., Bots wiederbelebt) | Eintrag in `start_all.sh` **und** `monitor_agent.BOTS`, |
+| | Whitelist beider Stellen vor dem Deploy verglichen |
+| feedparser-Hänger | harte Timeouts auf allen Netzaufrufen |
+| stille Ausnahmen | Fehler werden gezählt und im Heartbeat ausgewiesen |
+| dydx-Log (260 MB/Monat bei 20 Märkten) | **5-Minuten-Takt statt 15 s** + Monatsdateien |
+| neue Dashboards ohne ufw-Regel | Port 8099 für LAN + VPN freigegeben |
+
+**Zur Taktfrage:** Für Kostenmediane reicht ein 5-Minuten-Takt. Nicht feiner sammeln, als die Frage
+es verlangt — sonst entsteht wieder eine 60-MB-Datei, die niemand auswertet.
+
+### Getestet, nicht nur gebaut
+
+- Erster Durchlauf: 20 Märkte, 0 Fehler, 9 Sekunden
+- Doppelstart-Sperre greift (zweite Instanz beendet sich)
+- Dashboard liefert HTTP 200, `config.py` bleibt **403**
+- **Absturztest:** Session abgeschossen → Watchdog erkannte es nach **10 s**, Telegram-Alarm,
+  Neustart, Sammler arbeitet weiter
+- Funktionsprüfung: **21 Prüfungen, 0 Abweichungen** (Dashboard 8099 + Heartbeat-Frische ergänzt)
+
+### Erste Messung
+
+18 von 20 Coins liegen unter der Break-even-Schwelle. Günstigste: BTC 12,6 bp, DOT 14,4 bp,
+TRUMP 15,7 bp. **Belastbar wird das erst in einigen Tagen** — ein Median über wenige Runden sagt
+über das Funding-Regime nichts.
+
+**Erreichbar:** http://trading2025.fritz.box:8099
+
+---
+
+## 22.08.2026 (nachts, 2) — Hyperliquid vermessen: der erste Handelsplatz, der passt
+
+Gleiches Verfahren wie bei Jupiter und dYdX. Ergebnis: **Hyperliquid erfüllt beide Bedingungen.**
+
+### Abdeckung und Kosten
+
+**Alle 20 Coins handelbar** (232 Perp-Märkte). Die Micro-Preis-Memes laufen als 1000er-Kontrakte —
+kSHIB, kPEPE, kBONK — was das Rundungsproblem bei 0,00000319 $ elegant löst.
+
+Gebühren Basisstufe: **0,045 % Taker / 0,015 % Maker** je Seite. Slippage einer 180-$-Order, am
+Orderbuch gemessen — und der Unterschied zu dYdX ist dramatisch:
+
+| Coin | Hyperliquid | dYdX | Faktor |
+|---|---|---|---|
+| LINK | 0,008 % | 1,782 % | 220× |
+| AVAX | 0,004 % | 2,322 % | 580× |
+| ADA | 0,013 % | 1,088 % | 84× |
+| POL | 0,048 % | 0,512 % | 11× |
+| RENDER | 0,055 % | 0,263 % | 5× |
+
+Schlechtester Wert überhaupt: WIF 0,060 %. Auf dYdX war das der **beste** Alt-Wert.
+
+### Funding — die eigentliche Kostenart bei Perpetuals
+
+Nicht geschätzt, sondern aus der Historie geholt (`fundingHistory`, 500 Stunden je Coin über den
+Handelszeitraum). Befund: Funding lag fast durchgehend am **Bodensatz** von +0,00125 %/h (dem reinen
+Zinsanteil) = **0,035 % je 28-Stunden-Position**. Vernachlässigbar.
+
+**Aber Vorsicht — das ist regimeabhängig.** Die Momentaufnahme von heute Nacht zeigt deutlich höhere
+Sätze: DOGE +0,034 %/h = **0,94 % je Position**, AAVE 0,65 %, LINK 0,43 %. In einem heißen Markt
+zahlen Longs kräftig. Ein Long-only-Bot auf Perpetuals hat damit einen strukturellen Gegenwind,
+den Spot-Handel nicht kennt.
+
+### Das Ergebnis der 271 Trades
+
+| Handelsplatz / Annahme | Ergebnis | t |
+|---|---|---|
+| vor Kosten | +378,14 $ | — |
+| **Hyperliquid, Taker + echtes Funding** | **+301,82 $** | **2,83 ✓** |
+| Hyperliquid, Maker + echtes Funding | +335,13 $ | 3,14 ✓ |
+| Hyperliquid, Taker ohne Funding | +313,42 $ | 2,94 ✓ |
+| Hyperliquid bei heutigem (hohem) Funding | +199,85 $ | 1,85 |
+| Jupiter Perps (nur 3 Coins) | +226,32 $ | 2,11 |
+| **wie gehandelt (Kraken 0,62 %)** | **+33,91 $** | 0,25 |
+| dYdX (Momentaufnahme) | −219,56 $ | −1,85 |
+
+**Zum ersten Mal überlebt der Edge die Ausführung statistisch belegt** — und zwar mit dem vollen
+Universum, nicht nur auf drei Majors. Gesamtkosten je Roundtrip: rund **0,13–0,24 %** gegen eine
+Break-even-Schwelle von 0,67 %.
+
+### Vorbehalte, ausdrücklich
+
+1. **Slippage aus einer Momentaufnahme** (00:40, dünne Stunde) — wie bei dYdX. Hier wirkt der Fehler
+   allerdings zu unseren Ungunsten, die echten Kosten dürften eher niedriger sein. Trotzdem: über
+   Zeit messen, bevor darauf etwas gebaut wird.
+2. **Funding war im Messzeitraum am Boden.** Bei anziehendem Markt kehrt sich das um (siehe oben).
+   Das ist das größte offene Risiko dieser Rechnung.
+3. **Kostentausch auf denselben Daten**, aus denen die Parameter stammen. Kein Vorwärtstest.
+4. **Perpetuals sind kein Spot:** Liquidationsrisiko, und der Bot ist long-only.
+5. Zugang, Steuerrecht und Gegenparteirisiko einer Offshore-DEX sind **nicht** geprüft — das ist
+   keine technische Frage und gehört Andreas.
+
+### Stand der Venue-Suche
+
+| Platz | Coins | Kosten Roundtrip | Ergebnis | Urteil |
+|---|---|---|---|---|
+| Kraken/Alpaca (heute) | 20/20 | 62 bp | +34 $ | genau auf Break-even |
+| Jupiter Perps | 3/20 | 26 bp | +226 $ | zu wenig Coins |
+| dYdX | 20/20 | 11–366 bp | −220 $ | Alts unbezahlbar (vorläufig) |
+| **Hyperliquid** | **20/20** | **13–24 bp** | **+302 $** | **erfüllt beide Bedingungen** |
+
+---
+
+## 22.08.2026 (nachts) — dYdX geprüft: richtiges Universum, falscher Spread
+
+Beide offenen Fragen aus der Kostenrechnung durchgerechnet.
+
+### Frage 1: Sagt Orderbuch-Ungleichgewicht die nächsten Minuten voraus?
+
+Grundlage: 636.376 Messpunkte aus 28 Tagen (`dydx/imbalance_log.csv`), 5 Märkte, 3 Buchtiefen,
+3 Horizonte = 45 Einzelmessungen.
+
+**Die Richtung stimmt ausnahmslos** — alle 45 Spannen zwischen hoher und niedriger Ungleichgewichts-
+Gruppe sind positiv. Das ist bemerkenswert konsistent und kein Zufall.
+
+**Die Größe reicht bei weitem nicht.** Spanne hoch-minus-niedrig, bester Fall je Markt (Buchtiefe 1,
+Horizont 15 min): DOGE 3,74 bp · XRP 3,79 bp · BTC 2,40 bp · SOL 2,11 bp · ETH 1,37 bp.
+**Kosten: 10 bp Taker-Roundtrip.** Der beste Wert ist also 2,6-mal zu klein.
+
+Zusätzlich der Widerspruch, der es endgültig erledigt: Am stärksten ist das Signal in den **dünnsten**
+Märkten (DOGE, XRP) — und genau dort ist der Spread mit 34 bp bzw. 18 bp um ein Vielfaches größer
+als das Signal selbst. Man müsste 34 bp zahlen, um 3,7 bp zu ernten.
+
+**Urteil: als eigenständiges Signal tot.** Eine Buchtiefe von 1 ist stärker als 5 oder 10 (wie
+theoretisch erwartet), was für die Messung spricht — nur eben nicht für den Handel. *Kostenlos
+nutzbar bliebe es als Feinsteuerung des Zeitpunkts innerhalb eines ohnehin beschlossenen Trades.*
+
+### Frage 2: Sind die Alt-Coins auf dYdX liquide genug?
+
+**Das Universum stimmt: alle 20 Coins des Bots sind handelbar** (Jupiter hatte 3). Aber die Umsätze
+brechen nach den Majors ab: BTC 47,4 Mio. $, ETH 34,9 Mio. — dann SOL 787k, LINK 101k, DOT 32k,
+ARB 6,8k, RENDER 4,4k, **WIF 0**.
+
+Slippage einer 180-$-Kauforder, direkt am Orderbuch gemessen: BTC 0,024 % · ETH 0,047 % ·
+SOL 0,075 % · XRP 0,088 % — hervorragend. Dagegen LINK 1,78 % · ADA 1,09 % · **AVAX 2,32 %**.
+
+Mit echten Kosten je Coin auf die 271 Trades angewandt:
+
+| Auswahl | Trades | vor Kosten | auf dYdX | t |
+|---|---|---|---|---|
+| alle 20 Coins | 271 | +370,43 $ | **−219,56 $** | −1,85 |
+| nur Coins unter 67 bp | 98 | +99,98 $ | +55,46 $ | 0,99 |
+| nur BTC/ETH/SOL/XRP | 78 | +91,17 $ | +62,77 $ | 1,23 |
+| die übrigen 16 | 193 | +279,26 $ | **−282,33 $** | **−2,66** |
+
+**Auf dYdX wäre das Ergebnis schlechter als heute.** Dieselbe Sackgasse wie bei Jupiter, nur aus
+dem umgekehrten Grund: Dort fehlten die Coins, hier sind sie da, aber unbezahlbar.
+
+### Der Vorbehalt, der das Urteil noch kippen kann
+
+**15 der 20 Spreads stammen aus EINER Momentaufnahme um 00:30** — der dünnsten Stunde. Die Gegenprobe
+zeigt, wie stark das verzerrt: Für BTC maß die Momentaufnahme 4,8 bp, der 28-Tage-Median liegt bei
+**0,6 bp** — Faktor 8. Wären die Alt-Spreads ähnlich überzeichnet, läge LINK bei 44 statt 356 bp und
+damit unter der Break-even-Schwelle. **Das Urteil steht also unter Vorbehalt.**
+
+**Deshalb umgesetzt:** `dydx_collect.py` von 5 auf **alle 20 Märkte** erweitert (Takt bleibt 15 s),
+alte Datei als `dydx/imbalance_log_5maerkte_20260822.csv` gesichert. In wenigen Tagen liegen echte
+Mediane für die Alts vor, dann lässt sich die Tabelle oben mit belastbaren Zahlen neu rechnen.
+
+### Zwischenstand der Venue-Suche
+
+| Handelsplatz | Coins | Kosten | Urteil |
+|---|---|---|---|
+| Kraken/Alpaca (heute) | alle | 62 bp | genau auf Break-even → Nullergebnis |
+| Jupiter Perps | 3 von 20 | 26 bp | zu wenig Coins, Edge nicht dabei |
+| dYdX | **20 von 20** | 11–366 bp | Majors top, Alts (vorläufig) unbezahlbar |
+
+Gesucht bleibt: **unter 67 bp Roundtrip bei den Alt-Coins.** Nächster Kandidat wäre Hyperliquid.
+
+---
+
+## 22.08.2026 — Kostenmodell Jupiter Perps durchgerechnet: der Bot HAT einen Vorteil
+
+### Das Ergebnis, das eine frühere Aussage korrigiert
+
+In der Depot-Analyse vom 21.08. stand: „Beim Crypto-Bot lässt sich ein Vorteil ausschließen."
+**Das war zu grob.** Richtig ist: kein Vorteil **nach diesen Kosten**. Rechnet man die simulierten
+Kosten (0,26 % Gebühr + 0,05 % Slippage je Seite = 0,62 % Roundtrip) je Trade zurück:
+
+| Betrachtung | Summe | t-Wert | Urteil |
+|---|---|---|---|
+| wie gehandelt (0,62 %) | +26,77 $ | 0,25 | nichts |
+| **vor Kosten** | **+370,43 $** | **3,49** | **belegt** |
+| bei Jupiter-Kosten (0,26 %) | +226,32 $ | 2,11 | knapp belegt |
+
+**Das Einstiegssignal trägt also.** Die Kosten fressen es vollständig auf. Break-even liegt bei rund
+**0,67 % Roundtrip** — die aktuellen 0,62 % liegen exakt darauf, deshalb das Nullergebnis.
+
+### Methodik
+
+Einsatz je Trade aus `profit/pct` rekonstruiert (254 von 271 Trades), sonst aus der Sizing-Regel
+(6 % bzw. 3 % Kapital × `size_mult` aus `esnap`). Median-Einsatz 179 $. **Haltedauer 28 h**, zweifach
+hergeleitet: Little's Gesetz (8 Plätze × 43,7 Tage / 271 Trades = 31 h) und das Alter der 8 offenen
+Positionen (Mittel 13,9 h ≈ halbe Gesamtdauer bei laufenden Positionen). Trade-Datensätze speichern
+**keine Einstiegszeit** — das ist eine Lücke, die für künftige Auswertungen zu schließen wäre.
+
+Jupiter-Parameter recherchiert, nicht geschätzt: **0,06 % je Seite** Basisgebühr, dazu stündliche
+Leihgebühr statt Funding: `Auslastung × 0,01 %/h × Positionsgröße` (max. 0,01 %/h ≈ 88 % p. a.).
+
+### Warum es trotzdem nicht funktioniert
+
+**Der Jupiter-Liquiditätspool enthält nur SOL, ETH, wBTC und Stablecoins.** Von den 20 Coins des Bots
+sind **3 handelbar — 55 von 271 Trades (20 %)**. Und genau dort sitzt der Vorteil nicht:
+
+| Gruppe | vor Kosten | t | auf Jupiter | t |
+|---|---|---|---|---|
+| SOL/ETH/BTC (handelbar) | +76,60 $ | 1,75 | +46,64 $ | 1,06 |
+| die übrigen 17 Coins | +293,84 $ | **3,03** | +179,68 $ | 1,84 |
+
+**Der Vorteil steckt in den kleineren Alts — die Jupiter Perps nicht anbietet.**
+
+### Und alles hängt an der Slippage
+
+Das Jupiter-Modell rechnet nur Gebühren. Mit realistischer On-Chain-Slippage:
+
+| Slippage je Seite | Auslastung 30 % | 50 % | 80 % | 100 % |
+|---|---|---|---|---|
+| 0,00 % | +257 $ ✓ | +226 $ ✓ | +180 $ | +149 $ |
+| 0,10 % | +146 $ | +115 $ | +69 $ | +38 $ |
+| **0,20 %** | **+36 $** | **+5 $** | −42 $ | −73 $ |
+| 0,50 % | −297 $ | −328 $ | −375 $ | −406 $ |
+
+Ab **0,2 % Slippage je Seite ist der Vorteil weg**. Genau daran ist der DEX-Zweig schon einmal
+gescheitert — und Alt-Coins on-chain haben mehr Slippage, nicht weniger.
+
+### Fazit und was daraus folgt
+
+Jupiter Perps ist **nicht** die Antwort: falsches Handelsuniversum. Die gesuchte Eigenschaft ist
+jetzt aber präzise benannt — **ein Handelsplatz mit unter 0,67 % Roundtrip UND den Alt-Coins**.
+Damit rücken die beiden anderen Einträge aus [[project-execution-leads]] in den Vordergrund:
+**dYdX** (Maker-Gebühren, steht seit dem 02.08. ungeprüft auf der Liste) und Hyperliquid.
+
+**Vorbehalte, ausdrücklich:** Die Kosten wurden auf denselben Daten getauscht, aus denen die
+Parameter stammen — kein Vorwärtstest. 44 Tage. Der t-Wert von 2,11 für Jupiter ist knapp. Und
+Perps sind kein Spot: Leihgebühr läuft richtungsunabhängig, dazu Liquidationsrisiko bei Hebel.
+
+### Ausbeute der letzten Folgen: null
+
+Rückwirkend alle 21 gespeicherten Transkripte gegen die Themenfilter geprüft:
+
+- **#092 (21.08.)**: 2 Treffer, beide im Kontext **Fehltreffer** — „tokenisiert" steht in einer
+  Passage über ein Trump-Treffen mit Krypto-Vertretern, „liquidation" in einem allgemeinen
+  Marktüberblick. Nichts Verwertbares.
+- **#091 (14.08.)**: **0 Treffer.**
+- **#089**: nur „benchmark" (Fed als Zinsvergleich) und „stichtag" (Bewertungstermine) — beides
+  aus der schwachen Wortliste, kein Mechanismus.
+
+**Bilanz über den Gesamtbestand:** 21 Folgen, 13 mit hartem Treffer. Die verwertbaren stammen aber
+alle aus **früheren** Folgen: #050/051/053/054 (SOFR, Repo), #060 (Liquiditätsspritze, Rebalancing),
+#085 (Quartalsende, Russell), #086 (Crack Spread), #087 (Repo, tokenisiert). Diese Liste steht seit
+02.08. unbearbeitet in [[project-execution-leads]] — **die Quelle liefert derzeit nichts Neues, und
+das Alte ist ungeprüft.** Der Wächter läuft weiter (Kosten: ein Abruf täglich).
+
+### Neue Quelle: Blockzocker
+
+**`blockzocker.de` gibt es nicht** — die DENIC führt die Domain als *frei*. Gemeint war
+**blockzocker.com**: „Krypto-Trading lernen mit Hermann dem Banker", Herausgeber **Paul Brandenburg
+LLC** — also derselbe Verlag wie Nacktes Geld. Wöchentliche Folgen, dienstags.
+
+**Was geprüft wurde, bevor etwas gebaut wurde:**
+- Nicht auf derselben PeerTube-Instanz wie Nacktes Geld (Suche: 0 Treffer) — der Untertitel-Weg
+  von `ng_watch.py` funktioniert hier also nicht.
+- Die Seite ist **zugangsbeschränkt** (`/login`, `/register`, Ticket). Im öffentlichen Quelltext
+  einer Folgenseite stehen **weder Untertitel noch Videoquelle**.
+- Öffentlich sind: 9 kostenlose Folgen (S01E01–E09) und die **Trailer-Seiten** aller übrigen, die
+  Folgennummer, Titel und Datum im Seitentitel tragen.
+
+**Daraus `bz_watch.py`** — meldet neue Folgen per Telegram, liest **ausschließlich öffentliche
+Seiten**, meldet sich an keinem Konto an und holt keine Inhalte hinter der Bezahlschranke.
+Der Nutzen ist entsprechend begrenzt und wird in der Meldung auch so benannt: man erfährt, *dass*
+eine Folge da ist und wie sie heißt — nicht, ob sie etwas taugt.
+
+**Umgesetzt:** Bestand 25 Folgen erfasst (S01E01–E26). Zwei Wege nötig, weil freie Folgen unter
+`/watch/<id>` liegen und kostenpflichtige nur einen Trailer unter `/watch/<id>/trailer` haben —
+ohne den zweiten Weg fehlten im ersten Anlauf genau die neun freien Folgen. **S01E10 fehlt
+tatsächlich**: ID 37 liefert auf beiden Wegen 302, der Betreiber hat sie nicht veröffentlicht.
+Cron täglich 08:25, Zeitstempel wird bei **jedem** Lauf geschrieben (sonst wäre die Zustandsdatei
+zwischen zwei Folgen sechs Tage alt und ein stiller Ausfall nicht von „diese Woche kam nichts"
+unterscheidbar). In `funktionspruefung.py` eingetragen → jetzt **18 Prüfungen**, 0 Abweichungen.
+
+### Nebenbefund
+
+Das Datum von S01E06 lautet auf der Seite **„31.02.2026"** — ein Tag, den es nicht gibt. Fehler des
+Betreibers; wird als Text übernommen, nicht als Datum geparst, stört also nichts.
+
+---
+
+## 21.08.2026 (nachmittags) — Voll-Analyse aller vier Depots
+
+**Bericht:** https://claude.ai/code/artifact/8787aed0-ffda-4496-a202-6305f127ade2
+
+### Datenlage
+
+27 Tage seit dem Reset (Super/Crypto 25.07., Insider/Fundament 26.07.). 656 Kursmesspunkte,
+283 abgeschlossene Trades, Vergleichskurse über yfinance für denselben Zeitraum.
+
+### Die Stände
+
+| Depot | Stand | seit Start | Rückgang max | Schwankung p.a. |
+|---|---|---|---|---|
+| Insider | 10.785,43 $ | +7,85 % | −2,43 % | 22,4 % |
+| Fundament | 10.391,62 $ | +3,92 % | −1,00 % | 8,9 % |
+| Crypto | 5.052,86 $ | +1,06 % | −3,50 % | 15,0 % |
+| Super | 5.019,82 $ | +0,40 % | −0,12 % | 0,9 % |
+
+Vergleich im selben Zeitraum: S&P 500 +3,18 %, **Bitcoin +20,19 %**, Nebenwerte +1,63 %, Gold +10,85 %.
+
+### Der zentrale Befund: der Crypto-Bot hat keinen Vorteil
+
+**269 Trades ergaben zusammen +0,63 $.** Der sichtbare Depotgewinn (+52,86 $) ist fast vollständig
+der Buchwert von 7 offenen Positionen (+58,89 $) — also das, was auch ohne jeden Handel entstanden
+wäre. Bitcoin stieg im selben Zeitraum um 20 %.
+
+Statistisch: Ergebnis je Trade +0,002 $ bei Streuung 6,43 $ → **t = 0,01**. Für einen Nachweis
+wären ~30 Mio. Trades nötig. Das Verfahren ist damit nicht „noch nicht belegt", sondern in dieser
+Form **nicht belegbar**. Trefferquote 46,5 %, Chance-Risiko 1,15, Gewinnfaktor 1,00.
+
+Teilbefunde: Stop-Loss-Ausstiege kosten −492 $ und fressen auf, was Trailing (+371 $) und PSAR
+(+171 $) verdienen — das Problem liegt am **Einstieg, nicht am Ausstieg**. Blitz-Käufe verlieren
+trotz der Juni-Drosselung weiter: 42 Trades, −30,80 $, nur 28,6 % Treffer. Ohne sie stünde der
+Bot bei +31 $.
+
+### Die anderen drei
+
+- **Super-Bot:** 14 Trades in 27 Tagen, +0,40 % gegen +3,18 % beim S&P. Lehnt fast alles mit
+  „Stimmung zu schwach" ab. Für einen Nachweis wären ~116 Trades nötig ≈ 8 Monate beim aktuellen Tempo.
+- **Insider:** +7,85 % gegen +3,18 % (S&P) bzw. +1,63 % (IWM). **Der Vorsprung ist zu groß, um echt
+  zu sein**: der Backtest verspricht 11 pp p.a., auf 18 Handelstage wären das ~0,8 pp — gemessen
+  wurden 6,2 pp, also das Achtfache. Top 5 von 30 Titeln tragen 64 % des Ergebnisses. Median
+  allerdings +8,35 % bei 21/30 Gewinnern, also nicht nur zwei Glückstreffer. Urteil bleibt offen
+  bis zum Ende des 3-Monats-Vorwärtstests (Tag 25 von 90).
+- **Fundament:** einziges Depot mit einem *belegbaren* Ergebnis, weil es Bauart-Treue misst statt
+  Vorhersage. −0,49 pp gegen die reine Mischung, vollständig zerlegt: −0,025 Handelskosten,
+  −0,46 Rückführung, **kein unerklärter Rest**.
+
+### Betrieb
+
+Seit dem Reset **kein einziger Risiko-Halt** — kein Tagesverlust-Stopp, kein Drawdown-Stopp, keine
+Eskalation. Größter Rückgang des kombinierten Depots 1,67 % bei einer Bremse, die erst bei 15 % greift.
+
+### Fazit
+
+Der Betrieb ist gelöst, die Strategiefrage ist offen. Drei Depots stehen im Plus, weil die Märkte
+gestiegen sind — nicht nachweisbar wegen der Verfahren. Beim Crypto-Bot lässt sich ein Vorteil
+inzwischen sogar ausschließen.
+
+### Nachtrag: Insider gegen echte Börsenkurse zurückgerechnet — BUG GEFUNDEN
+
+Auf Andreas' Einwand („wieso kann Insider nicht stimmen? kann man das nicht zurückrechnen?") alle
+30 Positionen gegen die tatsächlichen Tageskurse geprüft. Zwei getrennte Ergebnisse:
+
+**1. Die Bewertung ist korrekt.** Aktuelle Kurse stimmen auf **0,000 %** mit yfinance überein,
+Depotwert exakt nachgerechnet.
+
+**2. Die Einstiegskurse sind falsch — echter Bug.** Sie stammen vom **23.07.**, eingetragen als
+Kauf vom **27.07.** Belege: bei 29 von 30 Titeln passt der Einstieg auf <0,05 % zum Schlusskurs
+des 23.07.; bei **18 von 30 liegt er außerhalb der Handelsspanne des 27.07.** (14× billiger als
+das Tagestief, 4× teurer als das Hoch) — so nicht handelbar.
+
+**Ursache:** `prices()` in `insider_paper.py` gab nur `cl[-1]` zurück und **verwarf das Datum des
+Kursbalkens**. Der Aufrufer konnte einen veralteten Kurs nicht erkennen. Exakt die Fehlerklasse
+aus [[project-known-gotchas]] („Freshness-Phantom": Entry aus alter Quelle, Bewertung live) —
+dritter Fall nach Contrarian-Clone und DEX-Papierhandel.
+
+**Wirkung:** ~1,6 Prozentpunkte Scheingewinn. Ehrlich gerechnet +6,22 % statt +7,85 % (Stand 20.08.).
+
+**Behoben:** `prices()` liefert `stand` (Balkendatum) mit; neue `kurse_pruefen()` blockiert eine
+Umschichtung, wenn die Daten älter als 3 Kalendertage sind (Montag mit Freitagsschluss bleibt
+erlaubt, der 4-Tage-Fall vom 27.07. wird geblockt) und meldet das per Telegram. Getestet mit fünf
+Fällen. **Nebenbei behoben:** die Datei hatte keinen `__main__`-Schutz — ein bloßes
+`import insider_paper` startete den kompletten Depotlauf (beim Testen selbst ausgelöst).
+
+### Und die Korrektur meiner eigenen Argumentation
+
+Meine Begründung „der Vorsprung ist 8× so groß wie die Backtest-Erwartung, also Rauschen" war
+**falsch geschlossen**. Dass eine Kurzfrist-Rendite die annualisierte Erwartung übersteigt, ist
+normal — Rauschen wächst mit √t, der Erwartungswert mit t. Richtig gerechnet (Fenster 27.07.–21.08.,
+ehrliche Einstiege):
+
+| Prüfung | Wert |
+|---|---|
+| Depot | +7,50 % |
+| IWM | +2,03 % |
+| Vorsprung | +5,47 pp |
+| Zufallsspanne 19 Tage (1σ) | ± 3,53 pp → Vorsprung = 1,5σ |
+| t über Tagesrenditen | 1,50 (nicht belegt) |
+| t über die 30 Einzeltitel | 2,08 (knapp belegt) |
+| Titel besser als IWM | 19 von 30 |
+
+**Richtiges Urteil: offen.** Ein Zufallsergebnis dieser Größe tritt in etwa 1 von 15 Fällen auf —
+zu häufig für einen Beleg, zu selten zum Abtun. Der eigentliche Grund, warum die Messung nichts
+entscheidet: die **Messunsicherheit (±3,5 pp) übersteigt das erwartete Signal (0,8 pp) um das
+Vierfache**. Nicht „die Zahl ist zu gut".
+
+### Offen zur Entscheidung
+
+Die 30 bestehenden Positionen behalten ihre zu günstigen Einstiegskurse. Optionen: so lassen und
+den Versatz bei jeder Auswertung mitdenken, oder Einstiege auf den Schlusskurs des 27.07. korrigieren
+(Depot fiele rechnerisch um ~1,6 pp), oder das Depot neu aufsetzen. **Andreas' Entscheidung** —
+Kapitalstände zu ändern fällt nicht unter Betrieb und Reparatur.
+
+---
+
+## 21.08.2026 — Monitor-Meldungen geprüft, Systemupdates, Desktop abgeschaltet
+
+### Was geprüft wurde — und was dabei herauskam
+
+**Es gab keine Überlastung.** Die Annahme ließ sich nicht bestätigen, im Gegenteil:
+`vcgencmd get_throttled` = **0x0** (seit dem Hochfahren nie gedrosselt, weder thermisch noch wegen
+Spannung), Temperatur 44,8 °C, RAM 26 %, Swap 0 MB, keine OOM-Einträge, CPU im Monitor-Log
+durchgehend 0–3 % mit einer einzelnen Spitze auf 31 %.
+
+**Die Meldungsflut kam von woanders:** 58 der Ereignisse in 14 Tagen waren `NO_TRADES`.
+Nachgerechnet an 30 Tagen / 172 Trades: Handelspausen über 8 Stunden sind der **Normalfall**
+(Nächte, Wochenenden, ruhige Märkte) — Median 2,3 h, aber 29 Pausen über 8 h. Der Alarm feuerte
+ab 8 h und dann alle 2 h erneut → ~104 Meldungen je 30 Tage, praktisch alle unbegründet.
+
+**Schwelle datengestützt gesetzt** (`agents/monitor_agent.py`): `NO_TRADES_HOURS` 8 → **24**,
+`NO_TRADES_COOLDOWN` 2 h → **12 h**. Bei 24 h bleiben 2 Fälle in 30 Tagen übrig, also ~3 Meldungen
+statt 104. Der Gesundheitszustand hängt nicht an dieser Meldung: ein hängender Bot fällt vorher über
+`check_stale()` (15 min) und den Watchdog im Bot auf — `NO_TRADES` ist der langsame Rückfall.
+
+**Die 3 „Abstürze" im Protokoll waren meine eigenen Session-Neustarts** vom 12./13.08. Der Monitor hat
+sie korrekt erkannt und neu gestartet, die Doppelstart-Sperre hat gegriffen. Kein echter Ausfall.
+
+### Der eigentliche Fund
+
+Der Pi fuhr einen **vollständigen Grafik-Desktop** hoch, den niemand sieht: beide HDMI-Anschlüsse
+`disconnected`, VNC inaktiv und auf keinem Port lauschend. Kosten: ~310 MB RAM für labwc, wf-panel,
+pcmanfm und drei xdg-portal-Prozesse — und 25 der 29 offenen Updates waren Chromium, Firefox, Mesa
+und Kamera-Treiber, die für den Handel keine Rolle spielen.
+
+Nach Rücksprache auf **Konsolenbetrieb** umgestellt (`systemctl set-default multi-user.target`).
+Ein Befehl, jederzeit umkehrbar über `graphical.target`.
+
+### Updates
+
+**0 Sicherheitsupdates waren offen** — `unattended-upgrades` erledigt die täglich und nachweislich
+(Einträge 15., 19., 20.08.). Die 29 offenen Pakete waren reine Desktop-Software. Alle eingespielt
+(`apt-get upgrade` mit `--force-confold`), danach `autoremove --purge`: drei alte Kernel entfernt.
+
+**Ergebnis nach Neustart:** RAM 26 % → **16 %** (599 statt 1.038 MB belegt), Platte 22 % → **18 %**
+(48 GB frei). Alle 12 Sessions kamen über systemd/`start_all.sh` von selbst hoch, Positionen aus den
+Zustandsdateien wiederhergestellt (Super 3, Crypto 8), Funktionsprüfung **17/17 ohne Abweichung**.
+
+### Nachtrag am selben Tag — Einwand von Andreas: „es gab öfter Alarm wegen Prozessorüberlastung"
+
+**Der Einwand war berechtigt, meine Analyse war es nicht.** Zwei Mängel:
+1. Ich hatte vom Monitor-Log nur die **letzten 20 Zeilen** gelesen — Spitzen weiter oben wären
+   unsichtbar geblieben.
+2. `throttled=0x0` belegt nur, dass der Pi nie *gedrosselt* hat (Hitze/Spannung). Ein Prozessor kann
+   dauerhaft bei 100 % laufen, ohne zu drosseln. Das war nie ein Gegenbeweis.
+
+**Warum die Alarme nirgends auffindbar waren — der eigentliche Befund:** `system_health()` schickt bei
+Überschreitung ausschließlich ein `tg(...)` und schreibt **nichts** ins `health_log.csv`.
+`/tmp/monitor.log` wird bei jedem Monitor-Neustart überschrieben und beim Reboot gelöscht, das
+systemd-Journal enthält nur den laufenden Start. **Der Telegram-Verlauf war das einzige Archiv.**
+
+**Behoben, zweistufig:**
+- `SYS_ALERT` wird jetzt ins `health_log.csv` geschrieben — **mit den drei größten Verbrauchern**
+  (`top_prozesse()`, nur im Alarmfall aufgerufen). Der nächste Alarm sagt also, *womit* es eng wurde.
+- Neu `agents/system_verlauf.csv`: alle 5 Minuten CPU/RAM/Platte **plus die Lastdurchschnitte des
+  Kernels** (1/5/15 min), ab 50 % CPU jede Minute. Begründung: `cpu_percent()` misst nur 0,5 s je
+  Minute — eine zweiminütige Spitze kann komplett durchrutschen. Die Lastdurchschnitte sind kumulativ
+  und können das nicht. Beide Dateien werden nachts nach GitHub gesichert.
+
+**Selbst verursachter Fehler, gefunden und behoben:** die Desktop-Abschaltung ließ
+`rpi-connect-wayvnc` in eine Neustartschleife laufen — **689 Fehlversuche in einer Stunde**.
+Gestoppt und maskiert. Ehrliche Einordnung: der Leerlauf lag dabei bei 97 %, die Schleife flutete das
+Journal, nicht den Prozessor — als Erklärung für die alten Alarme taugt sie nicht.
+
+**Korrektur einer Aussage, auf der eine Entscheidung beruhte:** ich hatte gemeldet „VNC ist aus, kein
+Port offen". Unvollständig — **Raspberry Pi Connect war angemeldet, Bildschirmfreigabe erlaubt**; die
+läuft getunnelt, nicht über Port 5900, deshalb hat mein Test sie nicht gesehen. Der Konsolenbetrieb
+hat diese Möglichkeit entfernt (der Kommandozeilen-Fernzugriff über Pi Connect läuft weiter).
+
+**Neu `bildschirm.sh` (an|aus|status):** startet Desktop + Freigabe bei Bedarf und beendet sie wieder.
+Ändert bewusst **nicht** das Startziel — nach einem Neustart ist der Pi wieder in der Konsole, das
+Ausschalten kann man also nicht vergessen. Nutzt gezielt `systemctl start/stop lightdm` statt
+`systemctl isolate`, damit die Bot-Sitzungen garantiert unberührt bleiben. In beide Richtungen
+getestet: Freigabe wird aktiv, keine Fehlversuche, durchgehend 12 Bot-Sitzungen.
+
+**Ursache der alten Alarme: weiterhin offen.** Die Beweise existieren nur in Andreas' Telegram, ein
+Zeitmuster war nicht mehr erinnerlich. Ab jetzt beantwortet sich die Frage beim nächsten Auftreten
+von selbst. Verdächtige nach Zeitfenster: 22:30 SEC-Abruf und 23:15 Insider-Papierdepot (verarbeiten
+10-MB-CSVs), Sonntag 00:00 Optimierungs-Agent (Walk-Forward über Jahre von Kursdaten).
+
+### Was offen ist
+
+- **EEPROM-Firmware**: `rpi-eeprom-update` meldet weiterhin *UPDATE AVAILABLE*. Das apt-Paket ist
+  aktuell, aber der Bootloader selbst wurde nicht geflasht (`rpi-eeprom-update -a` + Neustart).
+  **Bewusst nicht gemacht**: eine Bootloader-Aktualisierung aus der Ferne über VPN, ohne physischen
+  Zugriff, ist das eine Update, bei dem ein Fehlschlag nicht per SSH zu reparieren wäre. Sinnvoll,
+  wenn Andreas zu Hause am Gerät ist.
+- *(geprüft, kein Mangel)* Der Monitor meldet „alle 11 laufen", während 12 Screens existieren. Die
+  zwölfte ist der **Monitor selbst** — er steht bewusst nicht in seiner eigenen BOTS-Liste, weil er
+  sich nicht selbst neu starten kann. Dafür ist der Eintrag in `start_all.sh` plus der systemd-Start
+  zuständig.
+
+---
+
 ## 14.08.2026 — Crypto-Bot auf denselben Telegram-Stil, gemeinsames Textmodul
 
 ### Was gemacht wurde

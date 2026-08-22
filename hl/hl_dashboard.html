@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>Hyperliquid — Handelskosten</title>
+<style>
+  :root{
+    --bg:#f2f4f3; --card:#fff; --fg:#15201d; --dim:#5f6b68; --line:#dde2e0;
+    --gut:#14684c; --schlecht:#a83a31; --achse:#c3cac8; --balken:#2a78d6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#101413; --card:#181d1c; --fg:#e6ebe9; --dim:#8e9a97; --line:#252c2a;
+          --gut:#4aa885; --schlecht:#e08078; --achse:#39413f; --balken:#3987e5;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:18px;background:var(--bg);color:var(--fg);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+  .huelle{max-width:1000px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 2px;letter-spacing:-.2px}
+  h2{font-size:15px;margin:26px 0 8px}
+  .sub{color:var(--dim);font-size:12px;margin-bottom:16px}
+  .zahlen{font-variant-numeric:tabular-nums}
+  .kacheln{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:6px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:12px 14px}
+  .lbl{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .wert{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px}
+  .gut{color:var(--gut)} .schlecht{color:var(--schlecht)}
+  .hinweis{color:var(--dim);font-size:11px;margin-top:3px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--line);
+        font-variant-numeric:tabular-nums;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+  tbody tr:last-child td{border-bottom:none}
+  .rahmen{background:var(--card);border:1px solid var(--line);border-radius:9px;overflow-x:auto}
+  .chip{font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--line);color:var(--dim)}
+  .chip.ja{border-color:var(--gut);color:var(--gut)}
+  .chip.nein{border-color:var(--schlecht);color:var(--schlecht)}
+  svg{display:block;width:100%;height:auto}
+  .fuss{color:var(--dim);font-size:11px;margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="huelle">
+  <h1>Hyperliquid — was die Ausführung wirklich kostet</h1>
+  <div class="sub" id="stand">lädt …</div>
+
+  <div class="kacheln" id="kacheln"></div>
+
+  <h2>Kosten je Roundtrip — gegen die Schwelle, ab der der Vorteil aufgezehrt ist</h2>
+  <div class="rahmen" style="padding:14px 12px 6px"><div id="chart"></div></div>
+
+  <h2>Alle Werte</h2>
+  <div class="rahmen"><table id="tabelle"></table></div>
+
+  <div class="fuss" id="fuss"></div>
+</div>
+
+<script>
+const F = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const de = (x,n=2) => x==null ? "—" : x.toLocaleString("de-DE",{minimumFractionDigits:n,maximumFractionDigits:n});
+
+function kacheln(d){
+  const tragbar = d.tragbar_anzahl, ges = d.gesamt;
+  const rts = d.coins.filter(c=>c.roundtrip_bp!=null).map(c=>c.roundtrip_bp);
+  const med = rts.length ? rts.sort((a,b)=>a-b)[Math.floor(rts.length/2)] : null;
+  const teuerste = d.coins.filter(c=>c.roundtrip_bp!=null).slice(-1)[0];
+  const el = document.getElementById("kacheln");
+  el.innerHTML = `
+    <div class="card"><div class="lbl">tragbar</div>
+      <div class="wert ${tragbar===ges?"gut":""}">${tragbar} / ${ges}</div>
+      <div class="hinweis">unter ${de(d.break_even_bp,0)} bp Roundtrip</div></div>
+    <div class="card"><div class="lbl">Median Roundtrip</div>
+      <div class="wert ${med<d.break_even_bp?"gut":"schlecht"}">${de(med,1)} bp</div>
+      <div class="hinweis">Schwelle ${de(d.break_even_bp,0)} bp</div></div>
+    <div class="card"><div class="lbl">teuerster Coin</div>
+      <div class="wert">${teuerste?teuerste.coin:"—"}</div>
+      <div class="hinweis">${teuerste?de(teuerste.roundtrip_bp,1)+" bp":""}</div></div>
+    <div class="card"><div class="lbl">Gebühr</div>
+      <div class="wert">${de(d.taker_bp,0)} bp</div>
+      <div class="hinweis">Taker beide Seiten · Maker ${de(d.maker_bp,0)} bp</div></div>`;
+}
+
+function chart(d){
+  const daten = d.coins.filter(c=>c.roundtrip_bp!=null);
+  const B=940, zeile=22, M={l:64,r:78,o:14,u:26}, H=daten.length*zeile+M.o+M.u;
+  const max=Math.max(d.break_even_bp*1.15, ...daten.map(c=>c.roundtrip_bp));
+  const x=v=>M.l+v/max*(B-M.l-M.r);
+  const NS="http://www.w3.org/2000/svg";
+  const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+  const svg=el("svg",{viewBox:`0 0 ${B} ${H}`,role:"img",
+    "aria-label":"Roundtrip-Kosten je Coin in Basispunkten"});
+
+  // Gitter
+  const schritt = max>200?50:(max>80?20:10);
+  for(let v=0;v<=max;v+=schritt){
+    svg.appendChild(el("line",{x1:x(v),x2:x(v),y1:M.o,y2:H-M.u,stroke:F("--achse"),"stroke-width":1,opacity:.45}));
+    const t=el("text",{x:x(v),y:H-9,"text-anchor":"middle",fill:F("--dim"),"font-size":10});
+    t.textContent=v; svg.appendChild(t);
+  }
+  // Break-even-Linie: der eigentliche Maßstab
+  const be=x(d.break_even_bp);
+  svg.appendChild(el("line",{x1:be,x2:be,y1:M.o-4,y2:H-M.u,stroke:F("--schlecht"),
+    "stroke-width":2,"stroke-dasharray":"5 4"}));
+  const bl=el("text",{x:be+5,y:M.o+8,fill:F("--schlecht"),"font-size":10,"font-weight":600});
+  bl.textContent="Break-even "+d.break_even_bp+" bp"; svg.appendChild(bl);
+
+  daten.forEach((c,i)=>{
+    const y=M.o+i*zeile;
+    const tragbar=c.roundtrip_bp<d.break_even_bp;
+    svg.appendChild(el("rect",{x:M.l+1,y:y+4,width:Math.max(x(c.roundtrip_bp)-M.l-1,1.5),
+      height:zeile-9,rx:2.5,fill:tragbar?F("--gut"):F("--schlecht"),opacity:.9}));
+    const n=el("text",{x:M.l-9,y:y+zeile/2+3,"text-anchor":"end",fill:F("--fg"),"font-size":11});
+    n.textContent=c.coin; svg.appendChild(n);
+    const w=el("text",{x:x(c.roundtrip_bp)+7,y:y+zeile/2+3,fill:F("--dim"),"font-size":10.5});
+    w.setAttribute("font-variant-numeric","tabular-nums");
+    w.textContent=de(c.roundtrip_bp,1)+" bp"; svg.appendChild(w);
+  });
+  const el2=document.getElementById("chart"); el2.innerHTML=""; el2.appendChild(svg);
+}
+
+function tabelle(d){
+  const kopf=["Coin","Markt","Roundtrip","Spread","Slippage 180 $","Slippage 1000 $",
+              "Funding/h","je 28 h","Buchtiefe","Messungen","tragbar"];
+  let h="<thead><tr>"+kopf.map(k=>`<th>${k}</th>`).join("")+"</tr></thead><tbody>";
+  d.coins.forEach(c=>{
+    h+=`<tr>
+      <td><b>${c.coin}</b></td>
+      <td style="color:var(--dim)">${c.markt||""}</td>
+      <td class="${c.tragbar?"gut":"schlecht"}"><b>${de(c.roundtrip_bp,1)}</b></td>
+      <td>${de(c.spread_bp,2)}</td>
+      <td>${de(c.slip180_bp,3)}</td>
+      <td>${de(c.slip1000_bp,3)}</td>
+      <td>${c.funding_h_pct==null?"—":de(c.funding_h_pct*100,3)+" bp"}</td>
+      <td>${c.funding_28h_pct==null?"—":de(c.funding_28h_pct,3)+" %"}</td>
+      <td>${c.tiefe_usd==null?"—":c.tiefe_usd.toLocaleString("de-DE")+" $"}</td>
+      <td style="color:var(--dim)">${c.n}</td>
+      <td><span class="chip ${c.tragbar?"ja":"nein"}">${c.tragbar?"ja":"nein"}</span></td>
+    </tr>`;
+  });
+  document.getElementById("tabelle").innerHTML=h+"</tbody>";
+}
+
+async function laden(){
+  try{
+    const d=await (await fetch("hl_dashboard.json?t="+Date.now())).json();
+    document.getElementById("stand").textContent =
+      `Stand ${d.zeit} · Mediane aus ${d.coins.reduce((s,c)=>s+c.n,0)} Messungen · `+
+      `Haltedauer ${d.halte_h} h unterstellt`;
+    kacheln(d); chart(d); tabelle(d);
+    document.getElementById("fuss").innerHTML =
+      `<b>Wie die Zahlen entstehen:</b> Roundtrip = Slippage beider Seiten (aus dem echten Orderbuch, `+
+      `180 $ Ordergröße) + ${d.taker_bp} bp Taker-Gebühr + Funding über ${d.halte_h} Stunden. `+
+      `Die Schwelle von ${d.break_even_bp} bp stammt aus der Kostenrechnung der 271 Crypto-Trades: `+
+      `darüber frisst die Ausführung den gemessenen Vorteil auf.<br>`+
+      `<b>Vorbehalt:</b> Funding ist regimeabhängig — in heißen Märkten zahlen Longs deutlich mehr. `+
+      `Ein Median über wenige Stunden sagt darüber wenig; erst mehrere Tage sind belastbar. `+
+      `Messung alle 5 Minuten, read-only, kein Konto.`;
+  }catch(e){
+    document.getElementById("stand").textContent="Daten nicht lesbar: "+e;
+  }
+}
+laden(); setInterval(laden, 60000);
+</script>
+</body>
+</html>

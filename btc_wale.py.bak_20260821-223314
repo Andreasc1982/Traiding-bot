@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Sammelt taeglich die Bitcoin-Bestandsverteilung — sammeln, nicht handeln.
+
+Anlass: In zwei Folgen "Nacktes Geld" wird dieselbe Behauptung aus zwei
+verschiedenen Datenplattformen zitiert — die grossen Adressen (ueber 1.000 BTC)
+wuerden einsammeln (Folge 085 via CryptoQuant, Folge 092 via Glassnode).
+Zwischen beiden Aussagen stieg Bitcoin von 59.000 auf 71.500 Dollar.
+
+Ob daraus ein Signal wird, ist damit NICHT gesagt: zwei Anekdoten sind kein
+Beleg, und wer die Behauptung im Nachhinein hoert, hat den Anstieg schon
+verpasst. Deshalb wird hier zuerst nur gemessen. Erst wenn genug eigene
+Historie da ist, laesst sich pruefen, ob Veraenderungen in der Wal-Kohorte
+dem Preis VORAUSLAUFEN oder ihm folgen.
+
+Gleiche Vorgehensweise wie beim dex_bundle-Sammler: vorwaerts sammeln auf
+sauberen eigenen Daten, statt einer erzaehlten Geschichte zu glauben.
+
+Glassnode kostet ab ~1.000 $/Monat und wurde deshalb schon einmal verworfen.
+Die hier verwendeten Quellen sind frei:
+  bitinfocharts  — Verteilung der Bestaende nach Groessenklasse
+  blockchain.info — Netzkennzahlen (frei, ohne Schluessel)
+
+    python3 btc_wale.py           # einmal messen und anhaengen
+    python3 btc_wale.py --zeigen  # bisherige Reihe anzeigen
+"""
+import os
+import re
+import sys
+import csv
+import json
+import urllib.request
+from datetime import datetime
+
+BASE = "/home/trading2025/trading_bot"
+sys.path.insert(0, BASE)
+DIR = os.path.join(BASE, "wale")
+CSV_PFAD = os.path.join(DIR, "btc_verteilung.csv")
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36")
+
+# Die beiden Klassen, um die es geht. "Wal" meint hier schlicht: Adresse mit
+# mehr als 1.000 BTC — dieselbe Grenze, die in der Folge genannt wird.
+KLASSEN = ["[1,000 - 10,000)", "[10,000 - 100,000)", "[100,000 - 1,000,000)"]
+
+
+def hole(url, versuche=3):
+    for _ in range(versuche):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            return urllib.request.urlopen(req, timeout=40).read().decode("utf-8", "ignore")
+        except Exception:
+            pass
+    return None
+
+
+def verteilung():
+    """Adressanzahl und Bestand je Groessenklasse."""
+    h = hole("https://bitinfocharts.com/top-100-richest-bitcoin-addresses.html")
+    if not h:
+        return {}
+    raus = {}
+    for zeile in re.findall(r"<tr[^>]*>(.*?)</tr>", h, re.S):
+        txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", zeile)).strip()
+        for k in KLASSEN:
+            if not txt.startswith(k):
+                continue
+            # "[1,000 - 10,000) 1934 0% (0%) 4,223,837 BTC $325,913,923,068 21.04% ..."
+            zahlen = re.findall(r"([\d,]+)\s*BTC", txt)
+            adr = re.search(re.escape(k) + r"\s+([\d,]+)", txt)
+            anteil = re.search(r"([\d.]+)%\s*\(", txt)
+            if zahlen and adr:
+                raus[k] = {
+                    "adressen": int(adr.group(1).replace(",", "")),
+                    "btc": int(zahlen[0].replace(",", "")),
+                    "anteil_pct": float(anteil.group(1)) if anteil else None,
+                }
+    return raus
+
+
+def preis():
+    d = hole("https://api.blockchain.info/ticker")
+    try:
+        return float(json.loads(d)["USD"]["last"])
+    except Exception:
+        return None
+
+
+def main():
+    os.makedirs(DIR, exist_ok=True)
+    if "--zeigen" in sys.argv:
+        if not os.path.exists(CSV_PFAD):
+            print("Noch keine Messungen."); return
+        r = list(csv.DictReader(open(CSV_PFAD)))
+        print("%d Messungen, %s bis %s" % (len(r), r[0]["zeit"][:10], r[-1]["zeit"][:10]))
+        print("%-12s %10s %12s %12s %10s" % ("Datum", "BTC-Preis", "Adr>1k", "BTC>1k", "Anteil %"))
+        for z in r[-14:]:
+            print("%-12s %10s %12s %12s %10s" % (z["zeit"][:10], z["preis"],
+                  z["adressen_ueber_1k"], z["btc_ueber_1k"], z["anteil_ueber_1k"]))
+        if len(r) >= 2:
+            d_btc = int(r[-1]["btc_ueber_1k"]) - int(r[0]["btc_ueber_1k"])
+            print("\nVeränderung seit Beginn: %+d BTC in Adressen über 1.000 BTC" % d_btc)
+            print("(Aussagekraft: erst ab mehreren Wochen — vorher ist das Rauschen.)")
+        return
+
+    v = verteilung()
+    if not v:
+        print("[WALE] Verteilung nicht abrufbar — nichts geschrieben.")
+        return
+    adr = sum(x["adressen"] for x in v.values())
+    btc = sum(x["btc"] for x in v.values())
+    anteil = sum(x["anteil_pct"] or 0 for x in v.values())
+    p = preis()
+
+    neu = not os.path.exists(CSV_PFAD)
+    with open(CSV_PFAD, "a", newline="") as f:
+        w = csv.writer(f)
+        if neu:
+            w.writerow(["zeit", "preis", "adressen_ueber_1k", "btc_ueber_1k",
+                        "anteil_ueber_1k"] +
+                       [s for k in KLASSEN for s in ("adr_" + k[1:6].strip(), "btc_" + k[1:6].strip())])
+        w.writerow([datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    round(p) if p else "", adr, btc, round(anteil, 2)] +
+                   [v.get(k, {}).get(s, "") for k in KLASSEN for s in ("adressen", "btc")])
+    print("[WALE] %s | Preis %s $ | %d Adressen über 1.000 BTC halten %s BTC (%.2f %% des Bestands)"
+          % (datetime.now().strftime("%d.%m %H:%M"), round(p) if p else "?", adr,
+             "{:,}".format(btc).replace(",", "."), anteil))
+
+
+if __name__ == "__main__":
+    main()

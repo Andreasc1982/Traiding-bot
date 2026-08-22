@@ -1,0 +1,206 @@
+{
+ "hoechste_id": 53,
+ "folgen": [
+  {
+   "id": 28,
+   "folge": "S01E01",
+   "titel": "Keine Flashboys",
+   "datum": "03.03.26",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/28"
+  },
+  {
+   "id": 29,
+   "folge": "S01E02",
+   "titel": "Lernen durch Schmerz",
+   "datum": "10.03.26",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/29"
+  },
+  {
+   "id": 30,
+   "folge": "S01E03",
+   "titel": "Fibonacci was?",
+   "datum": "17.03.26",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/30"
+  },
+  {
+   "id": 31,
+   "folge": "S01E04",
+   "titel": "Shit Happens",
+   "datum": "18.03.2026",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/31"
+  },
+  {
+   "id": 32,
+   "folge": "S01E05",
+   "titel": "Pauls erster Hebel",
+   "datum": "24.03.2026",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/32"
+  },
+  {
+   "id": 33,
+   "folge": "S01E06",
+   "titel": "200 zu 50",
+   "datum": "31.02.2026",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/33"
+  },
+  {
+   "id": 34,
+   "folge": "S01E07",
+   "titel": "Risk-off für zwei Wochen",
+   "datum": "07.04.2026",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/34"
+  },
+  {
+   "id": 35,
+   "folge": "S01E08",
+   "titel": "Japanisches Dilemma",
+   "datum": "14.04.2026",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/35"
+  },
+  {
+   "id": 36,
+   "folge": "S01E09",
+   "titel": "Geheimnis des Tradings",
+   "datum": "21.04.2026",
+   "frei": true,
+   "link": "https://blockzocker.com/watch/36"
+  },
+  {
+   "id": 38,
+   "folge": "S01E11",
+   "titel": "Solana um 6 Uhr",
+   "datum": "05.05.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/38/trailer"
+  },
+  {
+   "id": 39,
+   "folge": "S01E12",
+   "titel": "Wähle Deine Rendite",
+   "datum": "12.05.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/39/trailer"
+  },
+  {
+   "id": 40,
+   "folge": "S01E13",
+   "titel": "Magische 4.44",
+   "datum": "19.05.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/40/trailer"
+  },
+  {
+   "id": 41,
+   "folge": "S01E14",
+   "titel": "Wir rennen keinem Markt hinterher — aber kaufen trotzdem",
+   "datum": "26.05.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/41/trailer"
+  },
+  {
+   "id": 42,
+   "folge": "S01E15",
+   "titel": "Wenns in der Zeitung steht, ist es vorbei",
+   "datum": "02.06.26",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/42/trailer"
+  },
+  {
+   "id": 43,
+   "folge": "S01E16",
+   "titel": "Erschlagen von Optionen",
+   "datum": "09.06.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/43/trailer"
+  },
+  {
+   "id": 44,
+   "folge": "S01E17",
+   "titel": "Kurze Strangulation",
+   "datum": "16.06.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/44/trailer"
+  },
+  {
+   "id": 45,
+   "folge": "S01E18",
+   "titel": "A call is a put and a put is a call",
+   "datum": "22.06.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/45/trailer"
+  },
+  {
+   "id": 46,
+   "folge": "S01E19",
+   "titel": "Schmerzhafter Steuergewinn",
+   "datum": "30.06.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/46/trailer"
+  },
+  {
+   "id": 47,
+   "folge": "S01E20",
+   "titel": "Nicht nach unten gucken",
+   "datum": "07.07.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/47/trailer"
+  },
+  {
+   "id": 48,
+   "folge": "S01E21",
+   "titel": "Sommerliche Bullenfalle",
+   "datum": "14.07.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/48/trailer"
+  },
+  {
+   "id": 49,
+   "folge": "S01E22",
+   "titel": "Angespannt im Retail",
+   "datum": "21.07.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/49/trailer"
+  },
+  {
+   "id": 50,
+   "folge": "S01E23",
+   "titel": "Euroflaschen billiger",
+   "datum": "28.07.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/50/trailer"
+  },
+  {
+   "id": 51,
+   "folge": "S01E24",
+   "titel": "Aschenbrenners dünnes Ende",
+   "datum": "04.08.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/51/trailer"
+  },
+  {
+   "id": 52,
+   "folge": "S01E25",
+   "titel": "Erstes Zucken",
+   "datum": "11.08.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/52/trailer"
+  },
+  {
+   "id": 53,
+   "folge": "S01E26",
+   "titel": "Aggressiv ohne Daytrade",
+   "datum": "18.08.2026",
+   "frei": false,
+   "link": "https://blockzocker.com/watch/53/trailer"
+  }
+ ],
+ "letzter_lauf": "2026-08-21 21:29"
+}

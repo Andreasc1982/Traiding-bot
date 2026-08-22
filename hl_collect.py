@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""Misst laufend die echten Handelskosten auf Hyperliquid. Read-only, kein Konto.
+
+Anlass: Die Kostenrechnung vom 22.08.2026 zeigte, dass der Edge des crypto_bot
+nur ueberlebt, wenn der Roundtrip unter ~67 bp bleibt. Hyperliquid lag in einer
+EINZELNEN Momentaufnahme bei 13-24 bp — das reicht als Grundlage nicht.
+Gemessen werden deshalb ueber Zeit: Spread, Slippage bei drei Ordergroessen und
+die Funding-Rate je Coin.
+
+BEWUSSTE ENTSCHEIDUNGEN (aus frueheren Fehlern):
+
+  Takt 5 Minuten, nicht 15 Sekunden. Fuer Kostenmediane reicht das; der
+  dydx-Sammler erzeugt mit 15 s und 20 Maerkten ~260 MB im Monat. Nicht feiner
+  sammeln, als die Frage es verlangt.
+
+  Monatsdateien statt einer wachsenden Datei — begrenzt das Wachstum von selbst.
+
+  Heartbeat wird bei JEDEM Zyklus geschrieben, auch wenn nichts Auffaelliges
+  passiert. Sonst kann die Funktionspruefung einen stillen Ausfall nicht von
+  "gerade nichts zu melden" unterscheiden (Lehre aus bz_watch).
+
+  Jede JSON-Datei atomar ueber tmp + os.replace — das Dashboard liest parallel
+  (Lehre aus dem Risk-Agent-Fehlalarm: halb geschriebene Datei = Parse-Fehler).
+
+  Fehler werden gezaehlt und im Heartbeat ausgewiesen, nicht still verschluckt.
+
+  Singleton-Lock: eine zweite Instanz beendet sich selbst.
+
+    python3 hl_collect.py            # Dauerbetrieb
+    python3 hl_collect.py --einmal   # ein Durchlauf, zum Pruefen
+"""
+import os
+import sys
+import csv
+import json
+import time
+import urllib.request
+from datetime import datetime
+
+BASE = "/home/trading2025/trading_bot"
+sys.path.insert(0, BASE)
+try:
+    import health
+except Exception:
+    health = None
+
+API = "https://api.hyperliquid.xyz/info"
+DIR = os.path.join(BASE, "hl")
+HEARTBEAT = os.path.join(DIR, "heartbeat.json")
+DASH_JSON = os.path.join(DIR, "hl_dashboard.json")
+POLL_SEC = 300                      # 5 Minuten
+GROESSEN = [180, 500, 1000]         # unser Median-Einsatz und zwei Skalierungen
+HALTE_H = 28                        # mittlere Haltedauer des crypto_bot
+BREAK_EVEN_BP = 67.0                # ab hier frisst die Ausfuehrung den Edge
+
+# Die 20 Coins des crypto_bot. Micro-Preis-Memes laufen als 1000er-Kontrakte.
+MAERKTE = {
+    "BTC": "BTC", "ETH": "ETH", "SOL": "SOL", "XRP": "XRP", "AVAX": "AVAX",
+    "LINK": "LINK", "LTC": "LTC", "ADA": "ADA", "DOT": "DOT", "UNI": "UNI",
+    "AAVE": "AAVE", "ARB": "ARB", "POL": "POL", "RENDER": "RENDER",
+    "DOGE": "DOGE", "SHIB": "kSHIB", "PEPE": "kPEPE", "WIF": "WIF",
+    "BONK": "kBONK", "TRUMP": "TRUMP",
+}
+TAKER_BP = 9.0                      # 0,045 % je Seite = 9 bp Roundtrip
+MAKER_BP = 3.0                      # 0,015 % je Seite
+
+
+def post(body, timeout=25):
+    """Alle Netzaufrufe mit hartem Timeout — haengende Anfragen haben hier
+    schon einmal einen ganzen Bot blockiert."""
+    req = urllib.request.Request(
+        API, data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8", "ignore"))
+
+
+def atomar(pfad, obj):
+    tmp = pfad + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, pfad)
+
+
+def slippage(asks, usd, mid):
+    """Aufschlag ueber dem Mittelkurs, den eine Marktorder dieser Groesse zahlt."""
+    rest = usd
+    for lvl in asks:
+        p = float(lvl["px"])
+        wert = p * float(lvl["sz"])
+        rest -= min(rest, wert)
+        if rest <= 0:
+            return (p / mid - 1) * 100
+    return None                      # Buch zu duenn — ehrlich als None
+
+
+def monatsdatei():
+    return os.path.join(DIR, "kosten_%s.csv" % datetime.now().strftime("%Y-%m"))
+
+
+def runde():
+    """Ein Durchlauf ueber alle Maerkte. Gibt (zeilen, fehler) zurueck."""
+    funding = {}
+    try:
+        meta, ctxs = post({"type": "metaAndAssetCtxs"})
+        namen = [a["name"] for a in meta["universe"]]
+        funding = {n: float(c.get("funding", 0)) for n, c in zip(namen, ctxs)}
+    except Exception as e:
+        print("[HL] Funding nicht abrufbar: %s" % str(e)[:80])
+
+    zeit = datetime.now().strftime("%Y-%m-%d %H:%M")
+    zeilen, fehler = [], 0
+    for coin, markt in MAERKTE.items():
+        try:
+            ob = post({"type": "l2Book", "coin": markt})
+            bids, asks = ob["levels"][0], ob["levels"][1]
+            if not bids or not asks:
+                fehler += 1
+                continue
+            ba, bb = float(asks[0]["px"]), float(bids[0]["px"])
+            mid = (ba + bb) / 2
+            spread_bp = (ba - bb) / mid * 10000
+            slips = [slippage(asks, g, mid) for g in GROESSEN]
+            tiefe = sum(float(a["px"]) * float(a["sz"]) for a in asks)
+            f_h = funding.get(markt, 0.0)
+            # Gesamtkosten eines Roundtrips: Slippage beide Seiten + Gebuehr + Funding
+            s180 = slips[0]
+            roundtrip = (2 * s180 * 100 + TAKER_BP + max(f_h, 0) * HALTE_H * 10000
+                         if s180 is not None else None)
+            zeilen.append({
+                "zeit": zeit, "coin": coin, "markt": markt, "mid": mid,
+                "spread_bp": round(spread_bp, 3),
+                "slip180_bp": round(s180 * 100, 3) if s180 is not None else "",
+                "slip500_bp": round(slips[1] * 100, 3) if slips[1] is not None else "",
+                "slip1000_bp": round(slips[2] * 100, 3) if slips[2] is not None else "",
+                "tiefe_usd": round(tiefe),
+                "funding_h_pct": round(f_h * 100, 6),
+                "roundtrip_bp": round(roundtrip, 2) if roundtrip is not None else "",
+            })
+            time.sleep(0.12)          # freundlich zur fremden Schnittstelle
+        except Exception as e:
+            fehler += 1
+            print("[HL] %s: %s" % (coin, str(e)[:70]))   # nie still verschlucken
+    return zeilen, fehler
+
+
+def schreiben(zeilen):
+    if not zeilen:
+        return
+    pfad = monatsdatei()
+    neu = not os.path.exists(pfad)
+    with open(pfad, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(zeilen[0].keys()))
+        if neu:
+            w.writeheader()
+        w.writerows(zeilen)
+
+
+def dashboard_bauen():
+    """Fasst alle Monatsdateien zu Medianen je Coin zusammen."""
+    import statistics as st
+    werte = {}
+    for f in sorted(os.listdir(DIR)):
+        if not (f.startswith("kosten_") and f.endswith(".csv")):
+            continue
+        for r in csv.DictReader(open(os.path.join(DIR, f))):
+            c = r["coin"]
+            d = werte.setdefault(c, {"spread": [], "slip180": [], "slip1000": [],
+                                     "rt": [], "fund": [], "tiefe": []})
+            for feld, ziel in (("spread_bp", "spread"), ("slip180_bp", "slip180"),
+                               ("slip1000_bp", "slip1000"), ("roundtrip_bp", "rt"),
+                               ("funding_h_pct", "fund"), ("tiefe_usd", "tiefe")):
+                try:
+                    d[ziel].append(float(r[feld]))
+                except (ValueError, KeyError):
+                    pass
+    raus = []
+    for c, d in werte.items():
+        if not d["spread"]:
+            continue
+        med_rt = st.median(d["rt"]) if d["rt"] else None
+        raus.append({
+            "coin": c, "markt": MAERKTE.get(c, c), "n": len(d["spread"]),
+            "spread_bp": round(st.median(d["spread"]), 2),
+            "slip180_bp": round(st.median(d["slip180"]), 3) if d["slip180"] else None,
+            "slip1000_bp": round(st.median(d["slip1000"]), 3) if d["slip1000"] else None,
+            "roundtrip_bp": round(med_rt, 1) if med_rt is not None else None,
+            "funding_h_pct": round(st.median(d["fund"]), 5) if d["fund"] else None,
+            "funding_28h_pct": round(st.median(d["fund"]) * HALTE_H, 3) if d["fund"] else None,
+            "tiefe_usd": round(st.median(d["tiefe"])) if d["tiefe"] else None,
+            "tragbar": (med_rt is not None and med_rt < BREAK_EVEN_BP),
+        })
+    raus.sort(key=lambda x: (x["roundtrip_bp"] is None, x["roundtrip_bp"] or 0))
+    atomar(DASH_JSON, {
+        "zeit": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "break_even_bp": BREAK_EVEN_BP,
+        "taker_bp": TAKER_BP, "maker_bp": MAKER_BP, "halte_h": HALTE_H,
+        "coins": raus,
+        "tragbar_anzahl": sum(1 for x in raus if x["tragbar"]),
+        "gesamt": len(raus),
+    })
+
+
+def main():
+    os.makedirs(DIR, exist_ok=True)
+    einmal = "--einmal" in sys.argv
+
+    sperre = None
+    if health and not einmal:
+        sperre = health.acquire_singleton("hl_collect")
+        if sperre is None:
+            print("[HL] laeuft bereits — diese Instanz beendet sich.")
+            return
+        health.log("hl_collect", "START", "")
+
+    print("=" * 58)
+    print("  HYPERLIQUID-KOSTENSAMMLER")
+    print("  %d Maerkte | Takt %d s | Break-even %.0f bp" % (len(MAERKTE), POLL_SEC, BREAK_EVEN_BP))
+    print("=" * 58, flush=True)
+
+    n = 0
+    while True:
+        t0 = time.time()
+        zeilen, fehler = runde()
+        schreiben(zeilen)
+        try:
+            dashboard_bauen()
+        except Exception as e:
+            print("[HL] Dashboard: %s" % str(e)[:80])
+        n += 1
+        # Heartbeat IMMER — auch wenn nichts Besonderes war.
+        atomar(HEARTBEAT, {
+            "zeit": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "runden": n, "maerkte": len(zeilen), "fehler": fehler,
+            "datei": os.path.basename(monatsdatei()),
+        })
+        print("[HL] %s | %d Maerkte, %d Fehler (%.1f s)"
+              % (datetime.now().strftime("%H:%M"), len(zeilen), fehler, time.time() - t0),
+              flush=True)
+        if einmal:
+            return
+        time.sleep(max(POLL_SEC - (time.time() - t0), 30))
+
+
+if __name__ == "__main__":
+    main()

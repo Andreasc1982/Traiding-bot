@@ -139,5 +139,17 @@ screen -dmS fundament_dash bash -c '
   cd /home/trading2025/trading_bot/fundament &&
   python3 /home/trading2025/trading_bot/dash_server.py 8098 dashboard.html dashboard.json equity.csv > /tmp/fundament_dash.log 2>&1'
 
+# Hyperliquid-Kostensammler (read-only, kein Konto, kein Handel)
+screen -dmS hl bash -c '
+  cd /home/trading2025/trading_bot &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u hl_collect.py > /tmp/hl_collect.log 2>&1'
+
+# Hyperliquid-Kosten-Dashboard (Port 8099)
+screen -dmS hl_dash bash -c '
+  fuser -k 8099/tcp 2>/dev/null; sleep 1;
+  cd /home/trading2025/trading_bot/hl &&
+  python3 /home/trading2025/trading_bot/dash_server.py 8099 hl_dashboard.html hl_dashboard.json > /tmp/hl_dash.log 2>&1'
+
 echo "[start_all] All screen sessions launched."
 screen -list

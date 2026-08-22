@@ -15,7 +15,21 @@ BASE = "/home/trading2025/trading_bot"
 sys.path.insert(0, BASE)
 
 IDX = "https://indexer.dydx.trade/v4"
-MARKETS = ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "DOGE-USD"]
+# Erweitert 2026-08-22 von 5 auf alle 20 Coins des crypto_bot.
+#
+# Anlass: Die Kostenrechnung zeigte, dass der Edge des Bots in den kleineren
+# Alt-Coins sitzt (t = 3,03) und nicht in BTC/ETH/SOL (t = 1,75). Ob er dort
+# handelbar ist, entscheidet allein der Spread — und den kannten wir nur fuer
+# diese fuenf. Eine Momentaufnahme um 00:30 ergab fuer LINK 356 bp, fuer BTC
+# aber 4,8 bp, wo der 28-Tage-Median bei 0,6 bp liegt: Faktor 8 daneben.
+# Einzelmessungen zur duennen Stunde taugen also nicht — es braucht Mediane.
+#
+# Takt bleibt 15 s. Das sind 20 statt 5 Anfragen je Runde an einen oeffentlichen
+# Indexer; bei Bedarf POLL_SEC erhoehen, nicht die Marktliste kuerzen.
+MARKETS = ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "AVAX-USD", "LINK-USD",
+           "LTC-USD", "ADA-USD", "DOT-USD", "UNI-USD", "AAVE-USD", "ARB-USD",
+           "POL-USD", "RENDER-USD", "DOGE-USD", "SHIB-USD", "PEPE-USD",
+           "WIF-USD", "BONK-USD", "TRUMP-USD"]
 POLL_SEC = 15
 OUT_DIR = os.path.join(BASE, "dydx")
 LOG = os.path.join(OUT_DIR, "imbalance_log.csv")

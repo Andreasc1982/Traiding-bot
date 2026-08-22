@@ -49,9 +49,20 @@ SYS_ALERT_COOLDOWN = 3600   # seconds between repeated system-health alerts
 
 # No-trades alert: fire if neither bot has traded in this many hours.
 # Only fires when bots are running and not risk-halted.
-NO_TRADES_HOURS        = 8      # hours of silence before alerting
+#
+# Schwelle 21.08.2026 von 8 h auf 24 h angehoben, Wiederholung von 2 h auf 12 h.
+# Grund (an 30 Tagen / 172 Trades nachgerechnet): Handelspausen ueber 8 h sind
+# der Normalfall — Naechte, Wochenenden, ruhige Maerkte. Bei 8 h feuerten
+# ~104 Meldungen je 30 Tage, praktisch alle unbegruendet; bei 24 h bleiben 2
+# Faelle uebrig. Ein Alarm, der staendig ohne Anlass kommt, wird ignoriert und
+# schuetzt dann auch im Ernstfall nicht mehr.
+#
+# Der Gesundheitszustand haengt NICHT an dieser Meldung: ein haengender Bot
+# faellt vorher ueber check_stale() (15 min) und den Watchdog im Bot selbst auf.
+# Diese Meldung ist der langsame Rueckfall, kein Erstmelder.
+NO_TRADES_HOURS        = 24     # hours of silence before alerting
 NO_TRADES_MIN_HISTORY  = 3      # don't alert if combined trade history < this (fresh start)
-NO_TRADES_COOLDOWN     = 7200   # seconds (2h) between repeated no-trades alerts
+NO_TRADES_COOLDOWN     = 43200  # seconds (12h) between repeated no-trades alerts
 SKIP_ANALYSIS_COOLDOWN = 14400  # seconds (4h) between skip-analysis reports
 
 # -- Bot / service definitions ------------------------------------------------
@@ -100,6 +111,31 @@ BOTS = {
             "python3 /home/trading2025/trading_bot/dash_server.py 8098 "
             "dashboard.html dashboard.json equity.csv "
             "> /tmp/fundament_dash.log 2>&1"
+        ),
+    },
+    # Diese beiden Eintraege muessen mit start_all.sh uebereinstimmen — sonst
+    # startet der Watchdog sie nach einem Crash mit einer anderen Whitelist neu
+    # als der Reboot. Genau diese Drift hat am 22.07. gestoppte Bots wiederbelebt.
+    "hl": {
+        "name":         "Hyperliquid-Kostensammler",
+        "session":      "hl",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u hl_collect.py > /tmp/hl_collect.log 2>&1"
+        ),
+    },
+    "hl_dash": {
+        "name":         "Hyperliquid-Kosten-Dashboard :8099",
+        "session":      "hl_dash",
+        "trading_only": False,
+        "cmd": (
+            "fuser -k 8099/tcp 2>/dev/null; sleep 1; "
+            "cd /home/trading2025/trading_bot/hl && "
+            "python3 /home/trading2025/trading_bot/dash_server.py 8099 "
+            "hl_dashboard.html hl_dashboard.json "
+            "> /tmp/hl_dash.log 2>&1"
         ),
     },
     "insider_dash": {
@@ -515,6 +551,61 @@ def disk_info(path="/"):
     except Exception:
         return None, None
 
+VERLAUF_CSV = "/home/trading2025/trading_bot/agents/system_verlauf.csv"
+VERLAUF_ALLE_N = 5        # normalerweise nur jeden 5. Zyklus schreiben
+VERLAUF_SOFORT_AB = 50.0  # ab dieser CPU-Last jeden Zyklus schreiben
+
+
+def verlauf_schreiben(cpu, ram, disk_pct, zyklus):
+    """Dauerhafte Lastkurve — die Luecke, die alle bisherigen Alarme unauswertbar liess.
+
+    Der Alarm feuert erst ab 85 %, und `cpu_percent()` misst nur 0,5 s je Minute:
+    eine kurze Spitze wird schlicht verpasst. Deshalb hier zusaetzlich die
+    **Lastdurchschnitte** des Kernels (1/5/15 min) — die sind kumulativ und
+    koennen nicht zwischen zwei Messungen durchrutschen.
+
+    Geschrieben wird alle 5 Minuten; ab 50 % CPU jede Minute, damit eine Spitze
+    in voller Aufloesung dokumentiert ist statt als einzelner Punkt.
+    """
+    try:
+        if cpu is None:
+            return
+        if not (zyklus % VERLAUF_ALLE_N == 0 or cpu >= VERLAUF_SOFORT_AB):
+            return
+        l1, l5, l15 = os.getloadavg()
+        neu = not os.path.exists(VERLAUF_CSV)
+        with open(VERLAUF_CSV, "a") as f:
+            if neu:
+                f.write("zeit,cpu,ram,disk,last1,last5,last15\n")
+            f.write("%s,%s,%s,%s,%.2f,%.2f,%.2f\n" % (
+                datetime.now().strftime("%Y-%m-%d %H:%M"), cpu, ram,
+                disk_pct if disk_pct is not None else "", l1, l5, l15))
+    except Exception as e:
+        print("[VERLAUF] " + str(e))   # nie den Monitor mitreissen
+
+
+def top_prozesse(n=3):
+    """Die n CPU-hungrigsten Prozesse als Klartextzeilen.
+
+    Wird nur im Alarmfall aufgerufen (nicht im Minutentakt) — `ps` kostet sonst
+    unnoetig Last auf einem Geraet, dessen Auslastung man gerade misst.
+    """
+    try:
+        out = subprocess.run(
+            ["ps", "-eo", "pcpu,rss,args", "--sort=-pcpu"],
+            capture_output=True, text=True, timeout=10).stdout.splitlines()[1:n + 1]
+    except Exception:
+        return ""
+    zeilen = []
+    for z in out:
+        teile = z.split(None, 2)
+        if len(teile) < 3:
+            continue
+        pcpu, rss, args = teile
+        zeilen.append("  %s%% CPU, %d MB — %s" % (pcpu, int(rss) / 1024, args[:60]))
+    return "\n".join(zeilen)
+
+
 def system_health(force_print=False):
     global _last_sys_alert
     try:
@@ -533,7 +624,19 @@ def system_health(force_print=False):
 
         cooldown_ok = (time.time() - _last_sys_alert) > SYS_ALERT_COOLDOWN
         if alerts and cooldown_ok:
-            tg("⚠️ SYSTEM WARNUNG:\n" + "\n".join(alerts))
+            # Wer war schuld? Ohne diese Angabe ist der Alarm im Nachhinein
+            # nicht auswertbar — man weiss dann nur DASS es eng war, nie WOMIT.
+            schuldige = top_prozesse()
+            tg("⚠️ SYSTEM WARNUNG:\n" + "\n".join(alerts)
+               + ("\n\nGrösste Verbraucher:\n" + schuldige if schuldige else ""))
+            # Dauerhaft festhalten: /tmp/monitor.log wird bei jedem Neustart
+            # ueberschrieben und beim Reboot geloescht — bisher ueberlebte KEIN
+            # System-Alarm irgendwo ausser in Telegram. health_log.csv wird
+            # naechtlich nach GitHub gesichert.
+            if health:
+                health.log("monitor", "SYS_ALERT",
+                           " | ".join(alerts).replace("\n", " ")
+                           + (" || " + schuldige.replace("\n", " ; ") if schuldige else ""))
             _last_sys_alert = time.time()
 
         return cpu, ram, disk_pct, disk_free
@@ -837,7 +940,8 @@ def run():
             check_skip_analysis()
 
             # 4) System health -- prints every cycle; Telegram only on threshold breach + cooldown
-            system_health()
+            _cpu, _ram, _disk, _ = system_health()
+            verlauf_schreiben(_cpu, _ram, _disk, cycle)
 
             # 5) Security: auth log + suspicious processes
             check_auth_log()

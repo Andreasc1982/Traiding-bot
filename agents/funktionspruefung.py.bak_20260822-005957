@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""Taegliche Funktionspruefung — prueft, ob das System wirklich arbeitet,
+nicht nur ob Prozesse laufen.
+
+Der Monitor-Agent bewacht die Screen-Sessions im Minutentakt. Diese Pruefung
+deckt die Luecken darueber: Dashboards ueber HTTP erreichbar, Daten frisch,
+Cron-Jobs tatsaechlich gelaufen, Platte/Speicher/Netz in Ordnung.
+
+Meldet per Telegram NUR bei Abweichung (und einmal, wenn sich eine Abweichung
+wieder erledigt hat) — kein Laerm, wenn alles laeuft.
+
+Aufruf:
+    python3 funktionspruefung.py           # still, meldet nur Abweichungen
+    python3 funktionspruefung.py --immer   # meldet auch bei "alles in Ordnung"
+    python3 funktionspruefung.py --kein-tg # nur Konsole, kein Telegram
+"""
+import csv
+import json
+import os
+import shutil
+import socket
+import subprocess
+import sys
+import urllib.request
+from datetime import datetime, timedelta
+
+BASE = "/home/trading2025/trading_bot"
+sys.path.insert(0, BASE)
+sys.path.insert(0, os.path.join(BASE, "agents"))
+
+try:
+    from config import config
+except Exception:
+    config = {}
+
+TELEGRAM_TOKEN   = config.get("telegram_bot_token", "")
+TELEGRAM_CHAT_ID = config.get("telegram_chat_id", "")
+
+STATUS_JSON = os.path.join(BASE, "agents", "funktionspruefung.json")
+LOG_CSV     = os.path.join(BASE, "agents", "funktionspruefung_log.csv")
+
+IMMER  = "--immer" in sys.argv
+KEINTG = "--kein-tg" in sys.argv
+
+MO_FR = {0, 1, 2, 3, 4}
+TAEGL = {0, 1, 2, 3, 4, 5, 6}
+
+# -- Was geprueft wird --------------------------------------------------------
+
+# Dashboards: Port -> Klartextname
+DASHBOARDS = {
+    8080: "Super-Bot",
+    8081: "Crypto",
+    8097: "Insider-Depot",
+    8098: "Fundament",
+}
+
+# Laufende Bots schreiben ihr Dashboard staendig -> darf nie alt sein
+LIVE_DATEIEN = [
+    ("Super-Bot Dashboard", "dashboard.json", 25),
+    ("Crypto Dashboard", "crypto/crypto_dashboard.json", 25),
+]
+
+# Cron-Jobs: (Name, Wochentage, Stunde, Minute, Datei die danach frisch sein muss,
+#             Kulanz in Minuten). Bewusst KEINE /tmp-Logs als Nachweis — die sind
+# nach jedem Neustart weg und wuerden Fehlalarme ausloesen. Nur dauerhafte
+# Ausgaben, die der Job selbst schreibt.
+CRONS = [
+    ("Insider-Papierdepot", MO_FR, 23, 15, "sec/insider_dashboard.json", 90),
+    ("Fundament-Bot",       MO_FR, 22, 40, "fundament/dashboard.json",   90),
+    ("SEC-Tagesabruf",      MO_FR, 22, 30, "sec/live_state.json",        90),
+    ("Score-Protokoll",     TAEGL,   -1, 7, "agents/score_history.csv",  75),
+    ("Telegram-Auswertung", TAEGL,  8, 15, "tg/watch_state.json",        90),
+    ("Nachrichten-Auswertung", TAEGL, 8, 20, "ng/ng_state.json",         90),
+    ("Blockzocker-Wächter",    TAEGL, 8, 25, "bz/bz_state.json",         90),
+    ("BTC-Wal-Sammler",        TAEGL, 8, 30, "wale/btc_verteilung.csv",  90),
+]
+
+PLATTE_WARN = 85    # % belegt
+RAM_WARN    = 90    # %
+
+
+def tg(msg):
+    if KEINTG or not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    try:
+        data = json.dumps({"chat_id": TELEGRAM_CHAT_ID, "text": msg}).encode()
+        req = urllib.request.Request(
+            "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage",
+            data=data, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=15).read()
+    except Exception as e:
+        print("[TG] Fehler:", e)
+
+
+def letzter_faelliger_lauf(wochentage, stunde, minute, jetzt):
+    """Wann haette der Job zuletzt laufen muessen? stunde=-1 heisst stuendlich."""
+    if stunde == -1:
+        k = jetzt.replace(minute=minute, second=0, microsecond=0)
+        return k if k <= jetzt else k - timedelta(hours=1)
+    for i in range(0, 11):
+        tag = (jetzt - timedelta(days=i)).date()
+        if tag.weekday() not in wochentage:
+            continue
+        k = datetime.combine(tag, datetime.min.time()).replace(hour=stunde, minute=minute)
+        if k <= jetzt:
+            return k
+    return None
+
+
+def alter_min(pfad, jetzt):
+    p = pfad if pfad.startswith("/") else os.path.join(BASE, pfad)
+    if not os.path.exists(p):
+        return None
+    return (jetzt - datetime.fromtimestamp(os.path.getmtime(p))).total_seconds() / 60.0
+
+
+def screen_sessions():
+    try:
+        out = subprocess.run(["screen", "-ls"], capture_output=True, text=True, timeout=15).stdout
+    except Exception:
+        return set()
+    namen = set()
+    for zeile in out.splitlines():
+        teil = zeile.strip().split("\t")[0]
+        if "." in teil and teil.split(".")[0].isdigit():
+            namen.add(teil.split(".", 1)[1])
+    return namen
+
+
+def erwartete_sessions():
+    try:
+        from monitor_agent import BOTS
+        return list(BOTS.keys())
+    except Exception:
+        return ["trading", "crypto", "dashboard", "dashboard_crypto",
+                "insider_dash", "fundament_dash", "risk", "monitor", "tgrouter"]
+
+
+def http_ok(port):
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:%d/" % port, timeout=8) as r:
+            return r.status, None
+    except Exception as e:
+        return None, str(e)[:60]
+
+
+def ram_prozent():
+    try:
+        werte = {}
+        with open("/proc/meminfo") as f:
+            for zeile in f:
+                k, v = zeile.split(":", 1)
+                werte[k] = float(v.strip().split()[0])
+        gesamt, frei = werte.get("MemTotal", 0), werte.get("MemAvailable", 0)
+        return round((gesamt - frei) / gesamt * 100, 1) if gesamt else None
+    except Exception:
+        return None
+
+
+def netz_adressen():
+    try:
+        out = subprocess.run(["ip", "-br", "-4", "addr"], capture_output=True,
+                             text=True, timeout=10).stdout
+    except Exception:
+        return {}
+    adr = {}
+    for zeile in out.splitlines():
+        teile = zeile.split()
+        if len(teile) >= 3 and teile[0] != "lo":
+            adr[teile[0]] = teile[2].split("/")[0]
+    return adr
+
+
+def internet_ok():
+    try:
+        socket.create_connection(("api.telegram.org", 443), timeout=8).close()
+        return True
+    except Exception:
+        return False
+
+
+# -- Pruefung -----------------------------------------------------------------
+
+def pruefen():
+    jetzt = datetime.now()
+    ergebnisse = []   # (ok, bereich, text)
+
+    def add(ok, bereich, text):
+        ergebnisse.append({"ok": ok, "bereich": bereich, "text": text})
+
+    # 1) Screen-Sessions
+    laufend = screen_sessions()
+    fehlend = [s for s in erwartete_sessions() if s not in laufend]
+    add(not fehlend, "Sessions",
+        "alle %d laufen" % len(erwartete_sessions()) if not fehlend
+        else "TOT: " + ", ".join(fehlend))
+
+    # 2) Dashboards ueber HTTP
+    for port, name in DASHBOARDS.items():
+        status, fehler = http_ok(port)
+        add(status == 200, "Dashboard",
+            "%s :%d %s" % (name, port,
+                           "erreichbar" if status == 200
+                           else "NICHT erreichbar (%s)" % (fehler or "HTTP %s" % status)))
+
+    # 3) Frische der laufenden Bots
+    for name, pfad, max_min in LIVE_DATEIEN:
+        a = alter_min(pfad, jetzt)
+        if a is None:
+            add(False, "Daten", "%s: Datei fehlt (%s)" % (name, pfad))
+        else:
+            add(a <= max_min, "Daten",
+                "%s: %d min alt%s" % (name, a, "" if a <= max_min
+                                      else " (erlaubt %d)" % max_min))
+
+    # 4) Sind die Cron-Jobs gelaufen?
+    for name, tage, std, min_, pfad, kulanz in CRONS:
+        faellig = letzter_faelliger_lauf(tage, std, min_, jetzt)
+        if faellig is None:
+            continue
+        a = alter_min(pfad, jetzt)
+        if a is None:
+            add(False, "Cron", "%s: keine Ausgabe (%s fehlt)" % (name, pfad))
+            continue
+        soll_alter = (jetzt - faellig).total_seconds() / 60.0 + kulanz
+        ok = a <= soll_alter
+        add(ok, "Cron", "%s: zuletzt %s%s" % (
+            name, datetime.fromtimestamp(
+                os.path.getmtime(pfad if pfad.startswith("/") else os.path.join(BASE, pfad))
+            ).strftime("%d.%m %H:%M"),
+            "" if ok else "  ← faellig war %s" % faellig.strftime("%d.%m %H:%M")))
+
+    # 5) System
+    try:
+        gesamt, benutzt, frei = shutil.disk_usage("/")
+        belegt = round(benutzt / gesamt * 100)
+        add(belegt < PLATTE_WARN, "System",
+            "Platte %d%% belegt (frei %.0f GB)" % (belegt, frei / 1e9))
+    except Exception as e:
+        add(False, "System", "Platte nicht lesbar: %s" % e)
+
+    r = ram_prozent()
+    if r is not None:
+        add(r < RAM_WARN, "System", "RAM %.0f%% belegt" % r)
+
+    # 6) Netz
+    adr = netz_adressen()
+    add(bool(adr), "Netz",
+        "  ".join("%s %s" % (k, v) for k, v in adr.items()) if adr
+        else "keine IP-Adresse gefunden")
+    add(internet_ok(), "Netz",
+        "Internet erreichbar" if internet_ok() else "KEIN Internet")
+
+    return jetzt, ergebnisse
+
+
+def schreiben(pfad, text):
+    tmp = pfad + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.replace(tmp, pfad)
+
+
+def main():
+    jetzt, ergebnisse = pruefen()
+    abweichungen = [e for e in ergebnisse if not e["ok"]]
+
+    print("Funktionspruefung " + jetzt.strftime("%d.%m.%Y %H:%M"))
+    for e in ergebnisse:
+        print(("  OK   " if e["ok"] else "  FEHLER ") + e["bereich"] + ": " + e["text"])
+    print("-> %d Pruefungen, %d Abweichungen" % (len(ergebnisse), len(abweichungen)))
+
+    # vorheriger Stand, um Erholung einmalig zu melden
+    vorher_abw = None
+    try:
+        with open(STATUS_JSON) as f:
+            vorher_abw = len(json.load(f).get("abweichungen", []))
+    except Exception:
+        pass
+
+    schreiben(STATUS_JSON, json.dumps({
+        "zeit": jetzt.strftime("%Y-%m-%d %H:%M:%S"),
+        "anzahl": len(ergebnisse),
+        "abweichungen": [e["bereich"] + ": " + e["text"] for e in abweichungen],
+        "checks": ergebnisse,
+    }, indent=1, ensure_ascii=False))
+
+    neu = not os.path.exists(LOG_CSV)
+    with open(LOG_CSV, "a", newline="") as f:
+        w = csv.writer(f)
+        if neu:
+            w.writerow(["zeit", "pruefungen", "abweichungen", "details"])
+        w.writerow([jetzt.strftime("%Y-%m-%d %H:%M"), len(ergebnisse), len(abweichungen),
+                    " | ".join(e["bereich"] + ": " + e["text"] for e in abweichungen)])
+
+    if abweichungen:
+        tg("⚠️ Funktionspruefung " + jetzt.strftime("%d.%m %H:%M") + "\n\n"
+           + "\n".join("• " + e["bereich"] + ": " + e["text"] for e in abweichungen)
+           + "\n\n(%d von %d Pruefungen auffaellig)" % (len(abweichungen), len(ergebnisse)))
+    elif vorher_abw:
+        tg("✅ Funktionspruefung " + jetzt.strftime("%d.%m %H:%M")
+           + ": wieder alles in Ordnung (%d Pruefungen)." % len(ergebnisse))
+    elif IMMER:
+        tg("✅ Funktionspruefung " + jetzt.strftime("%d.%m %H:%M")
+           + ": alles in Ordnung (%d Pruefungen)." % len(ergebnisse))
+
+    return 1 if abweichungen else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -88,10 +88,59 @@ def prices(syms):
                 cl = [float(x) for x in sub["Close"].values]
                 vo = [float(x) for x in sub["Volume"].values]
                 adv = st.median([c * v for c, v in zip(cl[-60:], vo[-60:])])
-                out[s] = {"price": cl[-1], "adv": adv}
+                # Das DATUM des verwendeten Kursbalkens mitgeben. Ohne diese
+                # Angabe kann der Aufrufer nicht erkennen, dass er einen alten
+                # Kurs bekommen hat — genau so entstand am 27.07.2026 ein
+                # Depot, dessen Einstiegskurse vom 23.07. stammten (zwei
+                # Handelstage zu frueh, im steigenden Markt also zu billig).
+                out[s] = {"price": cl[-1], "adv": adv,
+                          "stand": str(sub.index[-1].date())}
             except Exception:
                 continue
     return out
+
+
+def tg(msg):
+    """Kurze Telegram-Meldung. Fehler hier duerfen den Lauf nie abbrechen."""
+    import urllib.request
+    try:
+        sys.path.insert(0, "/home/trading2025/trading_bot")
+        from config import config
+    except Exception:
+        return                      # ohne Schluessel eben still
+    tok = config.get("telegram_bot_token", "")
+    chat = config.get("telegram_chat_id", "")
+    if not (tok and chat):
+        return
+    try:
+        daten = json.dumps({"chat_id": chat, "text": msg,
+                            "parse_mode": "HTML"}).encode()
+        req = urllib.request.Request(
+            "https://api.telegram.org/bot" + tok + "/sendMessage",
+            data=daten, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=15).read()
+    except Exception as e:
+        print("[TG] " + str(e))
+
+
+def kurse_pruefen(px, heute, max_alter_tage=3):
+    """Sind die Kursdaten frisch genug zum Handeln?
+
+    Rueckgabe (frisch, aeltester_stand). Drei Kalendertage: ein Montagslauf mit
+    Freitagsschluss (3 Tage) bleibt erlaubt, der Fehlerfall vom 27.07.2026
+    (Kurse vom 23.07., also 4 Tage) wird geblockt. Groesser darf die Grenze
+    nicht werden, sonst faengt sie genau den Fall nicht, fuer den sie da ist.
+    """
+    staende = [v.get("stand") for v in px.values() if v.get("stand")]
+    if not staende:
+        return True, None          # alte Kursquelle ohne Datum: nicht blockieren
+    aeltester = min(staende)
+    try:
+        d1 = datetime.strptime(aeltester, "%Y-%m-%d")
+        d2 = datetime.strptime(heute, "%Y-%m-%d")
+        return (d2 - d1).days <= max_alter_tage, aeltester
+    except Exception:
+        return True, aeltester
 
 
 def signal_candidates(ins, topn=200):
@@ -186,6 +235,23 @@ def main():
         cands = signal_candidates(ins)
         need += [t for t, _ in cands]
     px = prices(need) if need else {}
+
+    # ── Frischepruefung der Kurse ────────────────────────────────────────
+    # Ein Kauf zu einem veralteten Kurs erzeugt einen Scheingewinn: gekauft
+    # wird zum Stand von vorgestern, bewertet zum Stand von heute. In einem
+    # steigenden Markt sieht das Depot dadurch besser aus, als es ist.
+    # Gleiche Fehlerklasse wie beim Contrarian-Clone und beim DEX-Papierhandel.
+    frisch, alt = kurse_pruefen(px, today)
+    if due and cands and not frisch:
+        print("[KURSE] Umschichtung verschoben — Kursdaten sind vom "
+              + str(alt) + ", nicht von " + str(today) + ".")
+        tg("⚠️ <b>Insider-Depot: Umschichtung verschoben</b>"
+           "\n\nDie Kursdaten sind vom " + str(alt) + ", der Handelstag wäre "
+           + str(today) + " gewesen."
+           "\n\nEin Kauf zu veralteten Kursen erzeugt einen Scheingewinn — deshalb"
+           " wurde nichts gekauft. Beim nächsten Lauf mit frischen Daten wird"
+           " nachgeholt.")
+        due = False
 
     if due and cands and data_ok:
         elig = [(v, t) for t, v in cands
@@ -294,4 +360,7 @@ def main():
           % (dash["zeit"], equity, dash["rendite_pct"], len(rows)))
 
 
-main()
+if __name__ == "__main__":
+    # Schutz gegen versehentliches Ausfuehren: ohne diesen Block startete ein
+    # blosses `import insider_paper` den kompletten Depotlauf.
+    main()

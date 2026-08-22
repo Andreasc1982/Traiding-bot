@@ -53,12 +53,15 @@ DASHBOARDS = {
     8081: "Crypto",
     8097: "Insider-Depot",
     8098: "Fundament",
+    8099: "Hyperliquid-Kosten",
 }
 
 # Laufende Bots schreiben ihr Dashboard staendig -> darf nie alt sein
 LIVE_DATEIEN = [
     ("Super-Bot Dashboard", "dashboard.json", 25),
     ("Crypto Dashboard", "crypto/crypto_dashboard.json", 25),
+    # Sammelt alle 5 min; 20 min Toleranz deckt eine ausgefallene Runde ab.
+    ("Hyperliquid-Sammler", "hl/heartbeat.json", 20),
 ]
 
 # Cron-Jobs: (Name, Wochentage, Stunde, Minute, Datei die danach frisch sein muss,
@@ -72,6 +75,8 @@ CRONS = [
     ("Score-Protokoll",     TAEGL,   -1, 7, "agents/score_history.csv",  75),
     ("Telegram-Auswertung", TAEGL,  8, 15, "tg/watch_state.json",        90),
     ("Nachrichten-Auswertung", TAEGL, 8, 20, "ng/ng_state.json",         90),
+    ("Blockzocker-Wächter",    TAEGL, 8, 25, "bz/bz_state.json",         90),
+    ("BTC-Wal-Sammler",        TAEGL, 8, 30, "wale/btc_verteilung.csv",  90),
 ]
 
 PLATTE_WARN = 85    # % belegt
