@@ -1,5 +1,5 @@
 {
- "zeit": "2026-08-22 01:00:00",
+ "zeit": "2026-08-22 09:00:01",
  "anzahl": 21,
  "abweichungen": [],
  "checks": [
@@ -36,7 +36,7 @@
   {
    "ok": true,
    "bereich": "Daten",
-   "text": "Super-Bot Dashboard: 1 min alt"
+   "text": "Super-Bot Dashboard: 0 min alt"
   },
   {
    "ok": true,
@@ -46,7 +46,7 @@
   {
    "ok": true,
    "bereich": "Daten",
-   "text": "Hyperliquid-Sammler: 1 min alt"
+   "text": "Hyperliquid-Sammler: 4 min alt"
   },
   {
    "ok": true,
@@ -66,37 +66,37 @@
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Score-Protokoll: zuletzt 22.08 00:07"
+   "text": "Score-Protokoll: zuletzt 22.08 08:07"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Telegram-Auswertung: zuletzt 21.08 08:15"
+   "text": "Telegram-Auswertung: zuletzt 22.08 08:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Nachrichten-Auswertung: zuletzt 21.08 21:17"
+   "text": "Nachrichten-Auswertung: zuletzt 22.08 08:20"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Blockzocker-Wächter: zuletzt 21.08 21:29"
+   "text": "Blockzocker-Wächter: zuletzt 22.08 08:25"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "BTC-Wal-Sammler: zuletzt 21.08 22:33"
+   "text": "BTC-Wal-Sammler: zuletzt 22.08 08:30"
   },
   {
    "ok": true,
    "bereich": "System",
-   "text": "Platte 18% belegt (frei 48 GB)"
+   "text": "Platte 19% belegt (frei 48 GB)"
   },
   {
    "ok": true,
    "bereich": "System",
-   "text": "RAM 19% belegt"
+   "text": "RAM 20% belegt"
   },
   {
    "ok": true,

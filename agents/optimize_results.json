@@ -1,28 +1,40 @@
 {
-  "generated_at": "2026-08-16T00:41:15.618760",
+  "generated_at": "2026-08-23T00:06:54.709430",
   "trade_analysis": {
     "super": {
       "bot": "Super Bot",
-      "total": 8,
-      "wins": 1,
-      "losses": 7,
-      "win_rate": 12.5,
-      "total_profit": -2.0,
-      "avg_profit": -0.25,
-      "false_signal_rate": 25.0,
+      "total": 15,
+      "wins": 4,
+      "losses": 11,
+      "win_rate": 26.7,
+      "total_profit": 17.0,
+      "avg_profit": 1.13,
+      "false_signal_rate": 20.0,
       "exit_reasons": {
-        "stop_loss": 2,
+        "stop_loss": 3,
         "trail_stop": 0,
-        "psar_stop": 4,
+        "psar_stop": 6,
         "spike": 0,
-        "other": 2
+        "other": 6
       },
       "by_symbol": {
-        "PAVE": {
-          "trades": 2,
-          "profit": 1.0,
+        "XLE": {
+          "trades": 3,
+          "profit": 9.0,
           "wins": 1,
           "stop_losses": 1
+        },
+        "GLD": {
+          "trades": 1,
+          "profit": 8.0,
+          "wins": 1,
+          "stop_losses": 0
+        },
+        "XOP": {
+          "trades": 1,
+          "profit": 2.0,
+          "wins": 1,
+          "stop_losses": 0
         },
         "IBIT": {
           "trades": 4,
@@ -30,48 +42,108 @@
           "wins": 0,
           "stop_losses": 0
         },
-        "XLE": {
-          "trades": 2,
-          "profit": -3.0,
+        "PAVE": {
+          "trades": 3,
+          "profit": 0.0,
+          "wins": 1,
+          "stop_losses": 2
+        },
+        "XLK": {
+          "trades": 1,
+          "profit": 0.0,
           "wins": 0,
-          "stop_losses": 1
+          "stop_losses": 0
+        },
+        "SLX": {
+          "trades": 1,
+          "profit": -1.0,
+          "wins": 0,
+          "stop_losses": 0
+        },
+        "ITA": {
+          "trades": 1,
+          "profit": -1.0,
+          "wins": 0,
+          "stop_losses": 0
         }
       }
     },
     "crypto": {
       "bot": "Crypto Bot",
-      "total": 226,
-      "wins": 91,
-      "losses": 135,
-      "win_rate": 40.3,
-      "total_profit": -223.36,
-      "avg_profit": -0.99,
-      "false_signal_rate": 32.3,
+      "total": 307,
+      "wins": 146,
+      "losses": 161,
+      "win_rate": 47.6,
+      "total_profit": 128.71,
+      "avg_profit": 0.42,
+      "false_signal_rate": 29.6,
       "exit_reasons": {
-        "stop_loss": 73,
-        "trail_stop": 20,
-        "psar_stop": 50,
+        "stop_loss": 91,
+        "trail_stop": 50,
+        "psar_stop": 67,
         "spike": 42,
-        "other": 83
+        "other": 99
       },
       "by_symbol": {
+        "POL/USD": {
+          "trades": 14,
+          "profit": 91.39,
+          "wins": 11,
+          "stop_losses": 2
+        },
+        "LINK/USD": {
+          "trades": 16,
+          "profit": 35.24,
+          "wins": 7,
+          "stop_losses": 2
+        },
+        "DOT/USD": {
+          "trades": 19,
+          "profit": 30.800000000000004,
+          "wins": 12,
+          "stop_losses": 6
+        },
+        "ETH/USD": {
+          "trades": 20,
+          "profit": 28.879999999999995,
+          "wins": 9,
+          "stop_losses": 5
+        },
+        "ARB/USD": {
+          "trades": 28,
+          "profit": 13.510000000000002,
+          "wins": 14,
+          "stop_losses": 9
+        },
         "AVAX/USD": {
           "trades": 16,
           "profit": 12.309999999999999,
           "wins": 8,
           "stop_losses": 2
         },
-        "POL/USD": {
-          "trades": 4,
-          "profit": 9.870000000000001,
-          "wins": 3,
-          "stop_losses": 0
+        "LTC/USD": {
+          "trades": 18,
+          "profit": 12.210000000000003,
+          "wins": 10,
+          "stop_losses": 3
+        },
+        "RENDER/USD": {
+          "trades": 12,
+          "profit": 8.96,
+          "wins": 6,
+          "stop_losses": 3
         },
         "SHIB/USD": {
-          "trades": 1,
-          "profit": 1.76,
-          "wins": 1,
+          "trades": 2,
+          "profit": 4.4,
+          "wins": 2,
           "stop_losses": 0
+        },
+        "SOL/USD": {
+          "trades": 18,
+          "profit": 2.0900000000000016,
+          "wins": 9,
+          "stop_losses": 6
         },
         "BONK/USD": {
           "trades": 1,
@@ -79,95 +151,53 @@
           "wins": 1,
           "stop_losses": 0
         },
+        "XRP/USD": {
+          "trades": 35,
+          "profit": -1.6500000000000004,
+          "wins": 14,
+          "stop_losses": 12
+        },
+        "TRUMP/USD": {
+          "trades": 4,
+          "profit": -1.8800000000000001,
+          "wins": 2,
+          "stop_losses": 1
+        },
         "DOGE/USD": {
           "trades": 2,
           "profit": -2.92,
           "wins": 1,
           "stop_losses": 1
         },
-        "TRUMP/USD": {
-          "trades": 3,
-          "profit": -3.62,
-          "wins": 1,
-          "stop_losses": 1
-        },
-        "LINK/USD": {
-          "trades": 11,
-          "profit": -7.789999999999999,
+        "WIF/USD": {
+          "trades": 8,
+          "profit": -5.909999999999999,
           "wins": 3,
-          "stop_losses": 1
+          "stop_losses": 2
         },
-        "DOT/USD": {
-          "trades": 13,
-          "profit": -8.22,
+        "AAVE/USD": {
+          "trades": 17,
+          "profit": -21.209999999999997,
+          "wins": 7,
+          "stop_losses": 8
+        },
+        "ADA/USD": {
+          "trades": 26,
+          "profit": -22.0,
+          "wins": 8,
+          "stop_losses": 13
+        },
+        "BTC/USD": {
+          "trades": 19,
+          "profit": -23.790000000000003,
           "wins": 8,
           "stop_losses": 4
         },
-        "LTC/USD": {
-          "trades": 12,
-          "profit": -8.87,
-          "wins": 6,
-          "stop_losses": 3
-        },
-        "ADA/USD": {
-          "trades": 21,
-          "profit": -9.040000000000003,
-          "wins": 6,
-          "stop_losses": 10
-        },
-        "WIF/USD": {
-          "trades": 6,
-          "profit": -9.909999999999998,
-          "wins": 2,
-          "stop_losses": 2
-        },
-        "RENDER/USD": {
-          "trades": 7,
-          "profit": -15.45,
-          "wins": 2,
-          "stop_losses": 2
-        },
-        "ETH/USD": {
-          "trades": 14,
-          "profit": -16.830000000000002,
-          "wins": 4,
-          "stop_losses": 4
-        },
-        "SOL/USD": {
-          "trades": 14,
-          "profit": -19.32,
-          "wins": 6,
-          "stop_losses": 5
-        },
-        "ARB/USD": {
-          "trades": 25,
-          "profit": -20.189999999999998,
-          "wins": 11,
-          "stop_losses": 9
-        },
-        "BTC/USD": {
-          "trades": 18,
-          "profit": -23.970000000000002,
-          "wins": 7,
-          "stop_losses": 4
-        },
-        "XRP/USD": {
-          "trades": 16,
-          "profit": -28.7,
-          "wins": 4,
-          "stop_losses": 5
-        },
         "UNI/USD": {
-          "trades": 29,
-          "profit": -35.75999999999999,
-          "wins": 13,
+          "trades": 32,
+          "profit": -33.47999999999999,
+          "wins": 14,
           "stop_losses": 12
-        },
-        "AAVE/USD": {
-          "trades": 13,
-          "profit": -38.47,
-          "wins": 4,
-          "stop_losses": 8
         }
       }
     }
@@ -175,37 +205,25 @@
   "indicator_analysis": {
     "super": {
       "bot": "Super Bot",
-      "skips_analyzed": 10,
-      "block_rates": {
-        "ma_ok": 100.0,
-        "macd_ok": 100.0,
-        "st_ok": 100.0,
-        "ichi_ok": 100.0,
-        "psar_ok": 100.0,
-        "rsi_ok": 0.0,
-        "obv_ok": 0.0
-      },
-      "top_blocker": "ma_ok",
-      "top_block_rate": 100.0,
-      "avg_rsi_at_skip": 44.1,
-      "rsi_near_threshold_pct": 0.0
+      "skips_analyzed": 0,
+      "note": "No recent skip data in dashboard"
     },
     "crypto": {
       "bot": "Crypto Bot",
       "skips_analyzed": 10,
       "block_rates": {
-        "st_ok": 80.0,
-        "ichi_ok": 80.0,
-        "ma_ok": 70.0,
-        "macd_ok": 70.0,
-        "psar_ok": 70.0,
+        "macd_ok": 60.0,
+        "st_ok": 60.0,
         "obv_ok": 60.0,
-        "rsi_ok": 0.0
+        "rsi_ok": 40.0,
+        "ma_ok": 40.0,
+        "ichi_ok": 40.0,
+        "psar_ok": 20.0
       },
-      "top_blocker": "st_ok",
-      "top_block_rate": 80.0,
-      "avg_rsi_at_skip": 46.0,
-      "rsi_near_threshold_pct": 0.0
+      "top_blocker": "macd_ok",
+      "top_block_rate": 60.0,
+      "avg_rsi_at_skip": 55.5,
+      "rsi_near_threshold_pct": 40.0
     }
   },
   "grid_search": {
@@ -230,41 +248,41 @@
       "is_len": 252,
       "oos_len": 63,
       "candidate_oos": {
-        "return_pct": -0.29,
+        "return_pct": -0.26,
         "win_rate": 35.2,
-        "drawdown": 3.13,
-        "sortino": 0.373,
+        "drawdown": 3.1,
+        "sortino": 0.374,
         "sl_rate": 8.6,
-        "trades": 161
+        "trades": 160
       },
       "recommended_oos": {
-        "return_pct": 0.1,
-        "win_rate": 35.9,
-        "drawdown": 2.89,
-        "sortino": 0.365,
-        "sl_rate": 21.6,
-        "trades": 172
+        "return_pct": 0.16,
+        "win_rate": 36.0,
+        "drawdown": 2.86,
+        "sortino": 0.369,
+        "sl_rate": 21.7,
+        "trades": 171
       },
       "baseline_oos": {
-        "return_pct": 0.1,
-        "win_rate": 35.9,
-        "drawdown": 2.89,
-        "sortino": 0.365,
-        "sl_rate": 21.6,
-        "trades": 172
+        "return_pct": 0.16,
+        "win_rate": 36.0,
+        "drawdown": 2.86,
+        "sortino": 0.369,
+        "sl_rate": 21.7,
+        "trades": 171
       },
       "walkforward_oos": {
-        "return_pct": -0.32,
-        "win_rate": 33.77,
-        "drawdown": 2.75,
+        "return_pct": -0.26,
+        "win_rate": 33.85,
+        "drawdown": 2.72,
         "sortino": 0.34,
-        "sl_rate": 7.47
+        "sl_rate": 7.53
       },
       "improvement": {
-        "return_delta": -0.39,
-        "wr_delta": -0.7,
+        "return_delta": -0.42,
+        "wr_delta": -0.8,
         "dd_delta": 0.24,
-        "sortino_delta": 0.008
+        "sortino_delta": 0.005
       },
       "stability": {
         "rsi_threshold": {
@@ -332,15 +350,15 @@
           "oos_best": {
             "return_pct": -2.19,
             "win_rate": 40.7,
-            "drawdown": 4.54,
-            "sortino": -0.211,
+            "drawdown": 4.55,
+            "sortino": -0.213,
             "sl_rate": 3.9,
             "trades": 56
           },
           "oos_base": {
-            "return_pct": -1.87,
+            "return_pct": -1.88,
             "win_rate": 40.1,
-            "drawdown": 4.52,
+            "drawdown": 4.53,
             "sortino": -0.137,
             "sl_rate": 22.4,
             "trades": 70
@@ -363,20 +381,20 @@
             "take_profit": 12.0
           },
           "oos_best": {
-            "return_pct": -0.7,
-            "win_rate": 28.4,
-            "drawdown": 2.32,
-            "sortino": 0.549,
-            "sl_rate": 4.8,
-            "trades": 38
+            "return_pct": -0.57,
+            "win_rate": 28.7,
+            "drawdown": 2.19,
+            "sortino": 0.554,
+            "sl_rate": 5.0,
+            "trades": 37
           },
           "oos_base": {
-            "return_pct": -0.3,
-            "win_rate": 36.7,
-            "drawdown": 3.15,
-            "sortino": 0.647,
-            "sl_rate": 18.1,
-            "trades": 46
+            "return_pct": -0.17,
+            "win_rate": 37.0,
+            "drawdown": 3.02,
+            "sortino": 0.651,
+            "sl_rate": 18.3,
+            "trades": 45
           }
         },
         {
@@ -429,18 +447,18 @@
             "take_profit": 12.0
           },
           "oos_best": {
-            "return_pct": -1.76,
+            "return_pct": -1.65,
             "win_rate": 23.3,
             "drawdown": 2.6,
-            "sortino": -0.412,
+            "sortino": -0.401,
             "sl_rate": 20.0,
             "trades": 21
           },
           "oos_base": {
-            "return_pct": -1.42,
+            "return_pct": -1.31,
             "win_rate": 22.3,
             "drawdown": 2.25,
-            "sortino": -0.415,
+            "sortino": -0.404,
             "sl_rate": 30.7,
             "trades": 22
           }
@@ -734,22 +752,21 @@
         }
       ],
       "symbols_tested": [
-        "BTC/USD",
-        "DOGE/USD",
-        "LINK/USD",
-        "LTC/USD",
         "SHIB/USD",
         "XRP/USD",
+        "BTC/USD",
+        "DOGE/USD",
+        "SOL/USD",
         "AVAX/USD",
         "ETH/USD",
-        "SOL/USD"
+        "LINK/USD",
+        "LTC/USD"
       ]
     }
   },
   "suggestions": [
     "<b>Super Bot</b>: Grid-Pick (Supertrend-Mult: 4.0 \u2192 3.5, Stop-Loss: 2.0% \u2192 4.0%) brachte KEINE belastbare OOS-Verbesserung (Sortino +0.01) \u2014 Baseline behalten, Overfitting vermieden",
-    "<b>Super Bot</b>: MA20 blockiert 100% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen",
     "<b>Crypto Bot</b>: Grid-Pick (RSI-Threshold: 65 \u2192 75, Stop-Loss: 2.5% \u2192 5.0%) brachte KEINE belastbare OOS-Verbesserung (Sortino +0.00) \u2014 Baseline behalten, Overfitting vermieden",
-    "<b>Crypto Bot</b>: Supertrend blockiert 80% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen"
+    "<b>Crypto Bot</b>: MACD blockiert 60% aller analysierten Skips \u2014 Schwellenwert ggf. lockern oder Daten pr\u00fcfen"
   ]
 }

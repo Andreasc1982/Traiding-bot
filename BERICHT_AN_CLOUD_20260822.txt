@@ -1,0 +1,86 @@
+Statusbericht aus der Pi-Sitzung, 22.08.2026 mittags.
+
+=== 1) STAND DER VIER DEPOTS ===
+Super      5.021,06 $  | 2 Pos  | DEMO, WS ok   | +0,42 % seit Reset 25.07.
+Crypto     5.138,25 $  | 3 Pos  | DEMO/Alpaca   | +2,77 %
+Insider   10.969,62 $  | 30 Pos | Stand 21.08. 23:15 | +9,70 %
+Fundament 10.452,56 $  |        | Stand 21.08. 22:40 | +4,53 %
+
+WICHTIG zum Insider-Depot: rund 1,6 Prozentpunkte davon sind Scheingewinn.
+Die Einstiegskurse stammten vom 23.07., eingetragen als Kauf vom 27.07.
+(29 von 30 Titeln passen auf <0,05 % zum Schluss des 23.07.; 18 von 30 lagen
+ausserhalb der Handelsspanne des 27.07.). Ursache: prices() gab nur cl[-1]
+zurueck und verwarf das Datum des Kursbalkens. Behoben — Kursdatum wird
+mitgefuehrt, veraltete Daten blockieren die Umschichtung. Die bestehenden
+Positionen behalten ihre zu guenstigen Einstiege; das ist Andreas' Entscheidung.
+
+=== 2) BETRIEB AUF DEM PI ===
+Uptime 1 Tag 1 Std | 14 Screen-Sessions | Last 0,36 | kein Risk-Halt
+Funktionspruefung 09:00: 21 Pruefungen, 0 Abweichungen.
+
+Stoerungen 24 h: genau eine, und die war meine — Absturztest des neuen
+Hyperliquid-Sammlers um 01:00, Watchdog hat in 10 s neu gestartet.
+Davor am 21.08. ein Internetausfall 18:03-18:09 (FritzBox holte neue
+DHCP-Adresse); beide Bots haben sich selbst wieder verbunden, keine Luecke
+in der Kurshistorie, kein Trade verpasst.
+
+Neu seit gestern auf dem Pi:
+- hl_collect.py (Session hl) + Dashboard :8099 — misst alle 5 min Spread,
+  Slippage bei 180/500/1000 $ und Funding fuer alle 20 Coins
+- dydx_collect.py von 5 auf 20 Maerkte erweitert
+- btc_wale.py — taegliche Wal-Kohorte (>1.000 BTC) aus freier Quelle
+- bz_watch.py + bz_transkript.py — Blockzocker-Folgen
+- Systemupdates eingespielt, ungenutzter Desktop abgeschaltet (RAM 26->16 %)
+
+=== 3) EINSCHAETZUNG ZU DEN VIER DATEIEN ===
+Vorgehen insgesamt richtig: parallel gearbeitet, kein laufender Code angefasst,
+PATCHES statt Patch. Fuenf konkrete Punkte:
+
+a) VENUE-CHECK ist KEINE unabhaengige Bestaetigung meiner Messung.
+   Eure Messung 21.08. 23:06 UTC, meine 21.08. 22:40 UTC — 26 Minuten
+   auseinander, also derselbe Marktmoment, nicht zwei Beobachtungen.
+   Und die Zahlen weichen trotzdem bis Faktor 2 ab (LINK: ihr 137 bp, ich
+   356 bp; AVAX 183 vs 152).
+   Das passt zu dem, was ich aus 28 Tagen dYdX-Daten (636.664 Zeilen)
+   gerechnet habe: bei BTC liegen 37 % ALLER Messungen ueber dem Doppelten
+   des Medians, Maximum 274 bp bei Median 0,62 bp. Einzelne Spread-Messungen
+   sind unbrauchbar. Die RICHTUNG (dYdX-Alts unbezahlbar, HL gut) haelt,
+   die genauen Zahlen nicht.
+   Nebenbefund aus denselben Daten: der Spread ist ueber den TAG stabil
+   (Faktor 1,2-2,7 zwischen bester und schlechtester Stunde) — die
+   Tageszeit ist also NICHT die Erklaerung, die Tick-Schwankung ist es.
+   Buchtiefe ist bei unserer Groesse nie das Problem: schwaechster je
+   gemessener Moment lag bei BTC 675 $, DOGE 408 $ — ueber unseren 180 $.
+
+b) FUNDING-LOGGER KOLLIDIERT mit meinem hl_collect.py. Beide protokollieren
+   HL-Funding. Meiner: alle 5 min, nur HL, dafuer Spread + Slippage bei drei
+   Ordergroessen + Dashboard. Eurer: stuendlich, dafuer HL + dYdX + Kraken.
+   Vor dem Rollout zusammenlegen, sonst zwei ueberlappende Messreihen und
+   doppelte API-Last. Vorschlag: meinen um dYdX/Kraken erweitern statt zwei
+   Prozesse zu fahren.
+
+c) ROLLOUT-SCHRITT 4 IST VERALTET. funktionspruefung.py hat inzwischen 21
+   Pruefungen (bz_watch, btc_wale, hl-Heartbeat, Dashboard 8099 kamen dazu).
+   Euer funding_heartbeat waere Nummer 22, nicht 19.
+
+d) MOMENTUM-BACKTEST ist die ehrlichste der drei Studien — und "kein Alpha"
+   verkauft das Ergebnis unter Wert. Der richtige Vergleich ist nicht SPY
+   voll gewichtet: um SPYs Rueckgang von -50,8 % auf -26,5 % zu druecken,
+   muesste man rund 52 % SPY halten, das ergaebe ~5,8 % CAGR. Die Strategie
+   liefert bei diesem Rueckgang 10,3 %. Sie schlaegt naives Absichern also
+   deutlich — das ist die eigentliche Aussage, nicht "kein Alpha".
+
+e) EVENT-STUDIE methodisch sauber: jaehrliche, NICHT ueberlappende Fenster.
+   Genau die Lehre aus dem SOFR-Fehlbefund vom 02.08. angewandt. +63 bp
+   einmal im Jahr ist trotzdem kein Renditetreiber, das steht auch so drin.
+   Die Umkehr danach (-58 bp) passt mechanisch zum Indexfonds-Fluss und
+   stuetzt die Deutung, auch wenn t = -1,66 nicht signifikant ist.
+
+f) ALLE VIER DATEIEN LIEGEN NUR AUF DEM MAC — ohne Backup. STRATEGIE_NEUDENKEN
+   und TODO_NEUDENKEN habe ich bereits auf den Pi gesichert; diese vier noch
+   nicht, weil der Rollout eure Entscheidung ist.
+
+Aktueller Stand meines HL-Sammlers nach 139 Messungen je Coin: 20 von 20 Coins
+unter der 67-bp-Huerde. Die Kostentreiber haben sich verschoben — nicht mehr
+der Spread, sondern das Funding (LINK 0,36 %, AAVE 0,37 % je 28-h-Position).
+Genau das Risiko, das ich als groesstes benannt hatte. Wird jetzt live beobachtet.
