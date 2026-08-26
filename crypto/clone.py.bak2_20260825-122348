@@ -1,0 +1,764 @@
+#!/usr/bin/env python3
+"""
+Clone-Bot — duenne Strategie-Variante, liest ALLE Marktdaten aus dem Gateway
+(/dev/shm/crypto_gw) statt selbst zu Alpaca zu verbinden. Alle Clones sehen
+identische Daten -> fairer Vergleich. Demo only (in-memory Balance, keine
+echten Orders), eigene State/Dashboard/Trades-Dateien, Telegram aus.
+
+Varianten:
+  A_baseline        : Momentum, MIT (Gateway-)Spikes, Memes, normale Schwelle
+  B_nospikes        : Momentum, OHNE Spikes
+  C_conservative    : Momentum, OHNE Spikes, OHNE Memes, strenger Einstieg
+  D_contrarian      : Mean-Reversion — kauft oversold (RSI<35 + am unteren BB) in Angst
+  E_moonshot        : Lotterie — Breakout-Entry, kein TP, Trailing 25%, harter Stop 18%
+  F_contrarian_vix28: Deep-Fear — kauft RSI<20 + Supertrend bullish NUR bei F&G<25
+                      (Crypto-Adaption des 10J-ETF-Backtests: RSI2<10 + VIX>28 → 80% Win)
+
+  G_core            : Momentum, OHNE Spikes/Memes/BTC/ETH — isoliert den Mid-Cap-Kern (Trade-Log-Erkenntnis)
+  H_contra_refined  : Contrarian MIT Supertrend-Bestaetigung (kauft oversold-UND-drehend, kein Messerfangen)
+                      — Daten-Fix fuer D: D hatte besten WR (54%) aber schlechteste Expectancy (avgLoss -$8.79)
+  G_big             : G_core-Strategie mit DOPPELTEM Einsatz (pos 12%, ATR-Budget 2%) auf MEXC-Execution
+  G_mexc            : G_core 1:1, aber MEXC-Execution — isoliert die Boersen-Achse (G_core -> G_mexc)
+  I_wide            : G_mexc + erweitertes Mid-Cap-Universum (ATOM/NEAR/OP/INJ/FIL) — mehr QUALIFIZIERTE
+                      Signale statt niedrigerer Messlatte (max_pos=8 war nie bindend, ~5 Pos typisch)
+
+MEXC-Modus ("mexc": True): Signale bleiben identisch (gleicher Gateway = fairer Vergleich),
+aber Execution ist echt-MEXC: Entry zum ASK, Exit/Bewertung zum BID (mexc_book.json, 5s),
+Fee 0.05% taker, Rest-Slippage 0.02%. Der reale Spread ist damit Teil der Simulation —
+Fee allein schmeichelt duennen Mid-Caps (ARB-Spread ~0.11% > 2x Fee).
+
+Usage: python3 clone.py <A_baseline|...|G_core|H_contra_refined|G_big|G_mexc|I_wide>
+"""
+import os, sys, json, time, threading
+from datetime import datetime
+
+BASE = "/home/trading2025/trading_bot"
+sys.path.insert(0, BASE)
+sys.path.insert(0, os.path.join(BASE, "crypto"))
+
+import crypto_bot
+from crypto_bot import CryptoBot, CRYPTO_MAIN, CRYPTO_MEME
+
+SHM       = "/dev/shm/crypto_gw"
+CLONE_DIR = os.path.join(BASE, "crypto", "clones")
+os.makedirs(CLONE_DIR, exist_ok=True)
+
+START_BALANCE = 5000.0    # entspricht dem echten Kapital-Maximum -> realistische Zahlen
+                          # (alle Clones gleich -> fairer %-Vergleich bleibt erhalten)
+
+VARIANTS = {
+    "A_baseline":          {"spikes": True,  "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8092},
+    "B_nospikes":          {"spikes": False, "memes": True,  "contrarian": False, "score_min": 0.1, "port": 8093},
+    "C_conservative":      {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.5, "port": 8094},
+    "D_contrarian":        {"spikes": False, "memes": True,  "contrarian": True,  "score_min": 0.1, "port": 8095},
+    # Lotterie / positive Schiefe: Breakout-Entry, KEIN TP, Trailing 25%, harter Stop 18%, Mini-Size
+    "E_moonshot":          {"spikes": False, "memes": True,  "contrarian": False, "moonshot": True,      "score_min": 0.1, "port": 8096},
+    # Deep-Fear Contrarian: RSI<20 + Supertrend bullish + F&G<25 (Extreme Fear)
+    # Crypto-Adaption des 10J-ETF-Backtests (VIX>28 = F&G<25, RSI2<10 ≈ RSI14<20)
+    "F_contrarian_vix28":  {"spikes": False, "memes": False, "contrarian": False, "fear_contrarian": True, "score_min": 0.1, "port": 8097},
+    # G_core: Trade-Log-Erkenntnisse umgesetzt — Momentum, OHNE Spikes/Memes UND ohne BTC/ETH
+    # (verlieren auf beiden Entry-Arten, -$228). Isoliert den Mid-Cap-Kern (RENDER/SOL/LINK/ADA/UNI/AAVE/ARB…).
+    "G_core":              {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1, "exclude": {"BTC/USD", "ETH/USD"}, "port": 8098},
+    # H_contra_refined: Daten-Fix fuer D — D hatte besten WR (54%) aber schlechteste Expectancy (-$2.30/Trade),
+    # weil avgLoss -$8.79 (Messer gefangen: oversold UND weiter fallend). Refined verlangt Supertrend==1
+    # (bullish = Umkehr hat BEGONNEN) -> kauft oversold-und-drehend, keine Memes. Ziel: avgLoss -> ~-$3.5 -> Plus.
+    "H_contra_refined":    {"spikes": False, "memes": False, "contrarian": True,  "refined": True, "score_min": 0.1, "port": 8099},
+    # F_maker (A3, 25.08.2026): B_nospikes 1:1, aber Entries als LIMIT-Order.
+    # Misst den Sofort-Hebel "Limit statt Market": halbe Gebuehr (0,16 % statt
+    # 0,26 % je Seite) gegen das Risiko verpasster Fills. Isoliert genau EINE
+    # Achse gegen B_nospikes — Signale, Universum, Groesse identisch.
+    # Port 8103: die Angabe "8098 ist frei" aus PATCHES_A1_A3.md stimmt nicht,
+    # dort laeuft das Fundament-Dashboard (8097 Insider, 8099 Hyperliquid).
+    "F_maker":             {"spikes": False, "memes": True,  "contrarian": False,
+                            "score_min": 0.1, "maker": True, "port": 8103},
+    # G_big: G_core-Strategie mit DOPPELTEM Einsatz (pos 6->12%, Risiko 1->2%) auf MEXC-Execution.
+    # Seit 2026-07-17 echte Bid/Ask-Fills statt nur 0.05%-Fee-Annahme (mexc-Flag).
+    "G_big":               {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
+                            "exclude": {"BTC/USD", "ETH/USD"}, "pos_size": 0.12, "risk_pct": 0.02,
+                            "mexc": True, "port": 8100},
+    # G_mexc: G_core 1:1 auf MEXC-Execution — Vergleichskette isoliert je EINE Achse:
+    #   G_core -> G_mexc  = Boerse (Kraken-Kosten vs MEXC ask/bid+0.05%)
+    #   G_mexc -> G_big   = Einsatzgroesse   |   G_mexc -> I_wide = Universum
+    "G_mexc":              {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
+                            "exclude": {"BTC/USD", "ETH/USD"}, "mexc": True, "port": 8101},
+    # I_wide: G_mexc + erweitertes Universum (Gateway liefert Bars/Scores fuer EXTRA via MEXC).
+    "I_wide":              {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
+                            "exclude": {"BTC/USD", "ETH/USD"}, "mexc": True,
+                            "universe_extra": True, "port": 8102},
+}
+
+# Muss mit gateway.EXTRA_UNIVERSE uebereinstimmen. Fuer alle Varianten OHNE
+# universe_extra werden diese Symbole excluded — sonst wuerden Alt-Clones die
+# neuen Gateway-Scores aufgreifen und das laufende Experiment veraendern.
+EXTRA_UNIVERSE = {"ATOM/USD", "NEAR/USD", "OP/USD", "INJ/USD", "FIL/USD"}
+
+# Maker-Modell (A3): Kraken 0,16 % maker vs 0,26 % taker je Seite.
+# NUR der Entry ist maker. Exits bleiben taker — ein Stop, der auf einen
+# Maker-Fill wartet, waere eine Luege im Risikomodell.
+MAKER_FEE   = 0.0016
+FILL_WINDOW = 120    # s; danach gilt die Limit-Order als verpasst
+
+MEXC_FEE  = 0.0005   # taker je Seite (beim Konto-Setup gegen echten Account verifizieren!)
+MEXC_SLIP = 0.0002   # Rest-Slippage (Latenz/Tiefe) — Spread steckt schon in ask/bid
+
+# Moonshot-Parameter (10J-Backtest 2026-06-18): Trailing schlaegt gedeckeltes TP 6.5x
+MOON_SIZE  = 0.03    # Mini-Wette 3% (Totalverlust einkalkuliert)
+MOON_HARD  = 0.18    # harter Stop -18%
+MOON_TRAIL = 0.25    # Trailing-Stop 25% vom Hoch, KEIN TP-Deckel
+MOON_MAX_HOURS = 72  # Zeit-Exit: feststeckende Wette nach 3 Tagen schliessen -> Slot frei (mehr At-Bats)
+
+
+def _read_json(path, default=None):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+
+def _read_shm(name, default=None):
+    try:
+        with open(os.path.join(SHM, name)) as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+
+class CloneBot(CryptoBot):
+    def __init__(self, variant):
+        if variant not in VARIANTS:
+            raise SystemExit("Unbekannte Variante: " + variant)
+        self.variant = variant
+        cfg = VARIANTS[variant]
+        self.cfg = cfg
+        # Vor super().__init__ setzen — get_price/close_position sind ueberschrieben
+        # und muessen die Flags schon kennen, falls der Parent-Init sie aufruft.
+        self._mexc = bool(cfg.get("mexc"))
+        self._mexc_bid, self._mexc_ask = {}, {}
+        state_p = os.path.join(CLONE_DIR, variant + "_state.json")
+        had_state = os.path.exists(state_p)
+        super().__init__(
+            state_path  =state_p,
+            dash_path   =os.path.join(CLONE_DIR, variant + "_dashboard.json"),
+            trades_path =os.path.join(CLONE_DIR, variant + "_trades.json"),
+            control_path=os.path.join(CLONE_DIR, variant + "_control.json"),
+        )
+        # Fresh clone (no prior state) starts at the fixed equal balance
+        if not had_state:
+            self.balance = START_BALANCE
+            self.start_balance = START_BALANCE
+        # Variant tuning ------------------------------------------------------
+        if not cfg["memes"]:
+            self.excluded_symbols = set(self.excluded_symbols) | set(CRYPTO_MEME)
+        if cfg.get("exclude"):
+            self.excluded_symbols = set(self.excluded_symbols) | set(cfg["exclude"])
+        if not cfg.get("universe_extra"):
+            self.excluded_symbols = set(self.excluded_symbols) | EXTRA_UNIVERSE
+        self._entry_score_min = cfg["score_min"]
+        if cfg.get("pos_size"): self.pos_size = cfg["pos_size"]   # Kapital-Einsatz-Test (G_big): groessere Positionen
+        if cfg.get("risk_pct"): self.risk_pct = cfg["risk_pct"]   # + hoeheres ATR-Risiko-Budget
+        if cfg.get("sim_fee") is not None: self.sim_fee = cfg["sim_fee"]
+        # MEXC-Execution: Entry@ask / Exit@bid aus mexc_book.json + Taker-Fee
+        if self._mexc:
+            self.sim_fee  = MEXC_FEE
+            self.sim_slip = MEXC_SLIP
+        self._consumed_spikes = set()
+        # Maker-Modus (A3) --------------------------------------------------
+        self._maker   = bool(cfg.get("maker"))
+        self._pending = {}          # symbol -> {"pos", "limit", "ts", "shares"}
+        self._maker_path = os.path.join(CLONE_DIR, variant + "_maker.json")
+        self._missed_fills = 0
+        self._maker_fills  = 0
+        if self._maker:
+            _m = _read_json(self._maker_path, {})
+            self._missed_fills = int(_m.get("missed_fills", 0))
+            self._maker_fills  = int(_m.get("maker_fills", 0))
+            print("[CLONE-" + variant + "] MAKER-Modus | Fenster " +
+                  str(FILL_WINDOW) + "s | Entry-Fee " + str(MAKER_FEE) +
+                  " | Exit-Fee " + str(self.sim_fee) +
+                  " | bisher " + str(self._maker_fills) + " Fills / " +
+                  str(self._missed_fills) + " verpasst")
+        print("[CLONE-" + variant + "] init | spikes=" + str(cfg["spikes"]) +
+              " memes=" + str(cfg["memes"]) + " contrarian=" + str(cfg["contrarian"]) +
+              " score_min=" + str(cfg["score_min"]) +
+              " | pos_size=" + str(self.pos_size) + " risk_pct=" + str(self.risk_pct) +
+              " sim_fee=" + str(self.sim_fee) + " mexc=" + str(self._mexc))
+
+    # ── Telegram aus ─────────────────────────────────────────────────────────
+    def send(self, msg, roh=False, **kw):
+        # Signatur MUSS der Basis folgen: crypto_bot.run() ruft send(..., roh=True).
+        # Fehlte hier bis 25.08.2026 und liess jeden Clone beim Start abstuerzen —
+        # unbemerkt, weil die Clones seit dem 26.07. abgeschaltet waren.
+        print("[CLONE-" + self.variant + "][TG] " + msg)
+
+    # ── Marktdaten aus dem Gateway statt eigenem WS ──────────────────────────
+    def start_websocket(self):
+        threading.Thread(target=self._shm_reader, daemon=True, name="shm-reader").start()
+        print("[CLONE-" + self.variant + "] liest Marktdaten aus " + SHM)
+
+    def _shm_reader(self):
+        """Replaces the WS thread: pull prices from gateway every 1s, run stop
+        checks on held positions, and (variant A) consume spike signals.
+        MEXC-Modus: mexc_book.json ueberschreibt ws_prices mit dem BID —
+        Bewertung + Stop-Checks laufen auf dem verkaufbaren Preis."""
+        while self.running:
+            try:
+                prices = _read_shm("prices.json", {})
+                if prices:
+                    self.ws_prices.update({k: float(v) for k, v in prices.items()})
+                    self.ws_connected = True
+                if self._mexc:
+                    raw = _read_shm("mexc_book.json", {})
+                    if raw and time.time() - raw.get("ts", 0) < 30:
+                        for sym, q in raw.get("book", {}).items():
+                            self._mexc_bid[sym] = q["bid"]
+                            self._mexc_ask[sym] = q["ask"]
+                            self.ws_prices[sym] = q["bid"]
+                        self.ws_connected = True
+                if prices or (self._mexc and self._mexc_bid):
+                    with self.positions_lock:
+                        held = list(self.positions.keys())
+                    for sym in held:
+                        p = self.ws_prices.get(sym)
+                        if p:
+                            if self.cfg.get("moonshot"):
+                                self._moonshot_check(sym, p)
+                            else:
+                                self._ws_check_price(sym, p)
+                    if self._maker:
+                        self._check_pending()
+                    if self.cfg["spikes"]:
+                        self._consume_spikes()
+                else:
+                    self.ws_connected = False
+            except Exception as e:
+                print("[CLONE-READER] " + str(e))
+            time.sleep(1)
+
+    # ── Maker-Execution (A3): Entry als Limit-Order ──────────────────────────
+    def trade(self, scores):
+        """Im Maker-Modus laeuft die Signal-Logik unveraendert (fairer Vergleich
+        zu B_nospikes), aber jede frisch angelegte Position wird sofort in eine
+        OFFENE Limit-Order umgewandelt: der Einsatz geht zurueck in die Balance,
+        gefuellt wird erst, wenn der Preis das Limit erreicht."""
+        if not self._maker:
+            return super().trade(scores)
+        with self.positions_lock:
+            vorher = set(self.positions)
+        super().trade(scores)
+        with self.positions_lock:
+            neu = [s for s in self.positions if s not in vorher]
+            for sym in neu:
+                pos = self.positions.pop(sym)
+                shares = pos["shares"]
+                fill   = pos["entry"]
+                # exakt zurueckbuchen, was der Basis-Kaufpfad abgezogen hat
+                # (fee_in im Dict ist gerundet — hier neu rechnen)
+                self.balance += shares * fill + shares * fill * self.sim_fee
+                # Der Basis-Pfad hat Slippage aufgeschlagen; eine Limit-Order
+                # zahlt sie nicht. Limit = der Preis, den das Signal sah.
+                limit = fill / (1.0 + self.sim_slip)
+                self._pending[sym] = {"pos": pos, "limit": limit,
+                                      "ts": time.time(), "shares": shares}
+                print("[CLONE-" + self.variant + "] LIMIT " + sym +
+                      " @ $" + str(round(limit, 6)) + " (" + str(FILL_WINDOW) +
+                      "s Fenster) | Bal $" + str(round(self.balance, 0)))
+        if neu:
+            self._save_state()
+
+    def _check_pending(self):
+        """Jeder 1s-Tick: fuellen, wenn der Preis das Limit erreicht; verwerfen,
+        wenn das Fenster abgelaufen ist. Die verpassten Entries SIND das
+        Messergebnis — ohne sie waere die Variante geschoent."""
+        if not self._pending:
+            return
+        jetzt = time.time()
+        gefuellt, verpasst = [], []
+        with self.positions_lock:
+            for sym, o in list(self._pending.items()):
+                preis = self.ws_prices.get(sym)
+                if preis is not None and preis <= o["limit"]:
+                    # Fill zum LIMIT, nicht zum Tick-Preis
+                    if sym in self.positions or len(self.positions) >= self.max_pos:
+                        self._pending.pop(sym)
+                        self._missed_fills += 1
+                        verpasst.append((sym, "Slot belegt"))
+                        continue
+                    shares = o["shares"]
+                    limit  = o["limit"]
+                    fee_in = shares * limit * MAKER_FEE
+                    if self.balance < shares * limit + fee_in:
+                        self._pending.pop(sym)
+                        self._missed_fills += 1
+                        verpasst.append((sym, "Balance zu klein"))
+                        continue
+                    self.balance -= shares * limit + fee_in
+                    pos = o["pos"]
+                    pos["entry"]       = limit
+                    pos["fee_in"]      = round(fee_in, 6)
+                    pos["highest"]     = limit
+                    pos["time"]        = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    pos["entry_ts"]    = jetzt          # A1 — Position beginnt beim FILL
+                    pos["einsatz_usd"] = round(shares * limit, 2)
+                    pos["maker"]       = True
+                    pos["wartezeit_s"] = round(jetzt - o["ts"], 1)
+                    self.positions[sym] = pos
+                    self._pending.pop(sym)
+                    self._maker_fills += 1
+                    gefuellt.append((sym, limit, pos["wartezeit_s"]))
+                elif jetzt - o["ts"] > FILL_WINDOW:
+                    self._pending.pop(sym)
+                    self._missed_fills += 1
+                    verpasst.append((sym, "Fenster abgelaufen"))
+        for sym, limit, wart in gefuellt:
+            print("[CLONE-" + self.variant + "] MAKER-FILL " + sym + " @ $" +
+                  str(round(limit, 6)) + " nach " + str(wart) + "s | Bal $" +
+                  str(round(self.balance, 0)))
+        for sym, grund in verpasst:
+            print("[CLONE-" + self.variant + "] MISSED_FILL " + sym +
+                  " (" + grund + ") | Quote " + self._missed_quote_str())
+        if gefuellt or verpasst:
+            self._save_maker()
+            self._save_state()
+
+    def _missed_quote_str(self):
+        ges = self._maker_fills + self._missed_fills
+        return (str(round(self._missed_fills / ges * 100, 1)) + "% (" +
+                str(self._missed_fills) + "/" + str(ges) + ")") if ges else "n/a"
+
+    def _save_maker(self):
+        try:
+            tmp = self._maker_path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump({"missed_fills": self._missed_fills,
+                           "maker_fills": self._maker_fills,
+                           "offen": len(self._pending),
+                           "stand": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
+            os.replace(tmp, self._maker_path)   # atomar — Dashboard liest parallel
+        except Exception as e:
+            print("[CLONE-" + self.variant + "] _save_maker: " + str(e))
+
+    def save_dashboard(self, scores):
+        """Basis-Dashboard schreiben, dann die Maker-Kennzahlen ergaenzen.
+        Die MISSED_FILL-Quote ist das Entscheidungskriterium (< 25 %) und
+        gehoert deshalb sichtbar ins Dashboard-JSON."""
+        super().save_dashboard(scores)
+        if not self._maker:
+            return
+        try:
+            d = _read_json(self._dash_path, None)
+            if d is None:
+                return
+            ges = self._maker_fills + self._missed_fills
+            d["maker"] = {
+                "fills": self._maker_fills,
+                "verpasst": self._missed_fills,
+                "quote_pct": round(self._missed_fills / ges * 100, 1) if ges else None,
+                "offene_orders": len(self._pending),
+                "fenster_s": FILL_WINDOW,
+                "entry_fee": MAKER_FEE,
+                "exit_fee": self.sim_fee,
+            }
+            tmp = self._dash_path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(d, f)
+            os.replace(tmp, self._dash_path)
+        except Exception as e:
+            print("[CLONE-" + self.variant + "] save_dashboard(maker): " + str(e))
+
+    # ── MEXC-Execution: Entries zum ASK, Exits zum BID ───────────────────────
+    def get_price(self, symbol):
+        """Entry-Preis. MEXC-Modus: ask (= was ein Kauf wirklich kostet).
+        ws_prices haelt den bid -> Kauf-Fill ask*(1+slip), Exit-Fill bid*(1-slip),
+        der Spread liegt damit ehrlich zwischen Entry und Exit."""
+        if self._mexc:
+            ask = self._mexc_ask.get(symbol)
+            if ask:
+                return ask
+        return super().get_price(symbol)
+
+    def close_position(self, symbol, price, reason, pnl_pct):
+        """Exit-Fill im MEXC-Modus immer zum BID — auch wenn der Aufrufer
+        (check_stops/check_stuck_positions via get_price) den ask uebergibt."""
+        if self._mexc:
+            bid = self._mexc_bid.get(symbol)
+            if bid:
+                with self.positions_lock:
+                    pos = self.positions.get(symbol)
+                if pos:
+                    pnl_pct = (bid - pos["entry"]) / pos["entry"] * 100
+                price = bid
+        super().close_position(symbol, price, reason, pnl_pct)
+
+    # gateway has no WS in REST mode -> spikes.json absent -> no-op (A==B until WS)
+    def _consume_spikes(self):
+        spikes = _read_shm("spikes.json", {})
+        if not spikes:
+            return
+        for sym, ev in spikes.items():
+            key = sym + ":" + str(ev.get("ts"))
+            if key in self._consumed_spikes:
+                continue
+            self._consumed_spikes.add(key)
+            if time.time() - ev.get("ts", 0) > 30:    # only fresh spikes
+                continue
+            if sym in self.excluded_symbols:
+                continue
+            price = self.ws_prices.get(sym) or ev.get("price")
+            if price:
+                self._spike_buy(sym, float(price), ev.get("ratio", 0))
+
+    def _spike_buy(self, symbol, price, ratio):
+        """Mirror of base spike buy (fee-aware demo) — clone has no tick stream,
+        so the gateway signals the spike and the clone executes it."""
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self._spike_count_date != today:
+            self._spike_count_date = today
+            self._spike_count = 0
+        if self._spike_count >= self.spike_max_day:
+            return
+        if time.time() - self._spike_last.get(symbol, 0) < self.spike_cooldown:
+            return
+        with self.positions_lock:
+            if symbol in self.positions or len(self.positions) >= self.max_pos:
+                return
+            bal    = self.balance
+            shares = (bal * self.spike_size) / price
+            if shares * price < 1:
+                return
+            fill   = price * (1 + self.sim_slip) if self.demo else price
+            fee_in = shares * fill * self.sim_fee if self.demo else 0.0
+            self.balance -= shares * fill + fee_in
+            self._spike_count += 1
+            self._spike_last[symbol] = time.time()
+            self.positions[symbol] = {
+                "shares": shares, "entry": fill, "fee_in": round(fee_in, 6),
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "highest": fill,
+                "stop_loss": 1.5, "take_profit": 3.0, "spike": True,
+                "esnap": {"spike_ratio": round(ratio, 1), "fg": self.last_fg.get("value")},
+            }
+        self._save_state()
+        print("[CLONE-" + self.variant + "] SPIKE-BUY " + symbol + " $" + str(round(price, 4)) +
+              " vol=" + str(round(ratio, 1)) + "x | Bal $" + str(round(self.balance, 0)))
+
+    # ── Sentiment-Scores + F&G aus dem Gateway ───────────────────────────────
+    def analyze(self):
+        scores = _read_shm("scores.json", {s: 0.0 for s in CRYPTO_MAIN + CRYPTO_MEME})
+        fg = _read_shm("fear_greed.json", None)
+        if fg:
+            self.last_fg = fg
+        return scores
+
+    # ── Indikatoren aus dem Gateway ──────────────────────────────────────────
+    def get_indicators(self, symbol):
+        inds = _read_shm("indicators.json", {})
+        return inds.get(symbol)
+
+    # ── HTF/Korrelation: Gateway liefert keine Bar-Historie -> neutral ───────
+    # (alle Clones gleich -> Vergleich bleibt fair; Korrelations-Filter aus)
+    def _get_htf_trend(self, symbol):
+        return True
+
+    def _check_correlation(self, symbol):
+        return 0.0, None
+
+    # ── Entscheidung: Momentum (Basis) ODER Contrarian ───────────────────────
+    def trade(self, scores):
+        if self.cfg.get("moonshot"):
+            self._moonshot_trade(scores)
+        elif self.cfg.get("fear_contrarian"):
+            self._fear_contrarian_trade(scores)
+        elif self.cfg["contrarian"]:
+            self._contrarian_trade(scores)
+        else:
+            super().trade(scores)
+
+    # ── Moonshot: Breakout-Entry, kein TP, Trailing-Winner ───────────────────
+    def _moonshot_trade(self, scores):
+        """Positive-Skew Lotterie (10J-Backtest-getrieben): Momentum-Zuendung
+        (Preis > oberes Bollinger-Band + Supertrend bullish) -> Mini-Wette,
+        KEIN TP-Deckel. Exit nur via Trailing-Stop / harter Stop in _moonshot_check."""
+        if self.tg_paused:
+            return
+        dd_mult, dd_zone, dd_allow_meme = self._get_drawdown_mult()
+        if dd_mult == 0.0:
+            return
+        for sym in list(CRYPTO_MAIN) + list(CRYPTO_MEME):
+            if sym in self.excluded_symbols:
+                continue
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+            ind = self.get_indicators(sym)
+            if not ind:
+                continue
+            price    = self.ws_prices.get(sym) or ind.get("price")
+            bb_upper = ind.get("bb_upper")
+            st_ok    = ind.get("supertrend") == 1
+            if not (price and bb_upper):
+                continue
+            if price > bb_upper and st_ok:            # Ausbruch + Trend = Zuendung
+                with self.positions_lock:
+                    if sym in self.positions or len(self.positions) >= self.max_pos:
+                        continue
+                    shares = (self.balance * MOON_SIZE) / price
+                    if shares * price < 1:
+                        continue
+                    fill   = price * (1 + self.sim_slip) if self.demo else price
+                    fee_in = shares * fill * self.sim_fee if self.demo else 0.0
+                    self.balance -= shares * fill + fee_in
+                    self.positions[sym] = {
+                        "shares": shares, "entry": fill, "fee_in": round(fee_in, 6),
+                        "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "peak": fill, "hard_stop": fill * (1 - MOON_HARD),
+                        "trail": MOON_TRAIL, "moonshot": True,
+                        "orig_shares": shares, "orig_cost": shares * fill + fee_in, "scaled": [],
+                        "esnap": {"bb_break": True, "supertrend": 1, "rsi": ind.get("rsi"),
+                                  "adx": ind.get("adx"), "fg": self.last_fg.get("value")},
+                    }
+                self._save_state()
+                print("[CLONE-E] MOONSHOT-BUY " + sym + " $" + str(round(price, 6)) +
+                      " (Breakout) | Bal $" + str(round(self.balance, 0)))
+
+    def _moonshot_check(self, symbol, price):
+        """Scaling-out an Meilensteinen (+50% / +100% House-Money / +300%) UND
+        Voll-Exit: harter Stop -18% ODER 25% Trailing ODER 72h-Timeout. KEIN TP-Deckel."""
+        scale, reason = None, None
+        with self.positions_lock:
+            pos = self.positions.get(symbol)
+            if not pos or not pos.get("moonshot"):
+                return
+            if price > pos["peak"]:
+                pos["peak"] = price
+            entry, peak = pos["entry"], pos["peak"]
+            hard  = pos.get("hard_stop", entry * (1 - MOON_HARD))
+            trail = pos.get("trail", MOON_TRAIL)
+            pnl_pct = (price - entry) / entry * 100
+            scaled = pos.get("scaled", [])
+            # ── Teilverkäufe an Meilensteinen (Profi-Technik) ────────────────
+            if pnl_pct >= 50 and "S50" not in scaled:
+                scale = (pos.get("orig_shares", pos["shares"]) * 0.25, "MOON-SCALE50", "S50")
+            elif pnl_pct >= 100 and "S100" not in scaled:
+                # House Money: Einsatz rausnehmen -> Rest läuft risikofrei
+                scale = (min(pos.get("orig_cost", 0) / price, pos["shares"] * 0.7), "MOON-HOUSE", "S100")
+            elif pnl_pct >= 300 and "S300" not in scaled:
+                scale = (pos["shares"] * 0.33, "MOON-SCALE300", "S300")
+            # ── Voll-Exit ────────────────────────────────────────────────────
+            if price <= hard:
+                reason = "MOON-HARDSTOP"
+            elif peak > entry and price <= peak * (1 - trail):
+                reason = "MOON-TRAIL"
+            else:
+                try:
+                    age_h = (datetime.now() - datetime.strptime(pos["time"], "%Y-%m-%d %H:%M")).total_seconds() / 3600
+                except Exception:
+                    age_h = 0
+                if age_h >= MOON_MAX_HOURS and -12.0 < pnl_pct < 15.0:
+                    reason = "MOON-TIMEOUT"
+        if reason:
+            self.close_position(symbol, price, reason, (price - entry) / entry * 100)
+        elif scale and scale[0] > 0:
+            self._moonshot_scale_out(symbol, price, scale[0], scale[1], scale[2])
+
+    def _moonshot_scale_out(self, symbol, price, sell_shares, tag, marker):
+        """Teilverkauf an einem Meilenstein — sichert Gewinn, Rest läuft weiter."""
+        with self.positions_lock:
+            pos = self.positions.get(symbol)
+            if not pos:
+                return
+            sell_shares = min(sell_shares, pos["shares"] * 0.95)
+            pos.setdefault("scaled", []).append(marker)   # Meilenstein als erledigt markieren
+            if sell_shares <= 0 or sell_shares * price < 1:
+                return
+            fill = price * (1 - self.sim_slip) if self.demo else price
+            fee  = sell_shares * fill * self.sim_fee if self.demo else 0.0
+            proceeds = sell_shares * fill - fee
+            profit = proceeds - sell_shares * pos["entry"]
+            self.balance += proceeds
+            pos["shares"] -= sell_shares
+            self.trades.append({"symbol": symbol, "profit": round(profit, 2),
+                                "pct": round((price - pos["entry"]) / pos["entry"] * 100, 1),
+                                "reason": tag, "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                "moonshot": True, "partial": True})
+        try:
+            with open(self._trades_path + ".tmp", "w") as f:
+                json.dump(self.trades, f)
+            os.replace(self._trades_path + ".tmp", self._trades_path)   # atomar — Crons lesen parallel
+        except Exception:
+            pass
+        self._save_state()
+        print("[CLONE-E] " + tag + " " + symbol + " teilverkauft @ $" + str(round(price, 6)) +
+              " | Bal $" + str(round(self.balance, 0)))
+
+    def _fear_contrarian_trade(self, scores):
+        """Deep-Fear Contrarian — Crypto-Adaption des 10J-ETF-Backtests.
+
+        Bedingungen (analog zu Backtest-Variante D: RSI2<10 + MA200 + VIX>28):
+          - F&G < 25 (Extreme Fear = VIX>28-Aequivalent fuer Crypto)
+          - RSI(14) < 20  (tief ueberverkauft; RSI2<10 hat keine hourly-Entsprechung)
+          - Supertrend == 1 (bullish auf Stundenbars = kurzfristiger Regime-Filter)
+            Verhindert: "Knife catchen" in echtem Bear (Supertrend bullish = Trend ok)
+          - KEIN BTC-Crash-Modus
+        Exit: Standard SL=8% (Backtest-Wert) / TP=5% / Tiered-Exit des Parents.
+        Keine Memes (Backtest: ETFs = liquidere Assets).
+        Max 3 gleichzeitige Fear-Contrarian-Positionen (Konzentrations-Schutz).
+        """
+        if self.tg_paused:
+            return
+        fg = self.last_fg.get("value", 50)
+        if fg >= 25:
+            return   # nur Extreme Fear (<25), kein normaler Angst-Kauf
+        if self._btc_crash_mode:
+            return
+        dd_mult, dd_zone, _ = self._get_drawdown_mult()
+        if dd_mult == 0.0:
+            return
+
+        # Nur Main-Coins (keine Memes), max 3 Fear-Contrarian-Positionen gleichzeitig
+        fear_pos_count = sum(1 for p in self.positions.values() if p.get("fear_contrarian"))
+        if fear_pos_count >= 3:
+            return
+
+        candidates = []
+        for sym in list(CRYPTO_MAIN):
+            if sym in self.excluded_symbols:
+                continue
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+            if time.time() - self._sl_cooldown.get(sym, 0) < 5400:
+                continue
+            ind = self.get_indicators(sym)
+            if not ind:
+                continue
+            rsi        = ind.get("rsi", 50)
+            supertrend = ind.get("supertrend", -1)
+            price      = self.ws_prices.get(sym) or ind.get("price")
+            if not price:
+                continue
+            if rsi < 20 and supertrend == 1:
+                candidates.append((sym, rsi, ind, float(price)))
+
+        if not candidates:
+            print("[CLONE-F] F&G=" + str(fg) + " (Extreme Fear) — keine RSI<20+ST-bull Kandidaten")
+            return
+
+        candidates.sort(key=lambda x: x[1])   # am meisten ueberverkauft zuerst
+        print("[CLONE-F] F&G=" + str(fg) + " Extreme Fear | Kandidaten: " +
+              ", ".join(s + " RSI=" + str(round(r, 1)) for s, r, _, _ in candidates))
+
+        for sym, rsi, ind, price in candidates[:2]:   # max 2 pro Zyklus
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+                fear_pos_count = sum(1 for p in self.positions.values() if p.get("fear_contrarian"))
+                if fear_pos_count >= 3:
+                    break
+                atr         = ind.get("atr", 0) or (price * 0.02)
+                risk_budget = self.balance * 0.01
+                atr_shares  = risk_budget / (atr * 2) if atr > 0 else 0
+                max_shares  = (self.balance * self.pos_size * dd_mult) / price
+                shares = min(atr_shares, max_shares) if atr_shares > 0 else max_shares
+                if shares * price < 1:
+                    continue
+                fill   = price * (1 + self.sim_slip) if self.demo else price
+                fee_in = shares * fill * self.sim_fee if self.demo else 0.0
+                self.balance -= shares * fill + fee_in
+                self.positions[sym] = {
+                    "shares": shares, "entry": fill, "fee_in": round(fee_in, 6),
+                    "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "highest": fill,
+                    "stop_loss": 8.0,    # Backtest-Wert: gibt Pos Luft in echter Panik
+                    "take_profit": 5.0,  # Mean-Reversion-Ziel
+                    "fear_contrarian": True,
+                    "esnap": {"rsi": rsi, "fg": fg, "supertrend": 1,
+                              "adx": ind.get("adx"), "cmf": ind.get("cmf")},
+                }
+            self._save_state()
+            print("[CLONE-F] FEAR-BUY " + sym + " RSI=" + str(round(rsi, 1)) +
+                  " F&G=" + str(fg) + " ST=bull $" + str(round(price, 6)) +
+                  " | Bal $" + str(round(self.balance, 0)))
+
+    def _contrarian_trade(self, scores):
+        """Mean-Reversion: kauft die am staerksten ueberverkauften Coins
+        (RSI<35, Preis am/unter unterem Bollinger-Band) in Angst-Phasen."""
+        if self.tg_paused:
+            return
+        tag = "[CLONE-" + self.variant.split("_")[0] + "]"
+        fg = self.last_fg.get("value", 50)
+        if fg > 55:                       # nur in Angst/Neutral kaufen, nicht in Gier
+            print(tag + " F&G=" + str(fg) + " > 55 (Gier) — Contrarian wartet")
+            return
+        dd_mult, dd_zone, dd_allow_meme = self._get_drawdown_mult()
+        if dd_mult == 0.0 or self._btc_crash_mode:
+            return
+
+        universe = list(CRYPTO_MAIN) + (list(CRYPTO_MEME) if dd_allow_meme else [])
+        candidates = []
+        for sym in universe:
+            if sym in self.excluded_symbols:
+                continue
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+            if time.time() - self._sl_cooldown.get(sym, 0) < 5400:
+                continue
+            ind = self.get_indicators(sym)
+            if not ind:
+                continue
+            rsi      = ind.get("rsi", 50)
+            # LIVE-Preis (gleiche Quelle wie der Exit!) — NICHT ind["price"] (Stunden-
+            # Schluss hinkt nach -> sonst Phantom-Gewinn aus Entry/Exit-Preis-Mismatch)
+            price    = self.ws_prices.get(sym) or ind.get("price")
+            bb_lower = ind.get("bb_lower")
+            # Refined (H): Supertrend muss bullish sein — kauft oversold-UND-drehend statt
+            # oversold-und-fallend (kein Messer fangen -> killt die -$8.79-Verluste von D)
+            st_ok = (ind.get("supertrend") == 1) if self.cfg.get("refined") else True
+            if price and bb_lower and rsi < 35 and price <= bb_lower * 1.02 and st_ok:
+                candidates.append((sym, rsi, ind, float(price)))
+
+        candidates.sort(key=lambda x: x[1])     # most oversold first
+        for sym, rsi, ind, price in candidates[:3]:
+            with self.positions_lock:
+                if sym in self.positions or len(self.positions) >= self.max_pos:
+                    continue
+                is_meme = sym in CRYPTO_MEME
+                size    = self.meme_size if is_meme else self.pos_size
+                atr     = ind.get("atr", 0) or (price * 0.02)
+                risk_budget = self.balance * 0.01
+                atr_shares  = risk_budget / (atr * 2) if atr > 0 else 0
+                max_shares  = (self.balance * size * dd_mult) / price
+                shares = min(atr_shares, max_shares) if atr_shares > 0 else max_shares
+                if shares * price < 1:
+                    continue
+                fill   = price * (1 + self.sim_slip) if self.demo else price
+                fee_in = shares * fill * self.sim_fee if self.demo else 0.0
+                self.balance -= shares * fill + fee_in
+                self.positions[sym] = {
+                    "shares": shares, "entry": fill, "fee_in": round(fee_in, 6),
+                    "time": datetime.now().strftime("%Y-%m-%d %H:%M"), "highest": fill,
+                    "stop_loss": self.stop_loss, "take_profit": 6.0,   # wider TP for mean-reversion
+                    "contrarian": True,
+                    "esnap": {"rsi": rsi, "fg": fg, "supertrend": ind.get("supertrend"),
+                              "adx": ind.get("adx"), "cmf": ind.get("cmf")},
+                }
+            self._save_state()
+            print(tag + " CONTRARIAN-BUY " + sym + " RSI=" + str(rsi) +
+                  " $" + str(round(price, 6)) + " | Bal $" + str(round(self.balance, 0)))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        raise SystemExit("Usage: python3 clone.py <variant>")
+    try:
+        import health
+        _name = "clone_" + sys.argv[1]
+        if health.acquire_singleton(_name) is None:
+            health.log(_name, "DUPLICATE_BLOCKED", "")
+            print("[SINGLETON] " + _name + " laeuft bereits — Instanz beendet sich.")
+            raise SystemExit(0)
+        health.log(_name, "START", "")
+    except SystemExit:
+        raise
+    except Exception as _e:
+        print("[SINGLETON] health n/a: " + str(_e))
+    CloneBot(sys.argv[1]).run()

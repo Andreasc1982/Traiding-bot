@@ -1,7 +1,9 @@
 # TODO Neudenken — Arbeitsliste
 
-Stand 22.08.2026. Abgeleitet aus STRATEGIE_NEUDENKEN_20260821.md (inkl. Nachtrag).
-Reihenfolge ist Absicht: erst messen, dann bauen, dann entscheiden.
+Stand 22.08.2026, aktualisiert nach dem Cloud-Deploy (siehe `DEPLOY_NEUDENKEN.md`:
+A2/A4/B1-Backtest/B3 sind erledigt bzw. gemessen; A1/A3 liegen als fertige Patches
+für die nächste Pi-Sitzung bereit). Abgeleitet aus STRATEGIE_NEUDENKEN_20260821.md
+(inkl. Nachtrag). Reihenfolge ist Absicht: erst messen, dann bauen, dann entscheiden.
 
 ## Vorab: der Nicht-EU-Punkt
 
@@ -23,12 +25,18 @@ Blocker) in der Go/No-Go-Rechnung, bevor echtes Kapital fließt.
       und `einsatz_usd` beim Kauf speichern, beim Close mitschreiben. Beides sind Messlücken
       (die 22.08.-Sitzung musste den Einsatz aus profit/pct rückrechnen); Voraussetzung für
       jede Haltedauer-/Funding-/Slippage-Rechnung. Zuerst erledigen.
-- [ ] **A2. Funding-Rate-Logger** (nur Daten, kein Handel): stündlich Funding-Raten Kraken
+      **Status 22.08.: Patch fertig vorbereitet (`PATCHES_A1_A3.md`) — Anwendung nur in
+      Pi-Sitzung (Mac↔Pi-Drift bei Live-Code).**
+- [x] **A2. Funding-Rate-Logger** (nur Daten, kein Handel): stündlich Funding-Raten Kraken
       Futures + Hyperliquid + dYdX für BTC/ETH/SOL + unsere Alts nach CSV, Cron auf dem Pi,
       in `funktionspruefung.py` eintragen. Dient Carry-Rechnung UND Venue-Wahl gleichzeitig.
+      **Status 22.08.: gebaut + getestet (`venue/funding_logger.py`, 44 Zeilen/Zyklus,
+      loggt auch Impact-Spreads); Pi-Cron + Funktionsprüfung ausstehend → DEPLOY Schritt 3–4.**
 - [ ] **A3. Maker-Experiment im Paper**: Clone mit Kraken-Maker-Kostenmodell (2 × 0,16 %)
       plus Fill-Simulation (Limit am Quote, nicht jede Order füllt — verpasste Entries zählen
       als Kosten). Misst den einzigen Kostenhebel, der ohne Börsenwechsel wirkt.
+      **Status 22.08.: als Clone-Variante F spezifiziert (`PATCHES_A1_A3.md`, Port 8098,
+      MISSED_FILL-Zähler, Entscheidungskriterium vorab) — Umsetzung in Pi-Sitzung.**
 - [ ] **A4. Venue-Check gegen die 0,67-%-Hürde** (read-only, APIs): Listing unserer 20 Coins
       auf Hyperliquid + dYdX, Orderbuchtiefe/Spread je Coin, Gebührenstufe, Auszahlungsweg.
       Ergebnis: eine Tabelle. *Zur Einsatzhöhe:* die ~180 $ sind **nicht bestätigt**, sondern
@@ -39,6 +47,11 @@ Blocker) in der Go/No-Go-Rechnung, bevor echtes Kapital fließt.
       **100 / 200 / 300 / 500 $** — damit die Tabelle auch bei anderem Kapital gültig bleibt.
       Bestätigen lässt sich der Ist-Median nur auf dem Pi (die Mac-Kopie der Crypto-Trades
       ist vom Stand vor dem 25.07.-Reset) — Einzeiler, bei der nächsten Pi-Sitzung machen.
+      **Status 22.08.: GEMESSEN (21.08. 23:06 UTC, `venue/venue_check_ergebnis.md`):
+      Hyperliquid listet alle 20 Coins, Roundtrip 9–18 bp über die ganze Leiter → besteht
+      klar gegen 67 bp. dYdX: nur BTC/ETH/SOL/XRP brauchbar, Alts 70–450 bp Spread →
+      fällt durch. Punktmessung; weitere Messpunkte liefert der Funding-Logger stündlich.**
+      → Ist-Median-Einsatz auf dem Pi bestätigen bleibt offen (Einzeiler).
 
 ## Block B — Kurzfristig, 2–4 Wochen
 
@@ -46,11 +59,19 @@ Blocker) in der Go/No-Go-Rechnung, bevor echtes Kapital fließt.
       Alpaca-Universum über den Funnel (Stufe 1 Screen → Stufe 2 Ranking), fee-aware,
       Walk-Forward. Erst wenn der Backtest steht → neues Paper-Depot nach Stufe-2-Regel
       (3 Monate Vorwärtstest, Backtests qualifizieren nicht).
+      **Status 22.08.: ETF-Backtest gerechnet (`studien/momentum_backtest_ergebnis.md`,
+      28 ETFs, 2007–2026, 5 bp/Seite): 10,3 % CAGR bei −26,5 % max. Rückgang vs. SPY
+      11,1 % bei −50,8 % — gleiche Sharpe (0,75), halber Drawdown, KEIN Alpha (t = −0,28).
+      Der Umbau kauft Robustheit, kein Wunder. → Entscheid: als Paper-Depot aufsetzen?**
 - [ ] **B2. IBKR-Paper-Konto anbinden** (Juli-Entscheidung, Herausforderer-Clone):
       öffnet global Universum, Optionen-Tür, Cash-Zins-Vergleichslinie.
-- [ ] **B3. Leads-Event-Studien** statt neuer Quellen: Russell-Rebalancing + Quartalsende
+- [x] **B3. Leads-Event-Studien** statt neuer Quellen: Russell-Rebalancing + Quartalsende
       auf historischen Daten (yfinance reicht); NY-Fed-SOFR/Repo als Beobachtungsgröße
       in den Wochenbericht.
+      **Status 22.08.: gerechnet (`studien/event_studie_ergebnis.md`, SPY/IWM 2005–2026):
+      Russell real — IWM−SPY +63 bp kumuliert T-4..T0 (t = 2,48), danach −58 bp Umkehr;
+      Quartalsende schwach (nur T+1 +21 bp, t = 2,0). Einmal-im-Jahr-Effekt: Erkenntnis
+      ja, Renditetreiber nein. SOFR/Repo-Beobachtung → Wochenbericht bleibt offen.**
 - [ ] **B4. Wallet-Setup für DEX-Messung**: eigene Wallet, kleiner Test-Transfer
       (USDC → Arbitrum → Hyperliquid und zurück), Kosten und Dauer protokollieren.
       Nur Infrastruktur — kein Handelskapital.

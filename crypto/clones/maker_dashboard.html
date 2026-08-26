@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Maker vs Taker — Clone-Vergleich</title>
+<style>
+ body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#12151a;color:#e6e9ef;
+      margin:0;padding:24px;line-height:1.5}
+ h1{font-size:20px;margin:0 0 4px}
+ .sub{color:#8b93a3;font-size:13px;margin-bottom:22px}
+ .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:22px}
+ .k{background:#1a1f27;border:1px solid #262d38;border-radius:9px;padding:14px 16px}
+ .k .l{color:#8b93a3;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+ .k .v{font-size:26px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+ .k .n{color:#8b93a3;font-size:12px;margin-top:3px}
+ .gut{color:#4ade80}.schlecht{color:#f87171}.neutral{color:#e6e9ef}
+ table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+ th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #262d38}
+ th{color:#8b93a3;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+ td.n{text-align:right;font-variant-numeric:tabular-nums}
+ h2{font-size:15px;margin:26px 0 2px}
+ .hinweis{background:#1a1f27;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;
+          padding:12px 16px;font-size:13px;color:#c3c9d4;margin-top:26px}
+ .stand{color:#8b93a3;font-size:12px;margin-top:18px}
+</style>
+<h1>Maker vs Taker — Clone-Vergleich</h1>
+<div class="sub">A3: <b>F_maker</b> stellt Limit-Orders (0,16 % Entry-Gebühr, verpasste Fills möglich)
+ gegen <b>B_nospikes</b> mit Market-Orders (0,26 %). Gleiche Signale, gleiches Universum,
+ gleicher Start ($5.000). Nur die Ausführung unterscheidet sich.</div>
+
+<div class="grid" id="kacheln"></div>
+
+<h2>Offene Positionen</h2>
+<table id="pos"><thead><tr><th>Depot</th><th>Symbol</th><th class="n">Einstieg</th>
+ <th class="n">aktuell</th><th class="n">G/V %</th></tr></thead><tbody></tbody></table>
+
+<div class="hinweis" id="kriterium"></div>
+<div class="stand" id="stand"></div>
+
+<script>
+const usd = v => v == null ? "–" : "$" + v.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = v => v == null ? "–" : (v>0?"+":"") + v.toFixed(2) + " %";
+const START = 5000;
+
+async function hole(f){ try{ const r = await fetch(f + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(e){ return null; } }
+
+function kachel(l, v, n, klasse){
+  return `<div class="k"><div class="l">${l}</div><div class="v ${klasse||"neutral"}">${v}</div><div class="n">${n||""}</div></div>`;
+}
+
+async function laden(){
+  const [b, f] = await Promise.all([hole("B_nospikes_dashboard.json"), hole("F_maker_dashboard.json")]);
+  const kk = [];
+
+  for (const [name, d] of [["B_nospikes (Taker)", b], ["F_maker (Maker)", f]]){
+    if (!d){ kk.push(kachel(name, "–", "keine Daten")); continue; }
+    const wert = d.balance + Object.values(d.positions||{}).reduce(
+      (s,p)=> s + (p.shares||0) * (p.current_price||p.entry||0), 0);
+    const r = (wert - START) / START * 100;
+    kk.push(kachel(name, pct(r), usd(wert) + " · " + (d.total_trades||0) + " Trades · Kasse " + usd(d.balance),
+                   r > 0 ? "gut" : r < 0 ? "schlecht" : "neutral"));
+  }
+
+  const m = f && f.maker;
+  if (m){
+    const q = m.quote_pct;
+    kk.push(kachel("MISSED_FILL-Quote", q == null ? "–" : q.toFixed(1) + " %",
+      m.fills + " gefüllt · " + m.verpasst + " verpasst · " + m.offene_orders + " offen",
+      q == null ? "neutral" : q < 25 ? "gut" : "schlecht"));
+    kk.push(kachel("Gebühren je Seite", (m.entry_fee*100).toFixed(2) + " % / " + (m.exit_fee*100).toFixed(2) + " %",
+      "Entry maker / Exit taker · Fenster " + m.fenster_s + " s"));
+  }
+  document.getElementById("kacheln").innerHTML = kk.join("");
+
+  const zeilen = [];
+  for (const [name, d] of [["B", b], ["F", f]]){
+    for (const [sym, p] of Object.entries((d && d.positions) || {})){
+      zeilen.push(`<tr><td>${name}</td><td>${sym}</td><td class="n">${usd(p.entry)}</td>
+        <td class="n">${usd(p.current_price)}</td>
+        <td class="n ${p.pnl_pct>0?"gut":p.pnl_pct<0?"schlecht":""}">${pct(p.pnl_pct)}</td></tr>`);
+    }
+  }
+  document.querySelector("#pos tbody").innerHTML = zeilen.join("") ||
+    `<tr><td colspan="5" style="color:#8b93a3">keine offenen Positionen</td></tr>`;
+
+  document.getElementById("kriterium").innerHTML =
+    "<b>Entscheidungskriterium (vorab festgelegt):</b> F schlägt B über mindestens 60 Tage nach Kosten " +
+    "<b>und</b> die MISSED_FILL-Quote liegt unter 25 %. Erst dann wird Maker-Ausführung Kandidat für den Live-Pfad. " +
+    "Kurzfristige Quoten schwanken stark — die ersten Tage sagen nichts.";
+  document.getElementById("stand").textContent =
+    "Stand: " + ((f && f.time) || (b && b.time) || "–") + " · aktualisiert sich jede Minute";
+}
+laden(); setInterval(laden, 60000);
+</script>

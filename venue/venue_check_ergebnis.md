@@ -57,3 +57,55 @@ Referenz: Kraken-Ist ~62 bp, Break-even-Hürde 67 bp.
 | TRUMP | TRUMP-USD | 89.4 | 99.4 | 99.4 | 99.4 | 99.4 | ❌ |
 
 *Hinweis: Punktmessung eines Zeitpunkts — Tiefe schwankt mit der Tageszeit; vor einem Go mehrfach zu unterschiedlichen Zeiten messen (der Funding-Logger kann das stündlich miterledigen). Impact enthält den halben Spread; Funding-/Leihkosten der Haltedauer kommen separat dazu (A2).*
+
+---
+
+## NACHTRAG 22.08. — zwei Korrekturen nach dem Abgleich mit der lokalen Session
+
+### 1. Diese Messung ist KEINE unabhängige Bestätigung (Einwand der lokalen Session, berechtigt)
+
+Beide Messungen liefen 26 Minuten auseinander — derselbe Marktmoment, also eine
+Wiederholung, keine Bestätigung. Sie weichen bis Faktor 2–2,6 ab (dYdX LINK:
+137 bp hier, 356 bp dort). Die lokale 28-Tage-Reihe zeigt, warum: bei BTC liegen
+**37 % aller Messungen über dem Doppelten des Medians.**
+
+**Was das für das Urteil bedeutet — quantifiziert, nicht behauptet:** Bei
+Hyperliquid sind von den 9–18 bp genau **9 bp feste Gebühr** (2 × 0,045 %); der
+schwankende Impact-Anteil ist nur 0–9 bp. Selbst bei **5-fachem** Impact bliebe der
+schlechteste Wert (WIF, 8,7 bp Impact) bei 9 + 43,5 = **52,5 bp**, also unter der
+Hürde. Die Streuung kippt das Handelskosten-Urteil also nicht — anders als bei
+Kraken, wo die Gebühr allein (52 bp) das Problem ist. Trotzdem gilt: erst die
+Zeitreihe entscheidet, nicht dieser Punkt.
+
+### 2. Der eigentliche Fehler war meiner: FUNDING FEHLTE IN DER RECHNUNG
+
+Der Venue-Check misst nur Handelskosten. Der Bot ist **long-only**, und ein Long
+auf einem Perp **zahlt** Funding, solange es positiv ist. Bei 28 h mittlerer
+Haltedauer (Herleitung 22.08.) und den Funding-Raten aus dem eigenen Logger-Lauf
+vom selben Abend:
+
+| Coin | Handel bp | Funding % p.a. | Funding bp/28 h | **Gesamt bp** | vs. 67 |
+|---|---|---|---|---|---|
+| BTC | 9,1 | 10,9 | 3,5 | **12,6** | ok |
+| ETH | 9,4 | 10,9 | 3,5 | **12,9** | ok |
+| SOL | 9,1 | 42,8 | 13,7 | **22,8** | ok |
+| AVAX | 11,0 | 75,1 | 24,0 | **35,1** | ok |
+| UNI | 9,2 | 84,9 | 27,1 | **36,4** | ok |
+| DOGE | 9,9 | 106,4 | 34,0 | **43,9** | ok |
+| LINK | 10,6 | 113,6 | 36,3 | **46,9** | ok |
+| PEPE | 14,2 | 105,5 | 33,7 | **48,0** | ok |
+| ADA / XRP | 10,3 / 10,4 | 124,3 | 39,7 | **50,0 / 50,1** | ok |
+| LTC | 10,3 | 158,3 | 50,6 | **61,0** | grenzwertig |
+| **AAVE** | 10,5 | 201,0 | 64,2 | **74,7** | **reißt** |
+
+**Der Befund kehrt die Aussage teilweise um.** Nicht die Gebühr ist der Engpass,
+sondern das Funding — und es ist bei genau den Alts am höchsten, in denen der
+gemessene Vorteil des Bots sitzt (t = 3,03 für die 17 Nicht-BTC/ETH/SOL-Coins).
+Aus „Hyperliquid schlägt die Hürde mit Faktor 4–7" wird „Hyperliquid schlägt sie
+bei BTC/ETH/SOL klar, bei den Alts knapp bis gar nicht".
+
+**Konsequenz:** Der Funding-Logger ist damit nicht Vorarbeit für das Carry-Depot,
+sondern **die Entscheidungsgrundlage für die Portierung selbst**. Ohne 4 Wochen
+Funding-Median je Coin ist kein Go möglich. Zwei Auswege, die die Zeitreihe prüfen
+muss: (a) kürzere Haltedauer senkt Funding proportional, (b) Spot statt Perp auf
+HL zahlt kein Funding — kostet aber 0,04/0,07 % Gebühr statt 0,015/0,045 %.

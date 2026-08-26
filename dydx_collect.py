@@ -15,21 +15,27 @@ BASE = "/home/trading2025/trading_bot"
 sys.path.insert(0, BASE)
 
 IDX = "https://indexer.dydx.trade/v4"
-# Erweitert 2026-08-22 von 5 auf alle 20 Coins des crypto_bot.
+# Historie der Marktliste:
+#   25.07.2026  Start mit 5 Maerkten — fuer den Imbalance-Praediktionstest.
+#   22.08.2026  auf 20 erweitert, um die Spreads der Alt-Coins zu messen:
+#               der Edge des Bots sitzt dort (t = 3,03), und ob er handelbar
+#               ist, entscheidet der Spread. Einzelmessungen taugten nicht
+#               (LINK 356 bp in einer duennen Stunde), es brauchte Mediane.
+#   25.08.2026  zurueck auf die urspruenglichen 5. Die Frage von oben IST
+#               beantwortet: 211.560 Zeilen ueber 3 Tage ergeben Mediane von
+#               BTC 3,7 / ETH 7,0 / SOL 10,6 / XRP 21,0 bp — brauchbar — und
+#               DOGE 41 bis TRUMP 517 bp fuer die Alts. dYdX ist fuer die
+#               Alts nicht handelbar; weiter zu messen kostet ~270 MB im
+#               Monat fuer eine Antwort, die schon dasteht.
 #
-# Anlass: Die Kostenrechnung zeigte, dass der Edge des Bots in den kleineren
-# Alt-Coins sitzt (t = 3,03) und nicht in BTC/ETH/SOL (t = 1,75). Ob er dort
-# handelbar ist, entscheidet allein der Spread — und den kannten wir nur fuer
-# diese fuenf. Eine Momentaufnahme um 00:30 ergab fuer LINK 356 bp, fuer BTC
-# aber 4,8 bp, wo der 28-Tage-Median bei 0,6 bp liegt: Faktor 8 daneben.
-# Einzelmessungen zur duennen Stunde taugen also nicht — es braucht Mediane.
+# Warum 5 und nicht 4: der eigentliche Zweck dieses Sammlers ist der
+# Imbalance-Test, nicht die Spread-Messung. Die urspruenglichen 5 Maerkte
+# halten dessen Reihe seit dem 25.07. lueckenlos — DOGE herauszunehmen wuerde
+# sie ohne Not brechen, und die eine Anfrage je Runde kostet nichts.
 #
-# Takt bleibt 15 s. Das sind 20 statt 5 Anfragen je Runde an einen oeffentlichen
-# Indexer; bei Bedarf POLL_SEC erhoehen, nicht die Marktliste kuerzen.
-MARKETS = ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "AVAX-USD", "LINK-USD",
-           "LTC-USD", "ADA-USD", "DOT-USD", "UNI-USD", "AAVE-USD", "ARB-USD",
-           "POL-USD", "RENDER-USD", "DOGE-USD", "SHIB-USD", "PEPE-USD",
-           "WIF-USD", "BONK-USD", "TRUMP-USD"]
+# Die 20-Markt-Phase bleibt in imbalance_log.csv erhalten (jede Zeile traegt
+# Markt und Zeit, die Phasen sind an der Zeit trennbar).
+MARKETS = ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "DOGE-USD"]
 POLL_SEC = 15
 OUT_DIR = os.path.join(BASE, "dydx")
 LOG = os.path.join(OUT_DIR, "imbalance_log.csv")

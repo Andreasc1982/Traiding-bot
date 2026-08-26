@@ -5,6 +5,179 @@ Neueste zuerst. Gepflegt auf dem Pi, nachts per GitHub-Backup gesichert.
 
 ---
 
+## 25.08.2026 (mittags) — Blocker widerlegt, Patches A1 + A3 eingespielt
+
+Fortsetzung des Vormittags. Andreas: „mach alle Punkte."
+
+### Was gemacht wurde
+
+**1. Der Rollout-Blocker vom 22.08. hält nicht — beide Gründe nachgemessen.**
+Die „28 Tage Historie" gehören nicht `hl_collect.py` (gebaut in der Nacht zum 22.08.,
+also 3 Tage), sondern `dydx_collect.py`, der seit dem 25.07. 19:31 läuft — 852.286 Zeilen.
+Am 22.08. war daran *eine* Anpassung: `MARKETS` 5 → 20. Und Funding fehlte nie in der
+Hürden-Rechnung: `hl_collect.py` Zeile 128 rechnet
+`2*slip180 + TAKER_BP + max(f_h,0)*HALTE_H` — Funding steckt seit dem ersten Tag drin.
+Gemessen über 995 Runden je Coin: Roundtrip inkl. Funding zwischen **12,6 bp** (SOL/BTC)
+und **23,0 bp** (UNI), p90 überall unter 48 bp, gegen 67 bp Break-even. Die Alarmzahl
+„AAVE 74,7 bp" aus der Momentaufnahme vom 21.08. steht real bei **22,3 bp** — Faktor 3.
+Zweiter Nachtrag in `DEPLOY_NEUDENKEN.md` geschrieben.
+
+**2. `dydx_collect.py` zurück auf 5 Märkte** (war 20). Über 211.560 Zeilen seit dem 22.08.
+sind die Mediane eindeutig: BTC 3,7 · ETH 7,0 · SOL 10,6 · XRP 21,0 bp brauchbar, danach
+DOGE 41 bis TRUMP 517 bp. Der Edge des Bots sitzt in den Alts — dort ist dYdX nicht
+handelbar. Frage beantwortet, 20 Märkte kosteten ~270 MB im Monat für nichts.
+Session neu gestartet, läuft mit 0 Fehlern.
+
+**3. `venue/funding_logger.py` wird nicht ausgerollt.** Kein Cron gesetzt, Prüfung 22
+entfällt. Es gab nichts zusammenzulegen: Hyperliquid deckt `hl_collect.py` inkl. Funding
+ab, dYdX ist erledigt, übrig bliebe Kraken Futures als Vergleichswert. Das Skript bleibt
+als Referenz liegen.
+
+**4. Patch A1 — `entry_ts` + `einsatz_usd`, alle vier Depots.**
+`super_bot.py` (1 Kaufpfad + Verkauf), `crypto/crypto_bot.py` (3 Kaufpfade: normal,
+Spike, Whale + Verkauf), `insider_paper.py`, `fundament_bot.py`. Rein additiv — der Diff
+ändert keine bestehende Zeile. Alt-Positionen ohne `entry_ts` ergeben `None` statt eines
+rückgerechneten Schätzwerts.
+Bei den Papierdepots bin ich vom Patch-Text abgewichen, weil er dort nicht passt:
+- `insider_paper.py`: Ein Titel, der eine Rückführung überlebt, **behält seinen
+  ursprünglichen `entry_ts`** — sonst wäre jede Rückführung ein neuer Einstieg und die
+  Haltedauer systematisch zu kurz. Dazu neu: `verkauft_detail` je verkauftem Titel
+  (Haltedauer, Einsatz, Erlös). Ohne das gäbe es hier nur Ticker-Listen und eine
+  Auswertung könnte das Depot nicht wie die Handels-Bots behandeln.
+  `verkauft`/`gekauft` blieben unverändert — das Dashboard liest sie.
+- `fundament_bot.py`: **nur `entry_ts`**, kein `einsatz_usd`, keine `haltedauer_h`.
+  Das Depot hält SPY/SHY/GLD/DBC dauerhaft und führt nur Gewichte zurück. Es gibt keinen
+  Ein- und Ausstieg, also keine Haltedauer. Die Felder trotzdem zu setzen wäre eine
+  erfundene Zahl.
+Getestet gegen Kopien mit umgebogenen Ausgabepfaden (echte Eingabedaten, Schreiben nur
+nach /tmp): Haltedauer 72,01 h bei gesetzten 72 h, `entry_ts` korrekt übernommen.
+`super_bot` und `crypto_bot` einzeln neu gestartet, Positionen erhalten (1 bzw. 7),
+keine Tracebacks.
+
+**5. Patch A3 — Clone `F_maker`.** Limit-Order statt Market beim Entry: 0,16 % Maker-Fee
+gegen das Risiko verpasster Fills. Exits bleiben Taker 0,26 % — ein Stop, der auf einen
+Maker-Fill wartet, wäre eine Lüge im Risikomodell. Vollständig in `crypto/clone.py`
+gebaut, `crypto_bot.py` wurde dafür **nicht** noch einmal angefasst: `trade()` umschließt
+den vorhandenen Dispatcher, wandelt jede frisch angelegte Position in eine offene
+Limit-Order um (Einsatz zurück in die Balance), und `_check_pending()` füllt im 1s-Tick
+zum Limit oder verwirft nach 120 s als `MISSED_FILL`. Zähler persistiert in
+`F_maker_maker.json`, Quote im Dashboard-JSON.
+
+Drei Dinge kamen dabei unerwartet dazu:
+- **Der Patch-Text nennt Port 8098 als frei — ist er nicht** (Fundament-Dashboard;
+  8097 Insider, 8099 Hyperliquid). Variante liegt jetzt auf **8103**.
+- **`gateway.py` war mit abgeschaltet.** `clone.py` liest *alle* Marktdaten aus
+  `/dev/shm/crypto_gw`; ohne Gateway sieht ein Clone nichts. Musste mit gestartet werden.
+  Kein WS-Konflikt: `alpaca_gw_api_key` ist gesetzt, das Gateway läuft auf einem eigenen
+  Paper-Konto. Der Live-Crypto-Bot meldet durchgehend `WS✓`.
+- **Altfehler gefunden:** `CloneBot.send()` kannte das Argument `roh` nicht, das
+  `crypto_bot.run()` mitgibt. **Jeder Clone wäre beim Start abgestürzt** — unbemerkt, weil
+  die Clones seit dem 26.07. aus sind. Signatur korrigiert.
+
+**`B_nospikes` läuft mit**, weil das Entscheidungskriterium „F schlägt B" lautet. Beide
+starteten gleichzeitig bei 5.000 $ mit identischen Signalen und Universum; nur die
+Ausführung unterscheidet sich. Ein erster Fehlstart (vor dem Fix) wurde archiviert,
+nicht gelöscht (`*.fehlstart_20260825-122359`).
+
+**6. `.gitignore`**: `*.bak_*`, `*.bak2_*`, `*.fehlstart_*` ergänzt. Die 49 bereits
+versionierten `.bak`-Dateien wurden **nicht** ausgetragen — das wäre eine Löschung im Repo.
+
+### Warum
+
+Die Portierungsfrage des Crypto-Bots hing an einem Blocker, der auf zwei Fehlzuordnungen
+beruhte. Beide ließen sich in Minuten mit Daten prüfen, die längst auf dem Pi liegen —
+das war billiger, als vier Wochen auf einen zweiten Funding-Sammler zu warten. Der Grund
+für beide Fehler ist derselbe wie bei den dYdX-Alt-Spreads: **eine Momentaufnahme in einer
+dünnen Stunde ist keine Messung.** Deshalb ist die Konsequenz nicht „Frage beantwortet",
+sondern „weiter messen, wo es zählt" — `hl_collect.py` bleibt unangetastet.
+
+A3 misst genau das, was am 26.07. als Ursache der Clone-Verluste diagnostiziert wurde
+(Kostenproblem, nicht Strategieproblem). Es ist kein Rückfall in die eingestellten Clones,
+sondern der Test jener Diagnose.
+
+### Was jetzt läuft
+
+- `dydx` — 5 Märkte statt 20, 15 s Takt
+- `gateway` — Market-Data-Gateway auf eigenem Alpaca-Paper-Konto, publiziert nach
+  `/dev/shm/crypto_gw`
+- `clone_B_nospikes`, `clone_F_maker` — je 5.000 $ Papier, Telegram aus, keine echten Orders
+- `clones_dash` — **http://trading2025.fritz.box:8103** (`maker_dashboard.html`),
+  Whitelist geprüft: `config.py` → 403.
+  **Nachtrag:** die Seite war zunächst nur auf dem Pi erreichbar — bei der Abschaltung
+  am 26.07. war die ufw-Regel des alten Clone-Ports (8090) entfernt worden, für 8103 gab
+  es nie eine. Nachgetragen für LAN (192.168.188.0/24) und VPN (10.8.0.0/24), Muster wie
+  8097/8098/8099. **Merke: ein neues Dashboard braucht immer beide Schritte — Session
+  starten UND ufw-Regel setzen.** Sonst antwortet der Server auf dem Pi mit 200 und von
+  außen gar nicht, was wie ein kaputtes Dashboard aussieht.
+- Alle vier neu in **`start_all.sh` UND `agents/monitor_agent.py` BOTS**, maschinell
+  gegeneinander verglichen (die `for`-Schleife im start_all wurde durch zwei explizite
+  Blöcke ersetzt, damit sich beide Stellen zeilenweise vergleichen lassen).
+  `monitor` neu gestartet, meldet alle 17 Sessions grün.
+- Unverändert: `hl_collect.py` (1003 Runden, 0 Fehler), `super_bot`, `crypto_bot`
+
+### Was offen ist
+
+- **Erste F-vs-B-Zahlen sind bedeutungslos.** Nach 10 Minuten: B 4.996 $ / 6 Positionen,
+  F 4.999 $ / 3 Positionen, MISSED_FILL-Quote 80 % (3 gefüllt, 12 verpasst). Das
+  Kriterium lautet ≥ 60 Tage und Quote < 25 %. Falls die Quote sich bei 80 % einpendelt,
+  ist die Antwort „Maker-Ausführung verpasst den Markt" — auch das wäre ein Ergebnis.
+- **Das 120-s-Fenster ist gesetzt, nicht hergeleitet.** Kommt aus dem Patch-Text. Ob es
+  die richtige Größe ist, zeigt erst die Quote über Wochen.
+- **Regimeabhängigkeit des Funding** bleibt das größte offene Risiko der Hyperliquid-
+  Rechnung. Drei Tage sind ein ruhiges Regime; bei DOGE mit +0,034 %/h wären es 94 bp
+  je Position statt 3,5.
+- **49 `.bak`-Dateien** sind weiterhin im Repo versioniert.
+- Bewusst nicht gemacht: kein Cron für `funding_logger.py`, keine Prüfung 22, keine
+  Umstellung auf echtes Geld, keine Änderung an Kapital oder Positionsgrößen.
+
+## 25.08.2026 — Cloud-Ergebnisse auf den Pi übertragen (nur Dateien, kein Rollout)
+
+### Was gemacht wurde
+
+Der Sitzungsstart meldete 4 driftende Dateien und 7 Dateien, die es nur auf dem Mac gab —
+die Arbeitsergebnisse der Cloud-Sitzung vom 22.08. Vor dem Übertragen geprüft:
+bei allen vier Drift-Dateien war der **Mac** neuer, die Pi-Stände waren die kürzeren
+Fassungen von 12:58; die Mac-Fassungen von 13:03 enthalten zusätzlich den Nachtrag.
+Die Zeilen, die nur auf dem Pi standen (Prüfung „19" statt 22, alte Logger-Statuszeile),
+sind genau die, die der Nachtrag korrigiert — also keine eigenständige Pi-Arbeit,
+die verloren gehen konnte.
+
+Übertragen mit `pi_sync.sh push` (11 Dateien, je mit Pi-Sicherung `*.bak_20260825-112404`):
+`DEPLOY_NEUDENKEN.md`, `TODO_NEUDENKEN.md`, `ABGLEICH_CLOUD_PI.md`, `ANTWORT_CLOUD_20260822.md`,
+`PATCHES_A1_A3.md`, `studien/event_studie.py`, `studien/momentum_backtest.py`,
+`studien/momentum_backtest_ergebnis.md`, `venue/venue_check.py`, `venue/funding_logger.py`,
+`venue/venue_check_ergebnis.md`.
+Zusätzlich per `scp`: `venue/funding_log.csv` und `venue/venue_check_ergebnis.csv` —
+`pi_sync.sh` erfasst nur `.py/.sh/.html/.md`, die Messreihen fielen sonst durchs Raster.
+`pi_sync.sh check` meldet danach: deckungsgleich.
+
+### Warum
+
+Übertragen wurden **nur Dateien**. Schritt 3 des Rollout-Plans (stündlicher Cron für
+`funding_logger.py`) wurde bewusst **nicht** ausgeführt: laut Nachtrag in `DEPLOY_NEUDENKEN.md`
+ist der Rollout blockiert, bis der Logger mit `hl_collect.py` zusammengelegt ist — sonst
+liefen zwei Funding-Sammler parallel und die 28-Tage-Historie von `hl_collect.py` bekäme
+eine zweite, konkurrierende Quelle. Ohne Cron liegen die neuen Skripte auf dem Pi und tun
+nichts; geprüft: kein Cron und kein Watchdog-Eintrag verweist auf `venue/` oder `studien/`.
+
+### Was jetzt läuft
+
+Unverändert — es wurde kein Prozess gestartet, gestoppt oder neu geladen.
+Neu auf dem Pi liegen die Ordnerinhalte `venue/` (5 Dateien) und `studien/` (4 Dateien).
+`.gitignore` erfasst beide Ordner nicht, das nächtliche GitHub-Backup nimmt sie also mit —
+inklusive `funding_log.csv`, wie im Deploy-Plan gewünscht.
+
+### Was offen ist
+
+- **Zusammenlegung `funding_logger.py` + `hl_collect.py`** — Voraussetzung für den Cron
+  und damit für den Carry-Entscheid (C2). Nicht begonnen.
+- **Patches A1 + A3** aus `PATCHES_A1_A3.md` — nicht angewendet.
+- **Prüfung 22** in `agents/funktionspruefung.py` — nicht ergänzt.
+- **`*.bak_*` landet im Git-Repo**: 49 Sicherungsdateien sind versioniert, 55 liegen im
+  Verzeichnis. Kein neues Problem, aber Rauschen im nächtlichen Backup. Ein Muster in
+  `.gitignore` würde nur künftige stoppen; die 49 bestehenden auszutragen wäre eine
+  Löschung im Repo — deshalb nicht von mir entschieden.
+
 ## 22.08.2026 (früh) — Die 60-MB-Datei ausgewertet: vier Befunde, einer korrigiert mich
 
 636.664 Zeilen, 5 Märkte, 28 Tage. Die Imbalance-Frage war beantwortet (Signal zu klein) — in der
@@ -802,3 +975,111 @@ und hätten bei jedem Reboot Fehlalarm ausgelöst (im ersten Testlauf genau so p
 - Der Wochenbericht ist bewusst eine Seite auf dem Pi, keine Cloud-Seite: ein Cron auf dem Pi kann
   nichts veröffentlichen, und der Pi ist von außen nur über VPN erreichbar.
 
+
+## 2026-08-25 — Diagnose: Verkauf-Rückkauf-Karussell im Krypto-Bot
+
+**Was gemacht wurde**
+Telegram-Feed (letzte 1500 Nachrichten, 20.07.–25.08.) über die Telethon-User-Session
+abgezogen (/tmp/feed_dump.py) und Kauf-/Verkaufsnachrichten zu Ketten je Asset verknüpft.
+Auslöser: Andreas' Beobachtung, dass Positionen mit kleinem Gewinn verkauft und
+2–3 Minuten später im selben Asset zurückgekauft werden.
+
+**Befund**
+- 127 Verkauf→Rückkauf-Paare gesamt; **48 davon (38 %) innerhalb von 5 Minuten**,
+  45 sogar innerhalb von 3 Minuten. Betroffen fast ausschließlich crypto_bot.py
+  (2-Min-Zyklus), Super-Bot nur in einem Fall (GLD).
+- Rückkaufpreis im Schnitt **−0,04 %** gegenüber dem Verkaufspreis — der Exit hat also
+  faktisch nichts geschützt, 27 von 46 Rückkäufen waren sogar teurer.
+- Kosten je Round-Trip 0,62 % (0,26 % Fee + 0,05 % Slippage je Seite, sim_fee/sim_slip).
+  Bei Ø 227 $ Einsatz: **−59 $ netto in 11 Tagen** allein durch diese Doppelrunden —
+  gegenüber 168 $ realisiertem Gewinn aller 145 Verkäufe im Feed.
+
+**Warum das passiert**
+Exit und Entry sind entkoppelt. Der Ausstieg kommt aus _exit_trigger()
+(PSAR-Stop auf 1h-Bars ab ≥+1,5 %, Trailing, Breakeven), der Wiedereinstieg aus dem
+Score-Modell, das alle 2 Minuten neu rechnet. Eine Sperre gibt es nur nach hartem
+Stop-Loss (_sl_cooldown, 1,5 h) und nach Spikes (2 h) — **nicht nach Gewinn-Exits**.
+Score und PSAR ändern sich in 2 Minuten nicht, also feuert der Kauf sofort wieder.
+
+**Was offen ist**
+Fix noch nicht eingebaut — Handelsverhalten ist Strategie, wartet auf Andreas' Entscheidung.
+Vorschlag: Re-Entry im selben Symbol nur, wenn der Preis mindestens 0,7 % (= Kostenhürde)
+vom Exit-Preis abweicht, plus 30-Min-Mindestpause. Rein kostensparend, da die Position
+in diesen Fällen ohnehin wieder aufgebaut wurde.
+
+### Nachtrag 25.08. — Entscheidung Andreas: Ausstieg statt Wiedereinstieg
+
+Andreas hat die Re-Entry-Sperre verworfen ("könnte nach hinten losgehen") und die
+Exit-Seite gewählt. Daraufhin gebaut und gerechnet:
+
+**Werkzeuge (neu, alle in `crypto/`)**
+- `get_bars.py` — lädt 1-Min-/1h-Bars von Alpaca nach `exit_sim_data*/` (im .gitignore).
+- `exit_sim.py` — Retro-Simulation der Ausstiegsregeln, `_exit_trigger` wortgleich
+  nachgebaut, PSAR-Code aus dem Bot übernommen.
+- `vergleich.py` — Kalibrierung gegen die real ausgeführten Trades.
+- `preischeck.py` — Kaufpreis im Feed gegen Marktkurs derselben Minute.
+- `exit_sim_gross.py` — dieselben Regeln auf 2.300 künstlichen Einstiegen.
+- `robust.py` — Bootstrap und Aufteilung nach Zeitraum/Symbol.
+
+**Drei Irrwege, die erst die Kalibrierung sichtbar gemacht hat**
+1. Ausführung am Minutentief statt am Stop-Niveau → Simulation rechnete sich um
+   0,7 % je Trade zu schlecht. Korrigiert: Füllung am Stop-Niveau, auf die Bar-Spanne begrenzt.
+2. Fehl-Prints in den Alpaca-Minutenbars → ein einziger SOL-Bar erzeugte −207 $
+   Scheinverlust. Dochte werden jetzt bei 8 % gegen den Vorschlusskurs gekappt.
+3. Auf den 133 echten Einstiegen (12 Tage) sah "Exit nur zum Minutenschluss prüfen"
+   nach +67 $ aus. Auf 2.300 Einstiegen über 45 Tage ist dieselbe Änderung
+   **signifikant schlechter** (−0,10 % je Trade). Die kleine Stichprobe hätte in die
+   falsche Richtung geführt.
+
+**Ergebnis auf 2.300 Einstiegen (12.07.–20.08.), Δ je Trade gegen heute**
+| Änderung | Δ % | Bootstrap 5–95 % | Drittel 1 / 2 / 3 |
+|---|---|---|---|
+| Trailing 1,5 → 2,5 % | +0,11 | +0,07 … +0,16 | −0,04 / −0,00 / +0,38 |
+| Trailing 1,5 → 3,5 % | +0,27 | +0,20 … +0,34 | −0,10 / −0,01 / +0,92 |
+| Break-even-Exit raus | +0,07 | +0,03 … +0,11 | +0,12 / −0,02 / +0,11 |
+| PSAR erst ab +3 % | −0,01 | −0,04 … +0,02 | — |
+| PSAR ganz aus | −0,04 | −0,08 … −0,00 | — |
+| nur halten (Referenz) | +3,47 | +3,06 … +3,89 | −1,02 / −0,44 / +11,71 |
+
+**Umgesetzt in `crypto/crypto_bot.py` (`_exit_trigger`)**
+- Trailing-Stop 1,5 % → **2,5 %**.
+- **Break-even-Ausstieg entfernt.** Er schloss Positionen, die einmal +2 % gesehen
+  hatten, bei exakt 0 % — garantierte 0,62 % Kosten, ohne etwas zu schützen.
+  Positionen unter +4 % Bestwert hängen jetzt am harten Stop.
+- PSAR unverändert — die Simulation entlastet ihn.
+
+**Warum nicht mehr**
+Trailing 3,5 % und erst recht "nur halten" verdienen ihren Vorsprung ausschließlich
+im letzten Drittel (Rallye ab 08.08.); im ersten Drittel liegt "nur halten" 1 % je
+Trade hinten. Das ist eine Wette auf Trendmärkte, kein Beleg. Der Break-even-Ausstieg
+ist die einzige Änderung, die in allen drei Teilzeiträumen trägt.
+
+**Was jetzt läuft**
+Crypto-Bot 17:25 neu gestartet (Session `crypto`, 8 Positionen und Kontostand 3.551 $
+übernommen). Backups: `crypto_bot.py.bak_20260825-172421`, `crypto_state.json.bak_…`.
+
+**Nebenbefund, offen**
+Die Kaufmeldung für SOL am 13.08. 22:44 nannte 187,44 $, Markt war 76,29 $ (Faktor 2,5).
+Der Handel selbst lief korrekt (Trade schloss mit −1,7 %), nur die Telegram-Nachricht
+war falsch. Einzelfall unter 134 geprüften Käufen, Ursache noch nicht gesucht.
+
+**Was offen bleibt**
+- Der eigentliche Befund ist unbequem: Der Median-Trade liegt bei −0,62 % — genau die
+  Round-Trip-Kosten. Vor Kosten verdient der Bot im Median nichts; der Ertrag hängt an
+  wenigen Ausreißern. Das ist ein Entry-Problem, kein Exit-Problem, und die
+  Exit-Änderung verschiebt es nur um 0,1–0,2 % je Trade.
+- Vorwärtstest nötig: ob Trailing 2,5 % hält, zeigt sich frühestens in einigen Wochen.
+  Messgrösse: Anteil der Verkäufe mit Rückkauf binnen 5 Minuten (heute 38 %).
+
+### Nachtrag 2 — SOL-Fehlmeldung geklärt, nicht weiterverfolgt
+
+Nachgeprüft: Zwischen dem Kauf am 13.08. 22:44 und dem Ausstieg am 15.08. 11:26 gab es
+keinen weiteren SOL-Kauf, der Trade gehört also zu diesem Einstieg. Er schloss mit
+−1,7 % — mit einem Einstand von 187,44 $ wären es bei einem SOL-Kurs von ~77 $ am
+Ausstiegstag −59 % gewesen. **Gebucht war der richtige Kurs, falsch war nur die
+Telegram-Nachricht.** Kontostand und P&L stimmen.
+
+Andreas' Entscheidung: nicht weiterverfolgen, solange es ein Einzelfall bleibt.
+Prüfwerkzeug liegt bereit — `python3 crypto/preischeck.py` vergleicht jeden gemeldeten
+Kaufpreis mit dem Marktkurs derselben Minute (aktuell: 1 Ausreisser unter 134 Käufen,
+alle anderen unter 5 %). Bei Wiederholung dort ansetzen.

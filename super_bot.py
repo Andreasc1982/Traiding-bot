@@ -1097,6 +1097,12 @@ class SuperTradingBot:
             "sector":   pos.get("sector", ""),
             "features": pos.get("ml_features"),   # None for pre-ML trades — skipped in training
             "ml_prob":  pos.get("ml_prob"),        # model's entry confidence (informational)
+            # A1: Alt-Positionen ohne entry_ts ergeben None — gewollt,
+            # ehrlicher als ein rueckgerechneter Schaetzwert.
+            "entry_ts":     pos.get("entry_ts"),
+            "einsatz_usd":  pos.get("einsatz_usd"),
+            "haltedauer_h": (round((time.time() - pos["entry_ts"]) / 3600, 2)
+                             if pos.get("entry_ts") else None),
         }
         with self.positions_lock:
             self.trades.append(trade_record)
@@ -1830,6 +1836,12 @@ class SuperTradingBot:
                     "psar_stop":   ind.get("psar"),   # dynamic stop — updated each cycle
                     "ml_features": ml_features,       # saved to trades_history at close
                     "ml_prob":     round(ml_prob, 3), # win probability at entry
+                    # A1 (25.08.2026): Einstiegszeit und Einsatz werden gespeichert
+                    # statt spaeter rueckgerechnet. Die Analyse vom 22.08. musste
+                    # die Haltedauer ueber Little's Gesetz schaetzen und den Einsatz
+                    # aus profit/pct rekonstruieren — beides jetzt ueberfluessig.
+                    "entry_ts":    time.time(),
+                    "einsatz_usd": round(shares * fill, 2),
                 }
 
             if not self.demo and self.alpaca_ok:

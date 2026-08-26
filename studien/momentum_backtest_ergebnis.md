@@ -40,3 +40,39 @@ Monats-Differenz Strategie − SPY: Ø -7 bp, **t = -0.28** (n = 234).
 ## Ehrliche Einordnung
 
 Backtest, kein Nachweis: Aufnahme in Stufe 2 erst nach 3 Monaten unverzerrtem Vorwärtstest (Portfolio-Architektur-Regel). ETF-Universum vermeidet Survivorship-Bias, deckelt aber die Auflösung — Einzelaktien erst im Vorwärtstest über den Funnel. Spätere ETF-Auflagen (XLRE, XLC, PAVE) steigen erst ab Datenbeginn ein — das ist korrekt, kein Leck. Der Drawdown zeigt, was auszuhalten wäre; der Trendfilter senkt ihn, kostet aber in V-Erholungen Rendite.
+
+---
+
+## NACHTRAG 22.08. — „kein Alpha" war die falsche Messlatte
+
+Einwand der lokalen Session, sachlich richtig: Die Aussage „t = −0,28, kein Alpha"
+vergleicht rohe Monatsrenditen und ignoriert, dass die Strategie zeitweise nur
+teilweise investiert ist (Ø 0,53 Umschlag, Cash wenn < 5 Kandidaten den Trendfilter
+bestehen). Wer SPYs Rückgang auf das Strategieniveau drücken will, muss Aktienquote
+abgeben — und verliert dabei Rendite.
+
+**Nachgerechnet auf derselben Datenbasis** (233 Monate, Ziel: max. Rückgang ≤ 26,5 %):
+
+| Vergleich | CAGR | max. Rückgang |
+|---|---|---|
+| **Momentum Top 5 (netto)** | **10,3 %** | −26,5 % |
+| SPY, auf gleichen Rückgang gemischt (Cash zu 0 %) | 5,1 % (44,5 % SPY) | −26,3 % |
+| SPY, auf gleichen Rückgang gemischt (Cash = T-Bills/BIL) | 6,1 % (46,5 % SPY) | −26,4 % |
+| SPY voll investiert | 11,1 % | −50,8 % |
+
+Die lokale Schätzung (52 % SPY → 5,8 %) lag in der Richtung richtig und im Betrag
+etwas zu günstig für SPY — real sind nur 44–47 % SPY tragbar, weil sich Rückgänge
+nicht linear mit der Quote skalieren. **Der Abstand ist also größer als dort
+angenommen: 10,3 % gegen 5,1–6,1 % bei gleichem Schmerz.**
+
+**Ehrliche Gegenrede zur Gegenrede** — beides gehört ins Urteil:
+- Auf **Volatilität** normiert ist es ein Gleichstand (Sharpe 0,75 vs. 0,76). Nur auf
+  **maximalen Rückgang** normiert dominiert die Strategie klar.
+- Der maximale Rückgang ist eine Einzelbeobachtung aus genau einem Pfad (2008/09) und
+  damit die unsicherste aller Kennzahlen — Sharpe ist statistisch belastbarer.
+- Beide Größen stammen aus demselben Rückblick; ein Vorwärtstest ersetzt das nicht.
+
+**Fazit, präziser als vorher:** Nicht „kein Alpha", sondern **„kein Renditevorsprung,
+aber ein erheblicher Vorsprung je Einheit Rückgang".** Für ein Depot, dessen Besitzer
+den Rückgang aussitzen muss, ist das die relevantere Größe — und damit ein besseres
+Argument für den Umbau, als der Backtest zunächst hergab.

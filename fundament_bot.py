@@ -13,7 +13,7 @@ Kein echtes Geld. Taeglich per Cron: bewerten, ggf. zurueckfuehren, Dashboard.
 
     python3 fundament_bot.py [--rebal] [--dry]
 """
-import os, sys, csv, json
+import os, sys, csv, json, time
 import statistics as st
 from datetime import datetime, timedelta
 import warnings
@@ -158,9 +158,14 @@ def main():
         s["letzte_rueckfuehrung"] = heute
         s["rueckfuehrungen"] += 1
         s["kosten_gesamt"] = round(s.get("kosten_gesamt", 0.0) + kosten, 2)
+        # A1 (25.08.2026): nur entry_ts. einsatz_usd und haltedauer_h gibt es hier
+        # bewusst NICHT — dieses Depot haelt SPY/SHY/GLD/DBC dauerhaft und fuehrt
+        # nur Gewichte zurueck. Es gibt keinen Ein- und Ausstieg, also auch keine
+        # Haltedauer. Die Felder trotzdem zu setzen waere eine erfundene Zahl.
         s["trades"].append({"datum": heute, "umschlag": round(umschlag, 2),
                             "kosten": round(kosten, 2), "wert": round(gesamt, 2),
-                            "abweichung_pp": round(abweichung * 100, 2)})
+                            "abweichung_pp": round(abweichung * 100, 2),
+                            "entry_ts": time.time()})
         s["trades"] = s["trades"][-30:]
         werte = {k: neu[k]["stueck"] * px[k] for k in ZIEL}
         print("[RUECKFUEHRUNG] Umschlag $%.2f, Kosten $%.2f, Abweichung war %.1f Pp"

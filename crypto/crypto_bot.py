@@ -1208,6 +1208,8 @@ class CryptoBot:
                                     "whale":       True,
                                     "whale_usd_m": usd_m,
                                     "esnap":       {"whale_usd_m": usd_m, "fg": self.last_fg.get("value")},
+                                    "entry_ts":    time.time(),           # A1
+                                    "einsatz_usd": round(shares * fill, 2),
                                 }
                             self._save_state()
                             self.send("🐋 <b>KAUF nach Großabfluss · " + self._titel(symbol) + "</b>"
@@ -1399,6 +1401,8 @@ class CryptoBot:
                 "take_profit": 3.0,   # tight spike target
                 "spike":       True,
                 "esnap":       {"spike_ratio": round(ratio, 1), "fg": self.last_fg.get("value")},
+                "entry_ts":    time.time(),           # A1
+                "einsatz_usd": round(shares * fill, 2),
             }
 
         # Order placed outside lock (slow network call)
@@ -1542,8 +1546,13 @@ class CryptoBot:
                 return pfx + "BTC-CRASH-STOP"
 
         # 2. Take-profit zone — classic trailing
+        # Trailing 25.08.2026 von 1,5 % auf 2,5 % geweitet. Bei 0,62 % Kosten je
+        # Runde war der 1,5-%-Abstand kaum mehr als Rauschen: 38 % aller Verkaeufe
+        # wurden binnen 5 Minuten im selben Coin zurueckgekauft, im Schnitt 0,04 %
+        # billiger. Retro-Simulation ueber 2.300 Einstiege (12.07.-20.08.):
+        # +0,11 % je Trade (Bootstrap 5-95 %: +0,07 bis +0,16).
         if best_pnl >= tp:
-            if trailing >= 1.5:
+            if trailing >= 2.5:
                 return pfx + "TRAIL-STOP"
 
         # 3. Deep profit zone (≥6%) — trail 2% behind personal best
@@ -1556,12 +1565,14 @@ class CryptoBot:
             if pnl_pct < 2.0:
                 return pfx + "PROFIT-LOCK"
 
-        # 5. Break-even zone (≥2%) — never lose on a trade that was winning
-        elif best_pnl >= 2.0:
-            if pnl_pct < 0.0:
-                return pfx + "BREAKEVEN"
+        # 5. Break-even-Ausstieg entfernt (25.08.2026).
+        # Er schloss Positionen, die einmal +2 % gesehen hatten, bei exakt 0 % —
+        # und kostete damit garantiert die 0,62 % Round-Trip-Gebuehr, ohne etwas
+        # zu schuetzen. In der Simulation die einzige Aenderung, die in allen drei
+        # Teilzeitraeumen trug (+0,12 / -0,02 / +0,11 % je Trade). Positionen unter
+        # +4 % Bestwert haengen jetzt am normalen harten Stop unten.
 
-        # 6. Standard hard stop — position never reached +2%
+        # 6. Standard hard stop — Auffangnetz fuer alles unter +4 % Bestwert
         else:
             if pnl_pct <= -sl:
                 return pfx + "STOP-LOSS"
@@ -2238,6 +2249,11 @@ class CryptoBot:
             "whale":     pos.get("whale", False),
             "whale_usd_m": pos.get("whale_usd_m", 0),
             "esnap":     pos.get("esnap", {}),   # Entry-DNA (leer bei Alt-Positionen)
+            # A1: None bei Alt-Positionen — gewollt, kein Schaetzwert.
+            "entry_ts":     pos.get("entry_ts"),
+            "einsatz_usd":  pos.get("einsatz_usd"),
+            "haltedauer_h": (round((time.time() - pos["entry_ts"]) / 3600, 2)
+                             if pos.get("entry_ts") else None),
         }
         with self.positions_lock:
             self.trades.append(trade_record)
@@ -2474,6 +2490,8 @@ class CryptoBot:
                     "time":      datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "highest":   fill,
                     "psar_stop": ind.get("psar"),   # dynamic stop — updated each cycle
+                    "entry_ts":  time.time(),         # A1 (25.08.2026)
+                    "einsatz_usd": round(shares * fill, 2),
                 }
                 # Wild meme coins get a wider per-position stop (5%) stored explicitly
                 # so _ws_check_price and check_stops both use it via pos.get("stop_loss")

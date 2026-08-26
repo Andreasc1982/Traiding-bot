@@ -1,0 +1,62 @@
+# ── Secrets — NEVER commit ────────────────────────────────────────────────
+# Covers config.py, config.pi, config.pi.save, and any future variants
+config.*
+.env
+
+# ── Runtime state files (restored from exchange / recalculated on start) ──
+super_state.json
+crypto/crypto_state.json
+
+# ── Runtime control files (transient IPC, written by telegram_router) ─────
+bot_control.json
+crypto/crypto_control.json
+
+# ── Live dashboard JSON feeds (updated every 10 min — too noisy) ──────────
+dashboard.json
+crypto/crypto_dashboard.json
+
+# ── Risk-halt flag (created/deleted by risk_agent, transient) ────────────
+agents/risk_halt.json
+
+# ── Log files ────────────────────────────────────────────────────────────
+*.log
+
+# ── Editor backup / temp files ───────────────────────────────────────────
+*.save
+*.py.txt
+*.swp
+*.swo
+*~
+
+# ── Python cache ─────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+crypto/clones/*.json
+dex/*.json
+dex/heartbeat.json
+
+# ── Runtime data / agent logs (append-only, not source) ──────────────────
+agents/equity_history.csv
+agents/health_log.csv
+agents/optimize_log.txt
+agents/risk_log.json
+crypto/clones/equity_log.csv
+dex/screening_log.csv
+
+# Forschungs-Rohdaten und Caches (gross, jederzeit neu erzeugbar)
+sec/*.zip
+sec/insider_daily.csv
+agents/panel_*.pkl
+dydx/imbalance_log.csv
+tg/scan_all.csv
+tg/*.session
+tg/*.session-journal
+tg/login_pending.json
+agents/panel_ins_*.pkl
+dex_archiv_*/
+crypto/clones_archiv_*/
+
+# Podcast-Audio (gross, nach Transkription entbehrlich; Nachweis via ng/texte + Log)
+tg/audio/
+*.mp3

@@ -101,6 +101,53 @@ BOTS = {
             "PYTHONUNBUFFERED=1 python3 -u dydx_collect.py > /tmp/dydx.log 2>&1"
         ),
     },
+    # Clone-Experiment A3 (25.08.2026) — Maker- vs Taker-Execution.
+    # gateway MUSS vor den Clones stehen: clone.py liest ALLE Marktdaten aus
+    # /dev/shm/crypto_gw. Ohne Gateway sieht ein Clone gar nichts.
+    "gateway": {
+        "name":         "Crypto Market-Data Gateway (fuer Clones)",
+        "session":      "gateway",
+        "trading_only": False,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1"
+        ),
+    },
+    "clone_B_nospikes": {
+        "name":         "Clone B_nospikes (Taker-Vergleich zu F_maker)",
+        "session":      "clone_B_nospikes",
+        "trading_only": True,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py B_nospikes "
+            "> /tmp/clone_B_nospikes.log 2>&1"
+        ),
+    },
+    "clone_F_maker": {
+        "name":         "Clone F_maker (Limit statt Market, A3)",
+        "session":      "clone_F_maker",
+        "trading_only": True,
+        "cmd": (
+            "cd /home/trading2025/trading_bot/crypto && "
+            "source /home/trading2025/trading_bot_env/bin/activate && "
+            "PYTHONUNBUFFERED=1 python3 -u clone.py F_maker "
+            "> /tmp/clone_F_maker.log 2>&1"
+        ),
+    },
+    "clones_dash": {
+        "name":         "Clone-Vergleich Dashboard :8103",
+        "session":      "clones_dash",
+        "trading_only": False,
+        "cmd": (
+            "fuser -k 8103/tcp 2>/dev/null; sleep 1; "
+            "cd /home/trading2025/trading_bot/crypto/clones && "
+            "python3 /home/trading2025/trading_bot/dash_server.py 8103 "
+            "maker_dashboard.html B_nospikes_dashboard.json F_maker_dashboard.json "
+            "F_maker_maker.json > /tmp/clones_dash.log 2>&1"
+        ),
+    },
     "fundament_dash": {
         "name":         "Fundament Dashboard",
         "session":      "fundament_dash",

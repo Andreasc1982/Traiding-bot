@@ -16,6 +16,10 @@ screen -S optimize       -X quit 2>/dev/null || true
 screen -S tgrouter       -X quit 2>/dev/null || true
 screen -S backup         -X quit 2>/dev/null || true
 screen -S dydx           -X quit 2>/dev/null || true
+screen -S gateway        -X quit 2>/dev/null || true
+screen -S clone_B_nospikes -X quit 2>/dev/null || true
+screen -S clone_F_maker  -X quit 2>/dev/null || true
+screen -S clones_dash    -X quit 2>/dev/null || true
 sleep 2
 
 # ── Clear orphaned port processes ─────────────────────────────────────────────
@@ -100,6 +104,36 @@ screen -dmS backup bash -c '
 #[clones beendet 2026-07-26]   cd /home/trading2025/trading_bot/crypto/clones &&
 #[clones beendet 2026-07-26]   python3 /home/trading2025/trading_bot/dash_server.py 8090 clones_dashboard.html A_baseline_dashboard.json G_core_dashboard.json G_mexc_dashboard.json I_wide_dashboard.json > /tmp/clones_dashboard.log 2>&1'
 #[clones beendet 2026-07-26] 
+
+# ── Clone-Experiment A3 (25.08.2026): Maker- vs Taker-Execution ──────────────
+# Misst den Sofort-Hebel "Limit statt Market": F_maker zahlt 0,16 % Maker-Fee
+# beim Entry statt 0,26 % Taker, riskiert dafuer verpasste Fills. B_nospikes ist
+# der Vergleichszwilling — identische Signale, identisches Universum, Taker.
+# Entscheidungskriterium: F schlaegt B ueber >= 60 Tage nach Kosten UND
+# MISSED_FILL-Quote < 25 %.
+# Reihenfolge zwingend: gateway zuerst, die Clones lesen /dev/shm/crypto_gw.
+# Diese Eintraege muessen mit agents/monitor_agent.py BOTS uebereinstimmen —
+# sonst startet der Watchdog anders als der Reboot (Drift-Falle vom 22.07.).
+screen -dmS gateway bash -c '
+  cd /home/trading2025/trading_bot/crypto &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u gateway.py > /tmp/gateway.log 2>&1'
+sleep 5
+# Bewusst zwei explizite Bloecke statt einer for-Schleife: so ist jede Zeile
+# 1:1 mit dem passenden BOTS-Eintrag in agents/monitor_agent.py vergleichbar.
+screen -dmS clone_B_nospikes bash -c '
+  cd /home/trading2025/trading_bot/crypto &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u clone.py B_nospikes > /tmp/clone_B_nospikes.log 2>&1'
+screen -dmS clone_F_maker bash -c '
+  cd /home/trading2025/trading_bot/crypto &&
+  source /home/trading2025/trading_bot_env/bin/activate &&
+  PYTHONUNBUFFERED=1 python3 -u clone.py F_maker > /tmp/clone_F_maker.log 2>&1'
+screen -dmS clones_dash bash -c '
+  fuser -k 8103/tcp 2>/dev/null; sleep 1;
+  cd /home/trading2025/trading_bot/crypto/clones &&
+  python3 /home/trading2025/trading_bot/dash_server.py 8103 maker_dashboard.html B_nospikes_dashboard.json F_maker_dashboard.json F_maker_maker.json > /tmp/clones_dash.log 2>&1'
+
 # DEX-Monitor (Solana, read-only)
 #[dex beendet 20260726] screen -dmS dex bash -c '
 #[dex beendet 20260726]   cd /home/trading2025/trading_bot &&

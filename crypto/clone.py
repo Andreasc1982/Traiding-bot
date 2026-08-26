@@ -63,6 +63,14 @@ VARIANTS = {
     # weil avgLoss -$8.79 (Messer gefangen: oversold UND weiter fallend). Refined verlangt Supertrend==1
     # (bullish = Umkehr hat BEGONNEN) -> kauft oversold-und-drehend, keine Memes. Ziel: avgLoss -> ~-$3.5 -> Plus.
     "H_contra_refined":    {"spikes": False, "memes": False, "contrarian": True,  "refined": True, "score_min": 0.1, "port": 8099},
+    # F_maker (A3, 25.08.2026): B_nospikes 1:1, aber Entries als LIMIT-Order.
+    # Misst den Sofort-Hebel "Limit statt Market": halbe Gebuehr (0,16 % statt
+    # 0,26 % je Seite) gegen das Risiko verpasster Fills. Isoliert genau EINE
+    # Achse gegen B_nospikes — Signale, Universum, Groesse identisch.
+    # Port 8103: die Angabe "8098 ist frei" aus PATCHES_A1_A3.md stimmt nicht,
+    # dort laeuft das Fundament-Dashboard (8097 Insider, 8099 Hyperliquid).
+    "F_maker":             {"spikes": False, "memes": True,  "contrarian": False,
+                            "score_min": 0.1, "maker": True, "port": 8103},
     # G_big: G_core-Strategie mit DOPPELTEM Einsatz (pos 6->12%, Risiko 1->2%) auf MEXC-Execution.
     # Seit 2026-07-17 echte Bid/Ask-Fills statt nur 0.05%-Fee-Annahme (mexc-Flag).
     "G_big":               {"spikes": False, "memes": False, "contrarian": False, "score_min": 0.1,
@@ -84,6 +92,12 @@ VARIANTS = {
 # neuen Gateway-Scores aufgreifen und das laufende Experiment veraendern.
 EXTRA_UNIVERSE = {"ATOM/USD", "NEAR/USD", "OP/USD", "INJ/USD", "FIL/USD"}
 
+# Maker-Modell (A3): Kraken 0,16 % maker vs 0,26 % taker je Seite.
+# NUR der Entry ist maker. Exits bleiben taker — ein Stop, der auf einen
+# Maker-Fill wartet, waere eine Luege im Risikomodell.
+MAKER_FEE   = 0.0016
+FILL_WINDOW = 120    # s; danach gilt die Limit-Order als verpasst
+
 MEXC_FEE  = 0.0005   # taker je Seite (beim Konto-Setup gegen echten Account verifizieren!)
 MEXC_SLIP = 0.0002   # Rest-Slippage (Latenz/Tiefe) — Spread steckt schon in ask/bid
 
@@ -92,6 +106,14 @@ MOON_SIZE  = 0.03    # Mini-Wette 3% (Totalverlust einkalkuliert)
 MOON_HARD  = 0.18    # harter Stop -18%
 MOON_TRAIL = 0.25    # Trailing-Stop 25% vom Hoch, KEIN TP-Deckel
 MOON_MAX_HOURS = 72  # Zeit-Exit: feststeckende Wette nach 3 Tagen schliessen -> Slot frei (mehr At-Bats)
+
+
+def _read_json(path, default=None):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return default
 
 
 def _read_shm(name, default=None):
@@ -141,6 +163,21 @@ class CloneBot(CryptoBot):
             self.sim_fee  = MEXC_FEE
             self.sim_slip = MEXC_SLIP
         self._consumed_spikes = set()
+        # Maker-Modus (A3) --------------------------------------------------
+        self._maker   = bool(cfg.get("maker"))
+        self._pending = {}          # symbol -> {"pos", "limit", "ts", "shares"}
+        self._maker_path = os.path.join(CLONE_DIR, variant + "_maker.json")
+        self._missed_fills = 0
+        self._maker_fills  = 0
+        if self._maker:
+            _m = _read_json(self._maker_path, {})
+            self._missed_fills = int(_m.get("missed_fills", 0))
+            self._maker_fills  = int(_m.get("maker_fills", 0))
+            print("[CLONE-" + variant + "] MAKER-Modus | Fenster " +
+                  str(FILL_WINDOW) + "s | Entry-Fee " + str(MAKER_FEE) +
+                  " | Exit-Fee " + str(self.sim_fee) +
+                  " | bisher " + str(self._maker_fills) + " Fills / " +
+                  str(self._missed_fills) + " verpasst")
         print("[CLONE-" + variant + "] init | spikes=" + str(cfg["spikes"]) +
               " memes=" + str(cfg["memes"]) + " contrarian=" + str(cfg["contrarian"]) +
               " score_min=" + str(cfg["score_min"]) +
@@ -148,7 +185,10 @@ class CloneBot(CryptoBot):
               " sim_fee=" + str(self.sim_fee) + " mexc=" + str(self._mexc))
 
     # ── Telegram aus ─────────────────────────────────────────────────────────
-    def send(self, msg):
+    def send(self, msg, roh=False, **kw):
+        # Signatur MUSS der Basis folgen: crypto_bot.run() ruft send(..., roh=True).
+        # Fehlte hier bis 25.08.2026 und liess jeden Clone beim Start abstuerzen —
+        # unbemerkt, weil die Clones seit dem 26.07. abgeschaltet waren.
         print("[CLONE-" + self.variant + "][TG] " + msg)
 
     # ── Marktdaten aus dem Gateway statt eigenem WS ──────────────────────────
@@ -185,6 +225,8 @@ class CloneBot(CryptoBot):
                                 self._moonshot_check(sym, p)
                             else:
                                 self._ws_check_price(sym, p)
+                    if self._maker:
+                        self._check_pending()
                     if self.cfg["spikes"]:
                         self._consume_spikes()
                 else:
@@ -192,6 +234,107 @@ class CloneBot(CryptoBot):
             except Exception as e:
                 print("[CLONE-READER] " + str(e))
             time.sleep(1)
+
+    # ── Maker-Execution (A3): offene Limit-Orders ────────────────────────────
+    def _check_pending(self):
+        """Jeder 1s-Tick: fuellen, wenn der Preis das Limit erreicht; verwerfen,
+        wenn das Fenster abgelaufen ist. Die verpassten Entries SIND das
+        Messergebnis — ohne sie waere die Variante geschoent."""
+        if not self._pending:
+            return
+        jetzt = time.time()
+        gefuellt, verpasst = [], []
+        with self.positions_lock:
+            for sym, o in list(self._pending.items()):
+                preis = self.ws_prices.get(sym)
+                if preis is not None and preis <= o["limit"]:
+                    # Fill zum LIMIT, nicht zum Tick-Preis
+                    if sym in self.positions or len(self.positions) >= self.max_pos:
+                        self._pending.pop(sym)
+                        self._missed_fills += 1
+                        verpasst.append((sym, "Slot belegt"))
+                        continue
+                    shares = o["shares"]
+                    limit  = o["limit"]
+                    fee_in = shares * limit * MAKER_FEE
+                    if self.balance < shares * limit + fee_in:
+                        self._pending.pop(sym)
+                        self._missed_fills += 1
+                        verpasst.append((sym, "Balance zu klein"))
+                        continue
+                    self.balance -= shares * limit + fee_in
+                    pos = o["pos"]
+                    pos["entry"]       = limit
+                    pos["fee_in"]      = round(fee_in, 6)
+                    pos["highest"]     = limit
+                    pos["time"]        = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    pos["entry_ts"]    = jetzt          # A1 — Position beginnt beim FILL
+                    pos["einsatz_usd"] = round(shares * limit, 2)
+                    pos["maker"]       = True
+                    pos["wartezeit_s"] = round(jetzt - o["ts"], 1)
+                    self.positions[sym] = pos
+                    self._pending.pop(sym)
+                    self._maker_fills += 1
+                    gefuellt.append((sym, limit, pos["wartezeit_s"]))
+                elif jetzt - o["ts"] > FILL_WINDOW:
+                    self._pending.pop(sym)
+                    self._missed_fills += 1
+                    verpasst.append((sym, "Fenster abgelaufen"))
+        for sym, limit, wart in gefuellt:
+            print("[CLONE-" + self.variant + "] MAKER-FILL " + sym + " @ $" +
+                  str(round(limit, 6)) + " nach " + str(wart) + "s | Bal $" +
+                  str(round(self.balance, 0)))
+        for sym, grund in verpasst:
+            print("[CLONE-" + self.variant + "] MISSED_FILL " + sym +
+                  " (" + grund + ") | Quote " + self._missed_quote_str())
+        if gefuellt or verpasst:
+            self._save_maker()
+            self._save_state()
+
+    def _missed_quote_str(self):
+        ges = self._maker_fills + self._missed_fills
+        return (str(round(self._missed_fills / ges * 100, 1)) + "% (" +
+                str(self._missed_fills) + "/" + str(ges) + ")") if ges else "n/a"
+
+    def _save_maker(self):
+        try:
+            tmp = self._maker_path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump({"missed_fills": self._missed_fills,
+                           "maker_fills": self._maker_fills,
+                           "offen": len(self._pending),
+                           "stand": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
+            os.replace(tmp, self._maker_path)   # atomar — Dashboard liest parallel
+        except Exception as e:
+            print("[CLONE-" + self.variant + "] _save_maker: " + str(e))
+
+    def save_dashboard(self, scores):
+        """Basis-Dashboard schreiben, dann die Maker-Kennzahlen ergaenzen.
+        Die MISSED_FILL-Quote ist das Entscheidungskriterium (< 25 %) und
+        gehoert deshalb sichtbar ins Dashboard-JSON."""
+        super().save_dashboard(scores)
+        if not self._maker:
+            return
+        try:
+            d = _read_json(self._dash_path, None)
+            if d is None:
+                return
+            ges = self._maker_fills + self._missed_fills
+            d["maker"] = {
+                "fills": self._maker_fills,
+                "verpasst": self._missed_fills,
+                "quote_pct": round(self._missed_fills / ges * 100, 1) if ges else None,
+                "offene_orders": len(self._pending),
+                "fenster_s": FILL_WINDOW,
+                "entry_fee": MAKER_FEE,
+                "exit_fee": self.sim_fee,
+            }
+            tmp = self._dash_path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(d, f)
+            os.replace(tmp, self._dash_path)
+        except Exception as e:
+            print("[CLONE-" + self.variant + "] save_dashboard(maker): " + str(e))
 
     # ── MEXC-Execution: Entries zum ASK, Exits zum BID ───────────────────────
     def get_price(self, symbol):
@@ -291,6 +434,37 @@ class CloneBot(CryptoBot):
 
     # ── Entscheidung: Momentum (Basis) ODER Contrarian ───────────────────────
     def trade(self, scores):
+        """Maker-Modus (A3): die Signal-Logik laeuft UNVERAENDERT (fairer
+        Vergleich zu B_nospikes), aber jede frisch angelegte Position wird
+        sofort in eine OFFENE Limit-Order umgewandelt — der Einsatz geht
+        zurueck in die Balance, gefuellt wird erst, wenn der Preis das Limit
+        erreicht. Ohne Maker-Flag aendert sich nichts."""
+        if not self._maker:
+            return self._trade_dispatch(scores)
+        with self.positions_lock:
+            vorher = set(self.positions)
+        self._trade_dispatch(scores)
+        with self.positions_lock:
+            neu = [x for x in self.positions if x not in vorher]
+            for sym in neu:
+                pos    = self.positions.pop(sym)
+                shares = pos["shares"]
+                fill   = pos["entry"]
+                # exakt zurueckbuchen, was der Basis-Kaufpfad abgezogen hat
+                # (fee_in im Dict ist gerundet — hier ungerundet nachrechnen)
+                self.balance += shares * fill + shares * fill * self.sim_fee
+                # Der Basis-Pfad schlaegt Slippage auf; eine Limit-Order zahlt
+                # sie nicht. Limit = der Preis, den das Signal gesehen hat.
+                limit = fill / (1.0 + self.sim_slip)
+                self._pending[sym] = {"pos": pos, "limit": limit,
+                                      "ts": time.time(), "shares": shares}
+                print("[CLONE-" + self.variant + "] LIMIT " + sym + " @ $" +
+                      str(round(limit, 6)) + " (" + str(FILL_WINDOW) +
+                      "s Fenster) | Bal $" + str(round(self.balance, 0)))
+        if neu:
+            self._save_state()
+
+    def _trade_dispatch(self, scores):
         if self.cfg.get("moonshot"):
             self._moonshot_trade(scores)
         elif self.cfg.get("fear_contrarian"):

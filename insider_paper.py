@@ -13,7 +13,7 @@ Kein echtes Geld, keine Orders. Taeglich per Cron:
 
     python3 insider_paper.py [--rebal] [--dry]
 """
-import os, sys, csv, json, math, collections
+import os, sys, csv, json, math, time, collections
 import statistics as st
 from datetime import datetime, timedelta
 import warnings
@@ -269,17 +269,45 @@ def main():
             for t in picks:
                 p = px[t]["price"]
                 sh = per / p
+                # A1 (25.08.2026): entry_ts + einsatz_usd, Feldnamen wie in den
+                # Handels-Bots. Ein Titel, der die Rueckfuehrung ueberlebt, behaelt
+                # seinen URSPRUENGLICHEN entry_ts — sonst waere jede Rueckfuehrung
+                # ein neuer Einstieg und die Haltedauer systematisch zu kurz.
+                # einsatz_usd ist dagegen der jetzt gebundene Betrag: die Position
+                # wurde neu gewichtet, das ist der Betrag, der im Risiko steht.
+                _alt_pos = state["positions"].get(t) or {}
                 newpos[t] = {"shares": sh, "entry": p, "since": today,
-                             "adv": round(px[t]["adv"])}
+                             "adv": round(px[t]["adv"]),
+                             "entry_ts": _alt_pos.get("entry_ts") or time.time(),
+                             "einsatz_usd": round(sh * p, 2)}
                 cash -= sh * p
             sold = [t for t in state["positions"] if t not in newpos]
             bought = [t for t in newpos if t not in state["positions"]]
+            # A1: je verkauftem Titel Haltedauer und Einsatz festhalten. Ohne das
+            # gibt es hier nur Ticker-Listen — eine Auswertung koennte dieses Depot
+            # nicht wie die Handels-Bots behandeln. "verkauft"/"gekauft" bleiben
+            # unveraendert, das Dashboard liest sie.
+            verkauft_detail = []
+            for _t in sold:
+                _p0 = state["positions"][_t]
+                _cur = px.get(_t, {}).get("price", _p0["entry"])
+                _ets = _p0.get("entry_ts")
+                verkauft_detail.append({
+                    "symbol":       _t,
+                    "entry_ts":     _ets,
+                    "einsatz_usd":  _p0.get("einsatz_usd"),
+                    "haltedauer_h": (round((time.time() - _ets) / 3600, 2)
+                                     if _ets else None),
+                    "erloes_usd":   round(_p0["shares"] * _cur, 2),
+                })
             state["positions"] = newpos
             state["cash"] = max(cash, 0.0)
             state["last_rebal"] = today
             state["rebal_count"] = state.get("rebal_count", 0) + 1
             state["trades"].append({"date": today, "verkauft": sold,
-                                    "gekauft": bought, "equity": round(equity, 2)})
+                                    "gekauft": bought, "equity": round(equity, 2),
+                                    "entry_ts": time.time(),
+                                    "verkauft_detail": verkauft_detail})
             state["trades"] = state["trades"][-50:]
             print("[REBAL] %d Positionen | %d neu, %d raus | Equity $%.2f"
                   % (len(newpos), len(bought), len(sold), equity))
