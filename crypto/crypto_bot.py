@@ -398,15 +398,17 @@ class CryptoBot:
 
             # Restore daily-loss baseline only if same calendar day
             # (avoids carrying yesterday's drawdown into today on restart)
+            # Tagesbasis ist seit 27.08.2026 ein Depotwert, kein Bargeldstand.
+            # Alte Staende (nur "day_start_balance") werden verworfen und unten
+            # aus dem Depotwert neu gesetzt — sonst vergliche man Aepfel mit Birnen.
+            self._tagesbasis_offen = True
             if st.get("day_date") == today:
-                saved_start = st.get("day_start_balance", 0)
+                saved_start = st.get("day_start_equity", 0)
                 if saved_start > 0:
                     self.start_balance = saved_start
+                    self._tagesbasis_offen = False
                     print("[STATE] Tagesbasis wiederhergestellt: $" +
                           str(round(self.start_balance, 2)))
-            else:
-                # New day — start_balance = current balance (daily counter starts fresh)
-                self.start_balance = self.balance
 
             # Restore SL cooling periods — only if still active
             saved_cooldowns = st.get("sl_cooldown", {})
@@ -446,6 +448,10 @@ class CryptoBot:
                               " " + str(round(pos["shares"], 6)) +
                               " @ $" + entry_str +
                               " seit " + pos.get("time", "?") + spike_tag)
+            if getattr(self, "_tagesbasis_offen", True):
+                self.start_balance = self._depotwert()
+                print("[STATE] Tagesbasis neu gesetzt: $" +
+                      str(round(self.start_balance, 2)) + " (Depotwert)")
         except Exception as e:
             print("[STATE] Load error: " + str(e))
 
@@ -462,7 +468,7 @@ class CryptoBot:
                                 if now - ts < 5400}
             st = {
                 "balance":           round(bal, 2),
-                "day_start_balance": round(start, 2),
+                "day_start_equity":  round(start, 2),   # Depotwert, nicht Bargeld
                 "day_date":          datetime.now().strftime("%Y-%m-%d"),
                 "positions":         positions,     # full position dicts, restored on startup
                 "sl_cooldown":       active_cooldowns,  # persisted SL cooling periods
@@ -499,7 +505,9 @@ class CryptoBot:
         if not (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
             return
         if not roh:
-            msg = "💰 CRYPTO · " + msg      # Bot-Label vor jeder Nachricht (Buy/Sell/Alert)
+            msg = "💰 <b>Krypto-Bot</b> · " + msg   # Label vor Nachrichten ohne eigene Kopfzeile
+        elif tg_texte:
+            msg = tg_texte.absender(msg, "crypto")  # Kauf/Verkauf: Kennung in die Kopfzeile
         url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
         try:
             r = requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": msg,
@@ -2278,6 +2286,30 @@ class CryptoBot:
 
     # ── Trade entry ────────────────────────────────────────────────────────
 
+    def _depotwert(self):
+        """Bargeld plus Marktwert der offenen Positionen.
+
+        self.balance ist reines Bargeld. Ein Kauf verschiebt Geld nur von Bargeld
+        in eine Position — wer den Tagesverlust am Bargeld misst, haelt jeden Kauf
+        fuer einen Verlust und jeden Verkauf fuer Gewinn. Beim Super-Bot hat genau
+        das am 27.08.2026 nach zwei Kaeufen "−9,5 % heute" gemeldet und alle
+        weiteren Kaeufe gesperrt; hier stand dieselbe Rechnung.
+
+        Ohne Kurs wird die Position mit ihrem Einstand bewertet.
+        """
+        with self.positions_lock:
+            wert = self.balance
+            pos  = dict(self.positions)
+        for sym, p in pos.items():
+            kurs = self.ws_prices.get(sym)
+            if not kurs:
+                try:
+                    kurs = self.get_price(sym)
+                except Exception:
+                    kurs = None
+            wert += p.get("shares", 0) * (kurs or p.get("entry", 0))
+        return wert
+
     def _get_drawdown_mult(self):
         """Gradual position-size scaling based on today's P&L.
         Returns (size_mult, zone, allow_meme).
@@ -2289,7 +2321,7 @@ class CryptoBot:
         """
         if self.start_balance <= 0:
             return 1.0, "HEALTHY", True
-        day_pct = (self.balance - self.start_balance) / self.start_balance * 100
+        day_pct = (self._depotwert() - self.start_balance) / self.start_balance * 100
         if day_pct > -3.0:
             return 1.0, "HEALTHY", True
         elif day_pct > -6.0:
@@ -2635,8 +2667,7 @@ class CryptoBot:
         """Crypto trades 24/7 — no sleep on daily loss limit.
         Reset start_balance to current balance and continue immediately so no
         opportunity is missed. The -10% limit now applies to each fresh segment."""
-        with self.positions_lock:
-            balance = self.balance
+        balance = self._depotwert()   # Depotwert, nicht Bargeld — siehe _depotwert()
         if self.start_balance <= 0:
             return
         loss = (self.start_balance - balance) / self.start_balance
@@ -2672,7 +2703,7 @@ class CryptoBot:
     def run(self):
         with self.positions_lock:
             offen = len(self.positions)
-        self.send("▶️ <b>Crypto-Bot gestartet</b>"
+        self.send("▶️ <b>Krypto-Bot gestartet</b>"
                   "\n\nKontostand: <b>" + tg_texte.de(self.balance) + " $</b>"
                   "\nOffene Positionen: " + str(offen) + " von " + str(self.max_pos)
                   + "\nHandelsplatz: " + tg_texte.BOERSE_DE.get(EXCHANGE, EXCHANGE)

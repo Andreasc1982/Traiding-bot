@@ -248,7 +248,8 @@ class SuperTradingBot:
         """
         if self.tg_ok and TELEGRAM_CHAT_ID:
             try:
-                text = msg if roh else "📈 <b>SUPER</b> · " + msg
+                text = (tg_texte.absender(msg, "super") if roh
+                        else "📈 <b>Super-Bot</b> · " + msg)
                 url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
                 requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": text,
                                          "parse_mode": "HTML",
@@ -885,14 +886,18 @@ class SuperTradingBot:
 
             # Restore daily-loss baseline only if same calendar day
             # (fresh day → start_balance stays at current balance, counter resets naturally)
+            # Die Tagesbasis ist seit 27.08.2026 ein Depotwert, kein Bargeldstand.
+            # Alte Staende tragen nur "day_start_balance" (Bargeld) — die werden
+            # bewusst verworfen und unten aus dem Depotwert neu gesetzt, sonst
+            # vergliche man Depotwert gegen Bargeld und die Zone waere erst recht falsch.
+            self._tagesbasis_offen = True
             if st.get("day_date") == today:
-                saved_start = st.get("day_start_balance", 0)
+                saved_start = st.get("day_start_equity", 0)
                 if saved_start > 0:
                     self.start_balance = saved_start
+                    self._tagesbasis_offen = False
                     print("[STATE] Tagesbasis wiederhergestellt: $" +
                           str(round(self.start_balance, 2)))
-            else:
-                self.start_balance = self.balance
 
             # Restore open positions so they survive a restart (Demo-Artefakt-Fix)
             saved_pos = st.get("positions", {})
@@ -909,6 +914,10 @@ class SuperTradingBot:
                         print("[STATE] Position wiederhergestellt: " + sym + " " +
                               str(round(pos["shares"], 4)) + " @ $" +
                               str(round(pos["entry"], 2)) + " seit " + pos.get("time", "?"))
+            if getattr(self, "_tagesbasis_offen", True):
+                self.start_balance = self._depotwert()
+                print("[STATE] Tagesbasis neu gesetzt: $" +
+                      str(round(self.start_balance, 2)) + " (Depotwert)")
         except Exception as e:
             print("[STATE] Load error: " + str(e))
 
@@ -921,7 +930,7 @@ class SuperTradingBot:
                 positions = dict(self.positions)   # snapshot under lock
             st = {
                 "balance":           round(bal, 2),
-                "day_start_balance": round(start, 2),
+                "day_start_equity":  round(start, 2),   # Depotwert, nicht Bargeld
                 "day_date":          datetime.now().strftime("%Y-%m-%d"),
                 "positions":         positions,     # full position dicts, restored on startup
             }
@@ -1567,6 +1576,30 @@ class SuperTradingBot:
 
     # ── Trade entry ────────────────────────────────────────────────────────
 
+    def _depotwert(self):
+        """Bargeld plus Marktwert der offenen Positionen.
+
+        Fuer die Tagesbilanz ist nur diese Groesse richtig. self.balance ist reines
+        Bargeld — ein Kauf verschiebt Geld lediglich von Bargeld in eine Position.
+        Wer den Tagesverlust am Bargeld misst, haelt jeden Kauf fuer einen Verlust:
+        am 27.08.2026 meldete der Bot nach zwei Kaeufen "−9,5 % heute", sperrte
+        alle weiteren Kaeufe (DANGER) — real lag der Tag bei rund 0 %.
+
+        Faellt ein Kurs aus, wird die Position mit ihrem Einstand bewertet; das ist
+        naeher an der Wahrheit als sie ganz wegzulassen.
+        """
+        with self.positions_lock:
+            wert = self.balance
+            pos  = dict(self.positions)
+        for sym, p in pos.items():
+            kurs = None
+            try:
+                kurs = self.get_price(sym)
+            except Exception:
+                pass
+            wert += p.get("shares", 0) * (kurs or p.get("entry", 0))
+        return wert
+
     def _get_drawdown_mult(self):
         """Gradual position-size scaling based on today's P&L.
         Returns (size_mult, zone) — applied on top of ADX + VIX multipliers.
@@ -1578,7 +1611,7 @@ class SuperTradingBot:
         """
         if self.start_balance <= 0:
             return 1.0, "HEALTHY"
-        day_pct = (self.balance - self.start_balance) / self.start_balance * 100
+        day_pct = (self._depotwert() - self.start_balance) / self.start_balance * 100
         if day_pct > -3.0:
             return 1.0, "HEALTHY"
         elif day_pct > -6.0:
@@ -2007,8 +2040,9 @@ class SuperTradingBot:
     # ── Safety & control ───────────────────────────────────────────────────
 
     def check_day_loss(self):
-        with self.positions_lock:
-            bal = self.balance
+        # Depotwert, nicht Bargeld: am Bargeld gemessen beendet schon der dritte
+        # Kauf des Tages den Handel (27.08.2026 genau so passiert).
+        bal = self._depotwert()
         loss = (self.start_balance - bal) / self.start_balance
         if loss >= self.max_day_loss:
             print("[STOP] Max Tagesverlust erreicht!")

@@ -72,6 +72,41 @@ SEKTOR_DE = {
 # Handelsplatz-Namen fuer die Startmeldung
 BOERSE_DE = {"alpaca": "Alpaca (Papierhandel)", "kraken": "Kraken"}
 
+# ── Absender ─────────────────────────────────────────────────────────────
+# Im Chat laufen die Meldungen mehrerer Bots zusammen. Ohne Kennung ist am
+# Handy nicht zu erkennen, wer gekauft hat — die Kuerzel im Titel helfen nicht
+# (UNI ist Krypto, GLD ist der Super-Bot, beide heissen nur nach ihrem Papier).
+BOT_NAMEN = {
+    "crypto":    "Krypto-Bot",
+    "super":     "Super-Bot",
+    "fundament": "Fundament-Bot",
+}
+
+# Schreibweisen, die bereits als Absender durchgehen. Ohne diese Liste haengt
+# absender() an "Krypto-Bot gestartet" noch ein "· Krypto-Bot" an.
+BOT_ALIASSE = {
+    "crypto":    ("Krypto-Bot", "Crypto-Bot", "CRYPTO"),
+    "super":     ("Super-Bot", "SUPER"),
+    "fundament": ("Fundament-Bot", "Fundament"),
+}
+
+
+def absender(text, bot):
+    """Haengt die Bot-Kennung an die ERSTE Zeile.
+
+    Bewusst die erste Zeile: die Push-Vorschau auf dem Handy zeigt nur diese.
+    Eine eigene Zeile am Ende waere unsichtbar, solange die Nachricht zu ist.
+    Mehrfaches Anwenden aendert nichts (die Kennung wird erkannt).
+    """
+    name = BOT_NAMEN.get(bot, str(bot))
+    if not text:
+        return text
+    zeilen = text.split("\n")
+    if any(a in zeilen[0] for a in BOT_ALIASSE.get(bot, (name,))):
+        return text
+    zeilen[0] = zeilen[0].rstrip() + " · " + name
+    return "\n".join(zeilen)
+
 
 def esc(text):
     """HTML-Sonderzeichen entschaerfen — sonst verwirft Telegram die Nachricht."""

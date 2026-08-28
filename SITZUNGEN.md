@@ -1083,3 +1083,84 @@ Andreas' Entscheidung: nicht weiterverfolgen, solange es ein Einzelfall bleibt.
 Prüfwerkzeug liegt bereit — `python3 crypto/preischeck.py` vergleicht jeden gemeldeten
 Kaufpreis mit dem Marktkurs derselben Minute (aktuell: 1 Ausreisser unter 134 Käufen,
 alle anderen unter 5 %). Bei Wiederholung dort ansetzen.
+
+## 2026-08-27 — Wirkung der Exit-Änderung, Bot-Kennung im Feed, Depotwert-Fehler
+
+**1. Wirkung der Exit-Änderung (25.08. 17:25) — nach 1,8 Tagen**
+
+| | vorher (2 Tage) | nachher (1,8 Tage) |
+|---|---|---|
+| Verkäufe je Tag | 19,3 | 13,3 |
+| „auf Einstand geschlossen" | 8 | 0 |
+| „Gewinn gesichert (Rücksetzer)" | 5 | 1 |
+| Stop-Loss | 14 | 13 |
+| Ergebnis | −61 $ | −75 $ |
+
+Mechanisch wirkt die Änderung genau wie gebaut: Break-even-Ausstiege sind weg,
+Trailing-Ausstiege selten, die Handelsfrequenz fiel um 31 %. **Am Ergebnis lässt
+sich nichts ablesen** — bei 24 Trades liegt die erwartete Wirkung (+0,18 % je Trade
+≈ +11 $) weit unter der Streuung. Die Verluste stammen aus zwei kurzen Einbrüchen
+(25.08. 23:0x, 26.08. 17:0x) mit 13 Stop-Loss; der harte Stop ist von der Änderung
+nicht berührt. Marktkontext: BTC −0,2 %, ETH +0,8 %, SOL +5,8 % im Nachher-Fenster —
+der Markt war also nicht schlechter, der Bot verliert an Schwankung, nicht an Richtung.
+Belastbar frühestens in einigen Wochen.
+
+**2. Bot-Kennung im Telegram-Feed** (Wunsch Andreas)
+
+Neu in `tg_texte.py`: `BOT_NAMEN`, `BOT_ALIASSE`, `absender(text, bot)`. Die Kennung
+hängt an der **ersten** Zeile, weil die Push-Vorschau am Handy nur diese zeigt:
+
+    🟢 KAUF · SOL · Krypto-Bot
+    🟢 KAUF · XLE (Energie) · Super-Bot
+
+`crypto_bot.send()` und `super_bot.send()` rufen sie für Nachrichten mit eigener
+Kopfzeile auf; die Präfixe der übrigen Meldungen heißen jetzt einheitlich
+„Krypto-Bot" / „Super-Bot" statt „CRYPTO" / „SUPER". `BOT_ALIASSE` verhindert
+Doppelungen wie „Krypto-Bot gestartet · Krypto-Bot".
+
+**3. Dabei gefunden: Tagesbilanz wurde am Bargeld gemessen — Bot sperrte sich selbst**
+
+`_get_drawdown_mult()` rechnete in beiden Bots `(balance − start_balance) / start_balance`,
+wobei `balance` **reines Bargeld** ist. Ein Kauf verschiebt Geld nur von Bargeld in
+eine Position — die Rechnung hielt also jeden Kauf für einen Verlust. Stand heute
+13:55 beim Super-Bot: gemeldet „🚨 Gefahrenzone · −9,5 % heute", **keine Käufe mehr**;
+tatsächlicher Depotwert 5.015 $ gegen Tagesbasis 4.733 $, also +6 %. Zwei Käufe à
+225 $ genügten, um den Bot für den Rest des Tages stillzulegen.
+
+Behoben in `super_bot.py` und `crypto/crypto_bot.py`: neue Methode `_depotwert()`
+(Bargeld + Marktwert der Positionen, Fallback auf den Einstand, wenn ein Kurs fehlt),
+Tagesbilanz rechnet dagegen. Die Tagesbasis heißt im State jetzt `day_start_equity`;
+alte `day_start_balance`-Werte werden bewusst verworfen und beim Start aus dem
+Depotwert neu gesetzt (sonst verglichen sich Depotwert und Bargeld). Beide Bots
+14:05 neu gestartet, Tagesbasis Krypto 4.959 $, Super 5.014 $, keine DANGER-Zone mehr.
+
+**4. Nebenbei repariert:** `~/bin/pi_sync.sh` fand den Pi von unterwegs nicht
+(`trading2025.fritz.box` löst nur im Heimnetz auf). Es versucht jetzt nacheinander
+`trading`, `trading-wg` (192.168.188.62 über WireGuard) und `trading-extern`.
+Neuer SSH-Alias `trading-wg` in `~/.ssh/config`.
+
+**Offen**
+- Eine Verkaufsmeldung vom 25.08. 22:14 (UNI, „auf Einstand geschlossen", Kontostand
+  4.903 $) steht in **keiner** Trade-Historie und in keinem Log. Einzelfall unter 24
+  geprüften Verkäufen. Mit der neuen Bot-Kennung wäre so etwas sofort zuzuordnen.
+- Der Kernbefund vom 25.08. bleibt: Median-Trade −0,62 % = die Kosten. Entry-Problem.
+
+**Nachtrag zu Punkt 3 — zweite Fundstelle, erst nach dem Deploy aufgefallen**
+
+Der erste Fix (`_get_drawdown_mult`) griff zu kurz: `check_day_loss()` rechnete in
+beiden Bots dieselbe Bargeld-Formel und schlug direkt nach dem Neustart zu, weil die
+frische Depotwert-Tagesbasis gegen den Bargeldstand verglichen wurde:
+
+- Krypto-Bot: „🛑 Tagesverlust −10 % erreicht" gemeldet, Tagesbasis auf den Bargeldstand
+  zurückgesetzt — damit war der eben korrigierte Wert wieder kaputt.
+- Super-Bot: „🛑 Tageslimit erreicht" gemeldet und `self.running = False` — der Bot
+  hätte für den Rest des Tages nichts mehr gekauft.
+
+Beide Telegram-Warnungen sind bei Andreas angekommen und waren falsch. Behoben:
+`check_day_loss()` misst jetzt ebenfalls am Depotwert. Die verbogene Krypto-Tagesbasis
+wurde einmalig aus dem State entfernt und beim Start neu gesetzt (4.959,72 $ Depotwert).
+Nach dem letzten Neustart (14:12 bzw. 14:14): keine DANGER-Zone, keine Tagesverlust-Meldung,
+Super-Bot 6 Positionen / Basis 5.014 $, Krypto-Bot 8 Positionen / Basis 4.960 $.
+
+Lehre für den nächsten Umbau dieser Art: `grep -n "start_balance" datei.py` **vor** dem
+Deploy — die Kennzahl wurde an zwei Stellen unabhängig gerechnet.
