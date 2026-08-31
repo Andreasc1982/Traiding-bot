@@ -1,5 +1,5 @@
 {
- "zeit": "2026-08-29 09:00:01",
+ "zeit": "2026-08-30 09:00:01",
  "anzahl": 21,
  "abweichungen": [],
  "checks": [
@@ -36,7 +36,7 @@
   {
    "ok": true,
    "bereich": "Daten",
-   "text": "Super-Bot Dashboard: 0 min alt"
+   "text": "Super-Bot Dashboard: 1 min alt"
   },
   {
    "ok": true,
@@ -66,27 +66,27 @@
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Score-Protokoll: zuletzt 29.08 08:07"
+   "text": "Score-Protokoll: zuletzt 30.08 08:07"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Telegram-Auswertung: zuletzt 29.08 08:15"
+   "text": "Telegram-Auswertung: zuletzt 30.08 08:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Nachrichten-Auswertung: zuletzt 29.08 08:20"
+   "text": "Nachrichten-Auswertung: zuletzt 30.08 08:20"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Blockzocker-Wächter: zuletzt 29.08 08:25"
+   "text": "Blockzocker-Wächter: zuletzt 30.08 08:25"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "BTC-Wal-Sammler: zuletzt 29.08 08:30"
+   "text": "BTC-Wal-Sammler: zuletzt 30.08 08:30"
   },
   {
    "ok": true,
