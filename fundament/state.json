@@ -2,20 +2,20 @@
  "cash": 0.0,
  "anteile": {
   "SPY": {
-   "stueck": 6.638408825042038,
-   "kurs": 757.6699829101562
+   "stueck": 6.788847446904579,
+   "kurs": 761.780029296875
   },
   "SHY": {
-   "stueck": 24.604247560265595,
-   "kurs": 81.7699966430664
+   "stueck": 25.354129864537207,
+   "kurs": 81.58999633789062
   },
   "GLD": {
-   "stueck": 4.059392981069289,
-   "kurs": 371.7099914550781
+   "stueck": 3.910478946688079,
+   "kurs": 396.75
   },
   "DBC": {
-   "stueck": 52.24781766461852,
-   "kurs": 28.8799991607666
+   "stueck": 48.59011923801966,
+   "kurs": 31.93000030517578
   }
  },
  "trades": [
@@ -32,10 +32,18 @@
    "kosten": 0.05,
    "wert": 10059.45,
    "abweichung_pp": 1.0
+  },
+  {
+   "datum": "2026-09-01",
+   "umschlag": 175.85,
+   "kosten": 0.09,
+   "wert": 10343.22,
+   "abweichung_pp": 1.13,
+   "entry_ts": 1788295203.750103
   }
  ],
  "start": "2026-07-26",
- "letzte_rueckfuehrung": "2026-08-03",
- "rueckfuehrungen": 2,
- "kosten_gesamt": 2.55
+ "letzte_rueckfuehrung": "2026-09-01",
+ "rueckfuehrungen": 3,
+ "kosten_gesamt": 2.64
 }
