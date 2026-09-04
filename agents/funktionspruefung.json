@@ -1,5 +1,5 @@
 {
- "zeit": "2026-09-02 09:00:01",
+ "zeit": "2026-09-03 09:00:01",
  "anzahl": 21,
  "abweichungen": [],
  "checks": [
@@ -36,7 +36,7 @@
   {
    "ok": true,
    "bereich": "Daten",
-   "text": "Super-Bot Dashboard: 0 min alt"
+   "text": "Super-Bot Dashboard: 1 min alt"
   },
   {
    "ok": true,
@@ -51,42 +51,42 @@
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Insider-Papierdepot: zuletzt 01.09 23:15"
+   "text": "Insider-Papierdepot: zuletzt 02.09 23:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Fundament-Bot: zuletzt 01.09 22:40"
+   "text": "Fundament-Bot: zuletzt 02.09 22:40"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "SEC-Tagesabruf: zuletzt 01.09 22:32"
+   "text": "SEC-Tagesabruf: zuletzt 02.09 22:32"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Score-Protokoll: zuletzt 02.09 08:07"
+   "text": "Score-Protokoll: zuletzt 03.09 08:07"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Telegram-Auswertung: zuletzt 02.09 08:15"
+   "text": "Telegram-Auswertung: zuletzt 03.09 08:15"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Nachrichten-Auswertung: zuletzt 02.09 08:20"
+   "text": "Nachrichten-Auswertung: zuletzt 03.09 08:20"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "Blockzocker-Wächter: zuletzt 02.09 08:25"
+   "text": "Blockzocker-Wächter: zuletzt 03.09 08:25"
   },
   {
    "ok": true,
    "bereich": "Cron",
-   "text": "BTC-Wal-Sammler: zuletzt 02.09 08:30"
+   "text": "BTC-Wal-Sammler: zuletzt 03.09 08:30"
   },
   {
    "ok": true,
